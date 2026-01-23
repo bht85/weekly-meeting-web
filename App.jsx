@@ -6,7 +6,7 @@ import {
     RotateCcw, Archive, Megaphone, Menu, CheckCircle2, Loader2,
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
-    ChevronDown, PieChart, TrendingUp, Calculator, Share2
+    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database
 } from 'lucide-react';
 import CollaborationDashboard from './CollaborationDashboard';
 
@@ -1266,6 +1266,12 @@ function App() {
                                     <span className="flex items-center"><FileText className="w-4 h-4 mr-2" />회의록</span>
                                 </button>
                                 <button
+                                    onClick={() => setAppMode('collaboration')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'collaboration' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <span className="flex items-center"><Share2 className="w-4 h-4 mr-2" />협업 요청</span>
+                                </button>
+                                <button
                                     onClick={() => setAppMode('kpi')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'kpi' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
@@ -1275,13 +1281,7 @@ function App() {
                                     onClick={() => setAppMode('finance')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'finance' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <span className="flex items-center"><PieChart className="w-4 h-4 mr-2" />재무 관리</span>
-                                </button>
-                                <button
-                                    onClick={() => setAppMode('collaboration')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'collaboration' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    <span className="flex items-center"><Share2 className="w-4 h-4 mr-2" />협업 요청</span>
+                                    <span className="flex items-center"><Database className="w-4 h-4 mr-2" />데이터</span>
                                 </button>
                             </div>
                         </div>
@@ -1321,11 +1321,14 @@ function App() {
                                 <button onClick={() => { setAppMode('meeting'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'meeting' ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>
                                     <FileText className="w-5 h-5 mr-3" /> 회의록 관리
                                 </button>
+                                <button onClick={() => { setAppMode('collaboration'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'collaboration' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
+                                    <Share2 className="w-5 h-5 mr-3" /> 협업 요청
+                                </button>
                                 <button onClick={() => { setAppMode('kpi'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'kpi' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
                                     <BarChart3 className="w-5 h-5 mr-3" /> KPI 대시보드
                                 </button>
                                 <button onClick={() => { setAppMode('finance'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'finance' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'}`}>
-                                    <PieChart className="w-5 h-5 mr-3" /> 재무 성과 관리
+                                    <Database className="w-5 h-5 mr-3" /> 데이터
                                 </button>
                             </div>
                         </div>
