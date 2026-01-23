@@ -79,9 +79,9 @@ const TEAM_ORDER = [
 ];
 
 const SECTIONS = [
-    { id: 'report', label: '가. 보고사항', icon: FileText, placeholder: '내용이 없으면 자동으로 \'특이사항 없음\'으로 저장됩니다.' },
-    { id: 'progress', label: '나. 진행업무', icon: Clock, placeholder: '내용이 없으면 자동으로 \'특이사항 없음\'으로 저장됩니다.' },
-    { id: 'discussion', label: '다. 협의업무', icon: MessageSquare, placeholder: '내용이 없으면 자동으로 \'특이사항 없음\'으로 저장됩니다.' }
+    { id: 'report', label: '가. 보고사항', icon: FileText, placeholder: '내용을 입력하세요...' },
+    { id: 'progress', label: '나. 진행업무', icon: Clock, placeholder: '내용을 입력하세요...' },
+    { id: 'discussion', label: '다. 협의업무', icon: MessageSquare, placeholder: '내용을 입력하세요...' }
 ];
 
 // 경영본부 회의 의견 작성용 팀 리스트 (순서 반영)
@@ -1578,7 +1578,6 @@ function App() {
                                             <textarea
                                                 value={inputData[s.id]}
                                                 onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
-                                                onFocus={() => autoFocus(inputData[s.id], setInputData, s.id)}
                                                 onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
                                                 placeholder={s.placeholder}
                                                 className="w-full border-gray-300 rounded-md text-sm p-3 border h-24"
