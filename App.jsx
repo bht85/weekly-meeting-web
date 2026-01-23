@@ -1230,9 +1230,39 @@ function App() {
 
     const renderText = (text) => {
         if (!text) return <span className="text-gray-400">-</span>;
-        return text.split('\n').map((line, i) => (
-            <div key={i} className={`whitespace-pre-wrap ${line.trim().startsWith('-') ? '' : 'pl-3'}`}>{line}</div>
-        ));
+
+        return text.split('\n').map((line, i) => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) return null;
+
+            // Analyze indentation based on leading spaces (heuristic)
+            const leadingSpaces = line.search(/\S|$/);
+            const indentLevel = Math.floor(leadingSpaces / 4); // Assuming 4 spaces per indent roughly
+
+            // Check if it's a bullet point
+            const isBullet = trimmedLine.startsWith('-') || trimmedLine.startsWith('•');
+            const content = isBullet ? trimmedLine.substring(1).trim() : trimmedLine;
+
+            // Styles based on hierarchy
+            const isMainItem = indentLevel === 0;
+            const containerStyle = isMainItem
+                ? "flex items-start gap-2.5 py-1 text-slate-800"
+                : "flex items-start gap-2.5 py-0.5 text-slate-600 text-[0.95em]";
+
+            const paddingLeft = indentLevel === 0 ? 0 : (indentLevel * 1.5) + 'rem';
+
+            return (
+                <div key={i} className={containerStyle} style={{ paddingLeft }}>
+                    <div className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-slate-300">
+                        {/* Custom bullet dot */}
+                        <div className={`w-full h-full rounded-full ${isMainItem ? 'bg-indigo-500' : 'bg-slate-400'}`}></div>
+                    </div>
+                    <div className="leading-relaxed break-words flex-1">
+                        {isMainItem ? <strong className="font-semibold text-slate-900">{content}</strong> : content}
+                    </div>
+                </div>
+            );
+        });
     };
 
     if (loading) return (
