@@ -1344,6 +1344,15 @@ function App() {
                 {/* [MODE 2] 재무 관리 */}
                 {appMode === 'finance' && <FinancialDashboard />}
 
+                {/* [MODE 4] 협업 요청 */}
+                {appMode === 'collaboration' && (
+                    <CollaborationDashboard
+                        db={db}
+                        user={user}
+                        departments={DEPARTMENTS}
+                    />
+                )}
+
                 {/* [MODE 3] 회의록 시스템 */}
                 {appMode === 'meeting' && (
                     <>
