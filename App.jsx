@@ -1246,7 +1246,7 @@ function App() {
     const filteredDates = selectedDate === 'recent' ? allDates.slice(0, 2) : (selectedDate ? [selectedDate] : allDates);
 
     return (
-        <div className="min-h-screen bg-gray-100 font-sans text-gray-800 pb-20">
+        <div className="min-h-screen bg-slate-50/50 font-sans text-slate-800 pb-20">
             {/* 상단 네비게이션 (헤더) */}
             <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1258,28 +1258,28 @@ function App() {
                                 <span className="sm:hidden">GW</span>
                             </div>
 
-                            <div className="hidden md:flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                            <div className="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
                                 <button
                                     onClick={() => setAppMode('meeting')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'meeting' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'meeting' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><FileText className="w-4 h-4 mr-2" />회의록</span>
                                 </button>
                                 <button
                                     onClick={() => setAppMode('kpi')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'kpi' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'kpi' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><BarChart3 className="w-4 h-4 mr-2" />KPI</span>
                                 </button>
                                 <button
                                     onClick={() => setAppMode('finance')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'finance' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'finance' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><PieChart className="w-4 h-4 mr-2" />재무 관리</span>
                                 </button>
                                 <button
                                     onClick={() => setAppMode('collaboration')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'collaboration' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'collaboration' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><Share2 className="w-4 h-4 mr-2" />협업 요청</span>
                                 </button>

@@ -11,17 +11,17 @@ import {
 
 // Enum-like constants
 const STATUS_LABELS = {
-    'Pending': '대기',
-    'In_Progress': '진행중',
-    'Completed': '완료',
-    'Rejected': '반려'
+    'Pending': '대기 (Pending)',
+    'In_Progress': '진행중 (In Progress)',
+    'Completed': '완료 (Completed)',
+    'Rejected': '반려 (Rejected)'
 };
 
 const STATUS_COLORS = {
-    'Pending': 'bg-gray-100 text-gray-600',
-    'In_Progress': 'bg-blue-100 text-blue-600',
-    'Completed': 'bg-green-100 text-green-600',
-    'Rejected': 'bg-red-100 text-red-600'
+    'Pending': 'bg-amber-100 text-amber-700 ring-1 ring-amber-600/20',
+    'In_Progress': 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20',
+    'Completed': 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-600/20',
+    'Rejected': 'bg-red-100 text-red-700 ring-1 ring-red-600/20'
 };
 
 const PRIORITY_LABELS = {
@@ -31,9 +31,9 @@ const PRIORITY_LABELS = {
 };
 
 const PRIORITY_COLORS = {
-    'High': 'text-red-600 bg-red-50 border-red-200',
-    'Medium': 'text-amber-600 bg-amber-50 border-amber-200',
-    'Low': 'text-green-600 bg-green-50 border-green-200'
+    'High': 'text-red-700 bg-red-50 border border-red-200',
+    'Medium': 'text-amber-700 bg-amber-50 border border-amber-200',
+    'Low': 'text-emerald-700 bg-emerald-50 border border-emerald-200'
 };
 
 const CollaborationDashboard = ({ db, user, departments }) => {
@@ -42,7 +42,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
-    const [myTeam, setMyTeam] = useState(departments[1]); // Default to first valid team for demo if not set
+    const [myTeam, setMyTeam] = useState(departments[1]);
 
     // Filter states
     const [filterStatus, setFilterStatus] = useState('All');
@@ -52,28 +52,13 @@ const CollaborationDashboard = ({ db, user, departments }) => {
         if (!db || !user) return;
 
         setLoading(true);
-        // Fetch all requests related to my team (either as requester or target)
-        // Note: Firestore OR queries can be tricky, so for simplicity we might fetch based on the active tab
-        // or fetch all relevant docs and filter client-side if the dataset is small.
-        // Given the requirements, let's try to be specific.
-
         let q;
         const collectionRef = collection(db, 'collaboration_requests');
 
         if (activeTab === 'sent') {
-            // I am the requester
-            // In a real app with auth, we might store 'requesterId' or 'requesterTeam'
-            // effectively mapping user -> team is needed. For now we use the selected 'myTeam' dropdown or prop.
-            q = query(
-                collectionRef,
-                where('requesterTeam', '==', myTeam)
-            );
+            q = query(collectionRef, where('requesterTeam', '==', myTeam));
         } else {
-            // I am the target
-            q = query(
-                collectionRef,
-                where('targetTeam', '==', myTeam)
-            );
+            q = query(collectionRef, where('targetTeam', '==', myTeam));
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -81,7 +66,6 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 id: doc.id,
                 ...doc.data()
             }));
-            // Client-side sort by createdAt desc (or use Firestore orderBy if index exists)
             docs.sort((a, b) => {
                 const tA = a.updatedAt?.toMillis() || 0;
                 const tB = b.updatedAt?.toMillis() || 0;
@@ -120,7 +104,6 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 status: newStatus,
                 updatedAt: serverTimestamp()
             });
-            // Close modal or update local state if needed (snapshot handles it)
             if (selectedRequest) {
                 setSelectedRequest(prev => ({ ...prev, status: newStatus }));
             }
@@ -133,23 +116,18 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const handleAddComment = async (reqId, text) => {
         if (!text.trim()) return;
         try {
-            // We can use arrayUnion, but let's just read-update for simplicity with array of objects
             if (!selectedRequest) return;
-
             const newComment = {
                 id: Date.now().toString(),
                 text,
-                authorTeam: myTeam, // Simplified "User Name"
-                createdAt: new Date().toISOString() // Store ISO string for simplicity in array
+                authorTeam: myTeam,
+                createdAt: new Date().toISOString()
             };
-
             const updatedComments = [...(selectedRequest.comments || []), newComment];
-
             await updateDoc(doc(db, 'collaboration_requests', reqId), {
                 comments: updatedComments,
                 updatedAt: serverTimestamp()
             });
-
             setSelectedRequest(prev => ({ ...prev, comments: updatedComments }));
         } catch (e) {
             console.error(e);
@@ -162,34 +140,36 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     );
 
     return (
-        <div className="bg-white min-h-screen p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white min-h-screen p-6 rounded-xl shadow-sm border border-slate-200">
             {/* Header & Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-6 border-b border-slate-100">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <User className="w-6 h-6 text-indigo-600" />
+                        <User className="w-6 h-6 text-indigo-700" />
                         협업 요청 (Collaboration)
                     </h2>
                     <p className="text-slate-500 text-sm mt-1">
-                        현재 <strong>{myTeam}</strong> 기준으로 데이터를 조회합니다.
+                        부서 간 업무 협조 및 자료 요청 히스토리 관리
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Team Selector (For Demo/MVP flexibility) */}
-                    <select
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={myTeam}
-                        onChange={(e) => setMyTeam(e.target.value)}
-                    >
-                        {departments.filter(d => d !== '선택').map(d => (
-                            <option key={d} value={d}>{d}</option>
-                        ))}
-                    </select>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                        <span className="text-xs font-bold text-slate-400 uppercase">My Team</span>
+                        <select
+                            className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer hover:text-indigo-600"
+                            value={myTeam}
+                            onChange={(e) => setMyTeam(e.target.value)}
+                        >
+                            {departments.filter(d => d !== '선택').map(d => (
+                                <option key={d} value={d}>{d}</option>
+                            ))}
+                        </select>
+                    </div>
 
                     <button
                         onClick={() => setIsFormOpen(true)}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                     >
                         <PlusCircle className="w-4 h-4" /> 새 요청 작성
                     </button>
@@ -197,10 +177,10 @@ const CollaborationDashboard = ({ db, user, departments }) => {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-6 border-b border-gray-200 mb-6">
+            <div className="flex gap-8 border-b border-slate-200 mb-6">
                 <button
                     onClick={() => setActiveTab('received')}
-                    className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'received' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'
+                    className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'received' ? 'text-indigo-700' : 'text-slate-400 hover:text-slate-600'
                         }`}
                 >
                     받은 요청 (Received)
@@ -208,37 +188,40 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 </button>
                 <button
                     onClick={() => setActiveTab('sent')}
-                    className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'sent' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                    className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'sent' ? 'text-indigo-700' : 'text-slate-400 hover:text-slate-600'
                         }`}
                 >
                     보낸 요청 (Sent)
-                    {activeTab === 'sent' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></span>}
+                    {activeTab === 'sent' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
                 </button>
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-                <Filter className="w-4 h-4 text-slate-400" />
+            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="p-1.5 bg-slate-100 rounded text-slate-400 mr-2"><Filter className="w-4 h-4" /></div>
                 {['All', 'Pending', 'In_Progress', 'Completed', 'Rejected'].map(st => (
                     <button
                         key={st}
                         onClick={() => setFilterStatus(st)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${filterStatus === st
-                                ? 'bg-slate-800 text-white border-slate-800'
-                                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filterStatus === st
+                            ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                             }`}
                     >
-                        {st === 'All' ? '전체' : STATUS_LABELS[st]}
+                        {st === 'All' ? '전체' : STATUS_LABELS[st].split('(')[0]}
                     </button>
                 ))}
             </div>
 
-            {/* List */}
+            {/* List - Card Layout */}
             {loading ? (
-                <div className="py-20 text-center text-slate-400">로딩 중...</div>
+                <div className="py-20 text-center"><div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div><span className="text-slate-400 text-sm">로딩 중...</span></div>
             ) : filteredRequests.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-                    <p className="text-slate-500">요청 내역이 없습니다.</p>
+                <div className="py-24 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                        <User className="w-8 h-8" />
+                    </div>
+                    <p className="text-slate-500 font-medium">요청 내역이 없습니다.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
@@ -246,38 +229,51 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                         <div
                             key={req.id}
                             onClick={() => setSelectedRequest(req)}
-                            className="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer relative overflow-hidden"
+                            className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-200 cursor-pointer relative group card-hover-effect"
                         >
-                            <div className="flex justify-between items-start mb-2">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${PRIORITY_COLORS[req.priority]}`}>
+                                    <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${PRIORITY_COLORS[req.priority]}`}>
                                         {PRIORITY_LABELS[req.priority]}
                                     </span>
-                                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${STATUS_COLORS[req.status]}`}>
-                                        {STATUS_LABELS[req.status]}
-                                    </span>
+                                    <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">
+                                        {req.title}
+                                    </h3>
                                 </div>
-                                <div className="text-xs text-slate-400 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" /> {req.dueDate} 마감
+                                <div className="flex items-center gap-3 shrink-0">
+                                    <span className={`px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1.5 ${STATUS_COLORS[req.status]}`}>
+                                        <div className={`w-1.5 h-1.5 rounded-full bg-current opacity-60`}></div>
+                                        {STATUS_LABELS[req.status]?.split('(')[0]}
+                                    </span>
                                 </div>
                             </div>
 
-                            <h3 className="font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">
-                                {req.title}
-                            </h3>
+                            <p className="text-slate-600 text-sm mb-5 line-clamp-2 md:line-clamp-1 pr-10">
+                                {req.description}
+                            </p>
 
-                            <div className="flex items-center justify-between mt-4 border-t border-slate-50 pt-3">
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-medium">
-                                        {activeTab === 'received' ? `From. ${req.requesterTeam}` : `To. ${req.targetTeam}`}
-                                    </span>
-                                    {req.comments?.length > 0 && (
-                                        <span className="flex items-center gap-1 text-slate-400">
-                                            <MessageSquare className="w-3 h-3" /> {req.comments.length}
-                                        </span>
-                                    )}
+                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                                <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+                                    <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                        <span className="text-slate-400">{activeTab === 'received' ? 'From' : 'To'}</span>
+                                        <span className="text-slate-700 font-bold">{activeTab === 'received' ? req.requesterTeam : req.targetTeam}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        <span>{req.dueDate} 마감</span>
+                                    </div>
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+
+                                {req.comments?.length > 0 && (
+                                    <div className="flex items-center gap-1.5 text-slate-400 bg-slate-50 px-2 py-1 rounded-full text-xs">
+                                        <MessageSquare className="w-3.5 h-3.5" />
+                                        <span className="font-bold">{req.comments.length}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="absolute right-6 bottom-6 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 hidden md:block">
+                                <ArrowRight className="w-5 h-5 text-indigo-400" />
                             </div>
                         </div>
                     ))}
@@ -316,10 +312,9 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
         title: '',
         description: '',
         priority: 'Medium',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Default 1 week later
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
 
-    // Filter out my team from target list
     const targets = departments.filter(d => d !== '선택' && d !== myTeam);
 
     const handleSubmit = (e) => {
@@ -329,33 +324,36 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-                <div className="bg-slate-800 p-4 flex justify-between items-center text-white">
-                    <h3 className="font-bold flex items-center gap-2">
-                        <PlusCircle className="w-5 h-5" /> 새 협업 요청
+        <div className="fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                <div className="bg-slate-50 p-5 flex justify-between items-center border-b border-slate-100">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <PlusCircle className="w-5 h-5 text-indigo-600" /> 새 협업 요청 작성
                     </h3>
-                    <button onClick={onClose}><X className="w-5 h-5 opacity-70 hover:opacity-100" /></button>
+                    <button onClick={onClose} className="bg-white p-1.5 rounded-full text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors"><X className="w-5 h-5" /></button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">수신 부서</label>
-                        <select
-                            className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={formData.targetTeam}
-                            onChange={e => setFormData({ ...formData, targetTeam: e.target.value })}
-                        >
-                            {targets.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">수신 부서 (Target)</label>
+                        <div className="relative">
+                            <select
+                                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                value={formData.targetTeam}
+                                onChange={e => setFormData({ ...formData, targetTeam: e.target.value })}
+                            >
+                                {targets.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">제목</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">요청 제목</label>
                         <input
                             type="text"
-                            className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-                            placeholder="요청 사항을 요약해주세요"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
+                            placeholder="요청 사항을 간결하게 요약해주세요"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
                         />
@@ -363,9 +361,9 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">중요도</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">중요도</label>
                             <select
-                                className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium outline-none"
                                 value={formData.priority}
                                 onChange={e => setFormData({ ...formData, priority: e.target.value })}
                             >
@@ -375,10 +373,10 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">희망 마감일</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">희망 마감일</label>
                             <input
                                 type="date"
-                                className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium outline-none text-slate-600"
                                 value={formData.dueDate}
                                 onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
                             />
@@ -386,17 +384,17 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">상세 내용</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">상세 요청 내용</label>
                         <textarea
-                            className="w-full border border-slate-300 rounded-lg p-3 h-32 resize-none focus:ring-2 focus:ring-indigo-500 outline-none"
-                            placeholder="구체적인 요청 내용과 배경을 설명해주세요."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-32 text-sm font-medium resize-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                            placeholder="배경 설명 및 구체적인 필요 사항을 적어주세요."
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                         ></textarea>
                     </div>
 
-                    <div className="pt-4 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</button>
+                    <div className="pt-2 flex gap-3">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">취소</button>
                         <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">요청 보내기</button>
                     </div>
                 </form>
@@ -415,80 +413,89 @@ const RequestDetailModal = ({ request, onClose, onUpdateStatus, onAddComment, is
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-full h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-
+        <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50">
-                    <div className="pr-8">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${PRIORITY_COLORS[request.priority]}`}>
-                                {PRIORITY_LABELS[request.priority]} Priority
+                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white sticky top-0 z-10">
+                    <div className="pr-10">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md border ${PRIORITY_COLORS[request.priority]}`}>
+                                {PRIORITY_LABELS[request.priority]}
                             </span>
-                            <span className={`px-2 py-0.5 text-xs font-bold rounded ${STATUS_COLORS[request.status]}`}>
-                                {STATUS_LABELS[request.status]}
+                            <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${STATUS_COLORS[request.status]}`}>
+                                {STATUS_LABELS[request.status]?.split('(')[0]}
                             </span>
                         </div>
-                        <h2 className="text-xl font-bold text-slate-800 leading-snug">{request.title}</h2>
+                        <h2 className="text-2xl font-bold text-slate-800 leading-snug tracking-tight">{request.title}</h2>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-white rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X className="w-6 h-6" /></button>
                 </div>
 
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto p-0">
-                    <div className="p-6 space-y-6">
-                        {/* Meta Info */}
-                        <div className="flex flex-wrap gap-4 text-sm text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <div className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                <span>요청자: <strong>{request.requesterTeam}</strong></span>
+                <div className="flex-1 overflow-y-auto bg-slate-50/30">
+                    <div className="p-6 md:p-8 space-y-8">
+                        {/* Meta Grid */}
+                        <div className="grid grid-cols-3 gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">From</span>
+                                <div className="flex items-center gap-2 font-bold text-slate-700">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xs">
+                                        {request.requesterTeam[0]}
+                                    </div>
+                                    {request.requesterTeam}
+                                </div>
                             </div>
-                            <div className="w-px h-4 bg-slate-300"></div>
-                            <div className="flex items-center gap-2">
-                                <ArrowRight className="w-4 h-4" />
-                                <span>담당: <strong>{request.targetTeam}</strong></span>
+                            <div className="flex flex-col gap-1 border-l border-slate-100 pl-4">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">To (담당)</span>
+                                <div className="flex items-center gap-2 font-bold text-slate-700">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs">
+                                        {request.targetTeam[0]}
+                                    </div>
+                                    {request.targetTeam}
+                                </div>
                             </div>
-                            <div className="w-px h-4 bg-slate-300"></div>
-                            <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                <span>마감: <strong>{request.dueDate}</strong></span>
+                            <div className="flex flex-col gap-1 border-l border-slate-100 pl-4">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Due Date</span>
+                                <div className="flex items-center gap-2 font-bold text-red-600">
+                                    <Calendar className="w-4 h-4" />
+                                    {request.dueDate}
+                                </div>
                             </div>
                         </div>
 
                         {/* Description */}
                         <div>
-                            <h4 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
                                 <FileText className="w-4 h-4 text-indigo-500" /> 상세 내용
                             </h4>
-                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap bg-white border border-slate-100 p-4 rounded-lg">
+                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-sm">
                                 {request.description}
                             </div>
                         </div>
 
-                        {/* Status Actions (Only for receiver) */}
+                        {/* Status Actions */}
                         {isReceived && request.status !== 'Completed' && request.status !== 'Rejected' && (
-                            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
-                                <h4 className="text-sm font-bold text-indigo-900 mb-3">상태 변경</h4>
-                                <div className="flex gap-2">
+                            <div className="bg-white border border-indigo-100 p-5 rounded-2xl shadow-sm ring-1 ring-indigo-50">
+                                <h4 className="text-sm font-bold text-indigo-900 mb-4">상태 업데이트</h4>
+                                <div className="flex gap-3">
                                     {request.status === 'Pending' && (
                                         <button
                                             onClick={() => onUpdateStatus(request.id, 'In_Progress')}
-                                            className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm"
+                                            className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-md shadow-blue-200 transition-all hover:-translate-y-0.5"
                                         >
-                                            접수 및 진행 (In Progress)
+                                            접수 및 진행 (Start)
                                         </button>
                                     )}
                                     {(request.status === 'Pending' || request.status === 'In_Progress') && (
                                         <>
                                             <button
                                                 onClick={() => onUpdateStatus(request.id, 'Completed')}
-                                                className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 shadow-sm"
+                                                className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all hover:-translate-y-0.5"
                                             >
-                                                완료 처리 (Complete)
+                                                완료 처리 (Done)
                                             </button>
                                             <button
                                                 onClick={() => onUpdateStatus(request.id, 'Rejected')}
-                                                className="py-2 px-4 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50"
+                                                className="px-6 py-3 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 hover:border-red-300 transition-colors"
                                             >
                                                 반려
                                             </button>
@@ -498,46 +505,53 @@ const RequestDetailModal = ({ request, onClose, onUpdateStatus, onAddComment, is
                             </div>
                         )}
 
-                        {/* Comments Section */}
-                        <div className="border-t border-slate-200 pt-6">
-                            <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        {/* Comments */}
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
                                 <MessageSquare className="w-4 h-4 text-indigo-500" /> 히스토리 & 댓글 ({request.comments?.length || 0})
                             </h4>
 
-                            <div className="space-y-4 mb-6">
+                            <div className="space-y-4 mb-8">
                                 {(request.comments || []).map((c, i) => (
-                                    <div key={i} className="flex gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0">
+                                    <div key={i} className="flex gap-4 group">
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0 mt-1">
                                             {c.authorTeam?.[0]}
                                         </div>
-                                        <div className="bg-slate-50 p-3 rounded-lg rounded-tl-none border border-slate-200 flex-1">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs font-bold text-slate-700">{c.authorTeam}</span>
-                                                <span className="text-[10px] text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                                        <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm flex-1 group-hover:border-indigo-200 transition-colors">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-xs font-bold text-slate-800">{c.authorTeam}</span>
+                                                <span className="text-[10px] text-slate-400 font-medium">{new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
-                                            <p className="text-sm text-slate-600">{c.text}</p>
+                                            <p className="text-sm text-slate-600 leading-relaxed">{c.text}</p>
                                         </div>
                                     </div>
                                 ))}
+                                {(!request.comments || request.comments.length === 0) && (
+                                    <p className="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                        아직 작성된 댓글이 없습니다.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Comment Input (Fixed bottom) */}
-                <div className="p-4 border-t border-slate-200 bg-white">
-                    <form onSubmit={handleCommentSubmit} className="relative">
-                        <input
-                            type="text"
-                            placeholder="댓글을 입력하세요..."
-                            className="w-full bg-slate-100 border-0 rounded-full pl-5 pr-12 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                            value={commentText}
-                            onChange={e => setCommentText(e.target.value)}
-                        />
+                {/* Footer Input */}
+                <div className="p-4 border-t border-slate-200 bg-white sticky bottom-0">
+                    <form onSubmit={handleCommentSubmit} className="relative flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <input
+                                type="text"
+                                placeholder="추가 문의사항이나 진행상황을 남겨주세요..."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-full pl-5 pr-4 py-3.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition-all"
+                                value={commentText}
+                                onChange={e => setCommentText(e.target.value)}
+                            />
+                        </div>
                         <button
                             type="submit"
                             disabled={!commentText.trim()}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-600 text-white rounded-full disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
+                            className="p-3.5 bg-indigo-600 text-white rounded-full disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all hover:scale-105"
                         >
                             <Send className="w-4 h-4" />
                         </button>
