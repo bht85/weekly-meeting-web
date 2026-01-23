@@ -6,7 +6,7 @@ import {
 import {
     MessageSquare, PlusCircle, CheckCircle2, Clock,
     AlertCircle, X, Send, Calendar, User, ArrowRight,
-    Filter, MoreHorizontal, FileText, Ban
+    Filter, MoreHorizontal, FileText, Ban, BarChart3
 } from 'lucide-react';
 
 // Enum-like constants
@@ -42,7 +42,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
-    const [myTeam, setMyTeam] = useState(departments[1]);
+    const [myTeam, setMyTeam] = useState(departments[0]); // Default to '선택' usually
 
     // Filter states
     const [filterStatus, setFilterStatus] = useState('All');
@@ -56,9 +56,9 @@ const CollaborationDashboard = ({ db, user, departments }) => {
         const collectionRef = collection(db, 'collaboration_requests');
 
         if (activeTab === 'sent') {
-            q = query(collectionRef, where('requesterTeam', '==', myTeam));
+            q = query(collectionRef, orderBy('updatedAt', 'desc'));
         } else {
-            q = query(collectionRef, where('targetTeam', '==', myTeam));
+            q = query(collectionRef, orderBy('updatedAt', 'desc'));
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -135,9 +135,34 @@ const CollaborationDashboard = ({ db, user, departments }) => {
         }
     };
 
-    const filteredRequests = requests.filter(r =>
-        filterStatus === 'All' ? true : r.status === filterStatus
-    );
+    // --- Statistics Calculation ---
+    const stats = departments.filter(d => d !== '선택').map(dept => {
+        const received = requests.filter(r => r.targetTeam === dept);
+        const sent = requests.filter(r => r.requesterTeam === dept);
+        return {
+            dept,
+            receivedTotal: received.length,
+            receivedPending: received.filter(r => r.status === 'Pending').length,
+            receivedProgress: received.filter(r => r.status === 'In_Progress').length,
+            receivedCompleted: received.filter(r => r.status === 'Completed').length,
+            sentTotal: sent.length,
+            sentPending: sent.filter(r => r.status === 'Pending').length,
+            sentProgress: sent.filter(r => r.status === 'In_Progress').length,
+            sentCompleted: sent.filter(r => r.status === 'Completed').length,
+        };
+    });
+
+    const filteredRequests = requests.filter(r => {
+        // 1. My Team Filter
+        if (myTeam === '선택') return false; // Or show all? Usually show relevant only.
+        if (activeTab === 'received' && r.targetTeam !== myTeam) return false;
+        if (activeTab === 'sent' && r.requesterTeam !== myTeam) return false;
+
+        // 2. Status Filter
+        if (filterStatus !== 'All' && r.status !== filterStatus) return false;
+
+        return true;
+    });
 
     return (
         <div className="bg-white min-h-screen p-6 rounded-xl shadow-sm border border-slate-200">
@@ -161,7 +186,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                             value={myTeam}
                             onChange={(e) => setMyTeam(e.target.value)}
                         >
-                            {departments.filter(d => d !== '선택').map(d => (
+                            {departments.map(d => (
                                 <option key={d} value={d}>{d}</option>
                             ))}
                         </select>
@@ -173,6 +198,56 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                     >
                         <PlusCircle className="w-4 h-4" /> 새 요청 작성
                     </button>
+                </div>
+            </div>
+
+            {/* Global Statistics Section */}
+            <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 className="w-5 h-5 text-slate-600" />
+                    <h3 className="text-lg font-bold text-slate-800">전사 협업 현황</h3>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th rowSpan="2" className="px-6 py-3 font-bold">부서</th>
+                                <th colSpan="4" className="px-6 py-2 text-center border-l border-slate-200 bg-indigo-50/50 text-indigo-900">받은 요청 (Received)</th>
+                                <th colSpan="4" className="px-6 py-2 text-center border-l border-slate-200 bg-emerald-50/50 text-emerald-900">보낸 요청 (Sent)</th>
+                            </tr>
+                            <tr>
+                                {/* Received Columns */}
+                                <th className="px-4 py-2 text-center border-l border-slate-200 text-slate-400">전체</th>
+                                <th className="px-4 py-2 text-center text-amber-600">대기</th>
+                                <th className="px-4 py-2 text-center text-blue-600">진행</th>
+                                <th className="px-4 py-2 text-center text-emerald-600">완료</th>
+                                {/* Sent Columns */}
+                                <th className="px-4 py-2 text-center border-l border-slate-200 text-slate-400">전체</th>
+                                <th className="px-4 py-2 text-center text-amber-600">대기</th>
+                                <th className="px-4 py-2 text-center text-blue-600">진행</th>
+                                <th className="px-4 py-2 text-center text-emerald-600">완료</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                            {stats.map((s) => (
+                                <tr key={s.dept} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-3 font-bold text-slate-700">{s.dept}</td>
+
+                                    {/* Received */}
+                                    <td className="px-4 py-3 text-center border-l border-slate-100 font-medium text-slate-600">{s.receivedTotal}</td>
+                                    <td className="px-4 py-3 text-center text-amber-600">{s.receivedPending > 0 ? s.receivedPending : '-'}</td>
+                                    <td className="px-4 py-3 text-center text-blue-600">{s.receivedProgress > 0 ? s.receivedProgress : '-'}</td>
+                                    <td className="px-4 py-3 text-center text-emerald-600">{s.receivedCompleted > 0 ? s.receivedCompleted : '-'}</td>
+
+                                    {/* Sent */}
+                                    <td className="px-4 py-3 text-center border-l border-slate-100 font-medium text-slate-600">{s.sentTotal}</td>
+                                    <td className="px-4 py-3 text-center text-amber-600">{s.sentPending > 0 ? s.sentPending : '-'}</td>
+                                    <td className="px-4 py-3 text-center text-blue-600">{s.sentProgress > 0 ? s.sentProgress : '-'}</td>
+                                    <td className="px-4 py-3 text-center text-emerald-600">{s.sentCompleted > 0 ? s.sentCompleted : '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -221,7 +296,11 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                         <User className="w-8 h-8" />
                     </div>
-                    <p className="text-slate-500 font-medium">요청 내역이 없습니다.</p>
+                    {myTeam === '선택' ? (
+                        <p className="text-slate-500 font-medium">상단에서 'My Team'을 선택해주세요.</p>
+                    ) : (
+                        <p className="text-slate-500 font-medium">요청 내역이 없습니다.</p>
+                    )}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
@@ -286,7 +365,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                     onClose={() => setIsFormOpen(false)}
                     onSubmit={handleCreate}
                     departments={departments}
-                    myTeam={myTeam}
+                    myTeam={myTeam === '선택' ? '' : myTeam}
                 />
             )}
 
@@ -308,7 +387,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
 
 const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
     const [formData, setFormData] = useState({
-        targetTeam: departments.find(d => d !== '선택' && d !== myTeam) || '',
+        targetTeam: '',
         title: '',
         description: '',
         priority: 'Medium',
@@ -319,7 +398,9 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!formData.title || !formData.targetTeam) return alert('필수 항목을 입력해주세요.');
+        if (!formData.targetTeam) return alert('팀을 선택해 주세요');
+        if (!formData.title) return alert('필수 항목을 입력해주세요.');
+        if (!myTeam) return alert('요청자(본인) 팀이 선택되지 않았습니다.');
         onSubmit(formData);
     };
 
@@ -342,6 +423,7 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
                                 value={formData.targetTeam}
                                 onChange={e => setFormData({ ...formData, targetTeam: e.target.value })}
                             >
+                                <option value="">부서를 선택해주세요</option>
                                 {targets.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                             <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
