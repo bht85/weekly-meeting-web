@@ -6,9 +6,10 @@ import {
     RotateCcw, Archive, Megaphone, Menu, CheckCircle2, Loader2,
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
-    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database
+    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor
 } from 'lucide-react';
 import CollaborationDashboard from './CollaborationDashboard';
+import NewsDashboard from './NewsDashboard';
 
 // --- Firebase 라이브러리 ---
 import { initializeApp } from "firebase/app";
@@ -1313,6 +1314,13 @@ function App() {
                                 >
                                     <span className="flex items-center"><Database className="w-4 h-4 mr-2" />데이터</span>
                                 </button>
+
+                                <button
+                                    onClick={() => setAppMode('news')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'news' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <span className="flex items-center"><Monitor className="w-4 h-4 mr-2" />업계 동향</span>
+                                </button>
                             </div>
                         </div>
 
@@ -1360,6 +1368,10 @@ function App() {
                                 <button onClick={() => { setAppMode('finance'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'finance' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'}`}>
                                     <Database className="w-5 h-5 mr-3" /> 데이터
                                 </button>
+
+                                <button onClick={() => { setAppMode('news'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'news' ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>
+                                    <Monitor className="w-5 h-5 mr-3" /> 업계 동향
+                                </button>
                             </div>
                         </div>
                     )
@@ -1376,6 +1388,9 @@ function App() {
 
                 {/* [MODE 2] 재무 관리 */}
                 {appMode === 'finance' && <FinancialDashboard />}
+
+                {/* [MODE 5] 업계 동향 */}
+                {appMode === 'news' && <NewsDashboard />}
 
                 {/* [MODE 4] 협업 요청 */}
                 {appMode === 'collaboration' && (
