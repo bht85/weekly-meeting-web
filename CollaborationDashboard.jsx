@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
     collection, addDoc, query, where, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy
@@ -102,7 +101,12 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 }]
             };
 
-            await axios.post(TEAMS_WEBHOOK_URL, message);
+            await fetch(TEAMS_WEBHOOK_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(message)
+            });
             console.log("Teams notification sent");
         } catch (error) {
             console.error("Failed to send Teams notification:", error);
