@@ -852,100 +852,100 @@ const KPIDashboard = () => {
                                             </div>
                                         </div>
                                     </div>
-                                        </div>
-                        );
-                                        })}
+
+                                );
+                            })}
+                        </div>
                     </div>
-                                </div>
-    )
-                        )}
+                )
+            )}
 
-{/* 부서 개별 KPI Modal */ }
-{
-    isModalOpen && (
-        <KPIFormModal
-            kpi={editingKpi}
-            title={editingKpi ? "팀 지표 수정" : "새 팀 지표 추가"}
-            onClose={() => setIsModalOpen(false)}
-            onSave={(data) => handleSaveKPI(selectedDeptId, data)}
-        />
-    )
-}
-
-{/* 전사 공통 KPI 관리 Modal */ }
-{
-    isCommonKpiModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70] backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50">
-                    <div>
-                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-indigo-600" /> 전사 공통 지표 관리
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">{currentYear}년 {currentPeriod} 기준 (모든 부서에 공통 적용)</p>
-                    </div>
-                    <button onClick={() => setIsCommonKpiModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-                </div>
-
-                <div className="p-6 overflow-y-auto flex-1">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="font-bold text-sm text-slate-700">등록된 공통 지표 ({commonKpis.length})</span>
-                        <button
-                            onClick={() => { setEditingKpi(null); setIsCommonFormOpen(true); }}
-                            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 flex items-center gap-1"
-                        >
-                            <Plus className="w-3 h-3" /> 지표 추가
-                        </button>
-                    </div>
-
-                    {/* 리스트 표시 */}
-                    <div className="space-y-3">
-                        {commonKpis.map(kpi => (
-                            <div key={kpi.id} className="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white">
-                                <div>
-                                    <h4 className="font-bold text-slate-800">{kpi.name}</h4>
-                                    <div className="text-xs text-slate-500 mt-1 flex gap-3">
-                                        <span>목표: {kpi.target.toLocaleString()}{kpi.unit}</span>
-                                        <span>현재: <strong>{kpi.current.toLocaleString()}</strong></span>
-                                        <span>비중: {kpi.weight * 100}%</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => { setEditingKpi(kpi); setIsCommonFormOpen(true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded"><Edit2 className="w-4 h-4" /></button>
-                                    <button onClick={() => handleDeleteCommonKPI(kpi.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                                </div>
-                            </div>
-                        ))}
-                        {commonKpis.length === 0 && <p className="text-center text-sm text-slate-400 py-4">이 기간에 등록된 전사 공통 지표가 없습니다.</p>}
-                    </div>
-                </div>
-
-                {/* 중첩 모달: 공통 KPI 폼 */}
-                {isCommonFormOpen && (
+            {/* 부서 개별 KPI Modal */}
+            {
+                isModalOpen && (
                     <KPIFormModal
                         kpi={editingKpi}
-                        title={editingKpi ? "공통 지표 수정" : "새 공통 지표 추가"}
-                        onClose={() => setIsCommonFormOpen(false)}
-                        onSave={handleSaveCommonKPI}
-                        isCommon={true}
+                        title={editingKpi ? "팀 지표 수정" : "새 팀 지표 추가"}
+                        onClose={() => setIsModalOpen(false)}
+                        onSave={(data) => handleSaveKPI(selectedDeptId, data)}
                     />
-                )}
-            </div>
-        </div>
-    )
-}
+                )
+            }
 
-{/* Department Manager Modal */ }
-{
-    isManageModalOpen && (
-        <TeamManagerModal
-            onClose={() => setIsManageModalOpen(false)}
-        />
-    )
-}
-                    </div >
-                );
-            };
+            {/* 전사 공통 KPI 관리 Modal */}
+            {
+                isCommonKpiModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70] backdrop-blur-sm">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+                            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50">
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                        <Building2 className="w-5 h-5 text-indigo-600" /> 전사 공통 지표 관리
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-1">{currentYear}년 {currentPeriod} 기준 (모든 부서에 공통 적용)</p>
+                                </div>
+                                <button onClick={() => setIsCommonKpiModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto flex-1">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="font-bold text-sm text-slate-700">등록된 공통 지표 ({commonKpis.length})</span>
+                                    <button
+                                        onClick={() => { setEditingKpi(null); setIsCommonFormOpen(true); }}
+                                        className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 flex items-center gap-1"
+                                    >
+                                        <Plus className="w-3 h-3" /> 지표 추가
+                                    </button>
+                                </div>
+
+                                {/* 리스트 표시 */}
+                                <div className="space-y-3">
+                                    {commonKpis.map(kpi => (
+                                        <div key={kpi.id} className="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800">{kpi.name}</h4>
+                                                <div className="text-xs text-slate-500 mt-1 flex gap-3">
+                                                    <span>목표: {kpi.target.toLocaleString()}{kpi.unit}</span>
+                                                    <span>현재: <strong>{kpi.current.toLocaleString()}</strong></span>
+                                                    <span>비중: {kpi.weight * 100}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setEditingKpi(kpi); setIsCommonFormOpen(true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded"><Edit2 className="w-4 h-4" /></button>
+                                                <button onClick={() => handleDeleteCommonKPI(kpi.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {commonKpis.length === 0 && <p className="text-center text-sm text-slate-400 py-4">이 기간에 등록된 전사 공통 지표가 없습니다.</p>}
+                                </div>
+                            </div>
+
+                            {/* 중첩 모달: 공통 KPI 폼 */}
+                            {isCommonFormOpen && (
+                                <KPIFormModal
+                                    kpi={editingKpi}
+                                    title={editingKpi ? "공통 지표 수정" : "새 공통 지표 추가"}
+                                    onClose={() => setIsCommonFormOpen(false)}
+                                    onSave={handleSaveCommonKPI}
+                                    isCommon={true}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Department Manager Modal */}
+            {
+                isManageModalOpen && (
+                    <TeamManagerModal
+                        onClose={() => setIsManageModalOpen(false)}
+                    />
+                )
+            }
+        </div >
+    );
+};
 
 // KPI 입력/수정 폼 컴포넌트
 const KPIFormModal = ({ kpi, title, onClose, onSave, isCommon = false }) => {
@@ -1390,6 +1390,15 @@ function App() {
                 {/* [MODE 5] 업계 동향 */}
                 {appMode === 'news' && <NewsDashboard />}
 
+                {/* [MODE 4] 협업 요청 */}
+                {appMode === 'collaboration' && (
+                    <CollaborationDashboard
+                        db={db}
+                        user={user}
+                        departments={DEPARTMENTS}
+                    />
+                )}
+
                 {/* [MODE 6] 업무 관리 (To-Do) */}
                 {appMode === 'todo' && (
                     <TodoDashboard
@@ -1398,16 +1407,10 @@ function App() {
                         departments={DEPARTMENTS}
                     />
                 )}
+
+                {/* [MODE 7] 조직/인사 */}
                 {appMode === 'org' && (
                     <OrganizationDashboard db={db} departments={DEPARTMENTS} />
-                )}
-                {/* [MODE 4] 협업 요청 */}
-                {appMode === 'collaboration' && (
-                    <CollaborationDashboard
-                        db={db}
-                        user={user}
-                        departments={DEPARTMENTS}
-                    />
                 )}
 
                 {/* [MODE 3] 회의록 시스템 */}
