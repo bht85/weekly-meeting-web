@@ -42,7 +42,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
-    const [myTeam, setMyTeam] = useState(departments[0]); // Default to '선택' usually
+    const [myTeam, setMyTeam] = useState('전체'); // Default to 'All'
 
     // Filter states
     const [filterStatus, setFilterStatus] = useState('All');
@@ -82,8 +82,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const handleCreate = async (data) => {
         try {
             await addDoc(collection(db, 'collaboration_requests'), {
-                ...data,
-                requesterTeam: myTeam,
+                ...data, // includes requesterTeam now
                 requesterId: user.uid,
                 status: 'Pending',
                 comments: [],
@@ -154,9 +153,10 @@ const CollaborationDashboard = ({ db, user, departments }) => {
 
     const filteredRequests = requests.filter(r => {
         // 1. My Team Filter
-        if (myTeam === '선택') return false; // Or show all? Usually show relevant only.
-        if (activeTab === 'received' && r.targetTeam !== myTeam) return false;
-        if (activeTab === 'sent' && r.requesterTeam !== myTeam) return false;
+        if (myTeam !== '전체') {
+            if (activeTab === 'received' && r.targetTeam !== myTeam) return false;
+            if (activeTab === 'sent' && r.requesterTeam !== myTeam) return false;
+        }
 
         // 2. Status Filter
         if (filterStatus !== 'All' && r.status !== filterStatus) return false;
@@ -186,7 +186,8 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                             value={myTeam}
                             onChange={(e) => setMyTeam(e.target.value)}
                         >
-                            {departments.map(d => (
+                            <option value="전체">전체 보기</option>
+                            {departments.filter(d => d !== '선택').map(d => (
                                 <option key={d} value={d}>{d}</option>
                             ))}
                         </select>
@@ -297,7 +298,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                         <User className="w-8 h-8" />
                     </div>
                     {myTeam === '선택' ? (
-                        <p className="text-slate-500 font-medium">상단에서 'My Team'을 선택해주세요.</p>
+                        <p className="text-slate-500 font-medium">상단에서 'My Team'을 선택하거나 전체보기를 해주세요.</p>
                     ) : (
                         <p className="text-slate-500 font-medium">요청 내역이 없습니다.</p>
                     )}
@@ -385,8 +386,9 @@ const CollaborationDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
-const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
+const RequestFormModal = ({ onClose, onSubmit, departments }) => {
     const [formData, setFormData] = useState({
+        requesterTeam: '',
         targetTeam: '',
         title: '',
         description: '',
@@ -394,13 +396,15 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
 
-    const targets = departments.filter(d => d !== '선택' && d !== myTeam);
+    const validDepartments = departments.filter(d => d !== '선택');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!formData.targetTeam) return alert('팀을 선택해 주세요');
-        if (!formData.title) return alert('필수 항목을 입력해주세요.');
-        if (!myTeam) return alert('요청자(본인) 팀이 선택되지 않았습니다.');
+        if (!formData.requesterTeam) return alert('요청하는 팀(보내는 팀)을 선택해주세요.');
+        if (!formData.targetTeam) return alert('요청받는 팀(수신 팀)을 선택해주세요.');
+        if (formData.requesterTeam === formData.targetTeam) return alert('보내는 팀과 받는 팀이 같을 수 없습니다.');
+        if (!formData.title) return alert('제목을 입력해주세요.');
+
         onSubmit(formData);
     };
 
@@ -415,18 +419,32 @@ const RequestFormModal = ({ onClose, onSubmit, departments, myTeam }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">수신 부서 (Target)</label>
-                        <div className="relative">
-                            <select
-                                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                                value={formData.targetTeam}
-                                onChange={e => setFormData({ ...formData, targetTeam: e.target.value })}
-                            >
-                                <option value="">부서를 선택해주세요</option>
-                                {targets.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">요청 팀 (From)</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                    value={formData.requesterTeam}
+                                    onChange={e => setFormData({ ...formData, requesterTeam: e.target.value })}
+                                >
+                                    <option value="">선택</option>
+                                    {validDepartments.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">수신 팀 (To)</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                    value={formData.targetTeam}
+                                    onChange={e => setFormData({ ...formData, targetTeam: e.target.value })}
+                                >
+                                    <option value="">선택</option>
+                                    {validDepartments.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
