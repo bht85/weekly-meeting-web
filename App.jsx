@@ -1070,6 +1070,8 @@ function App() {
     const processText = (text) => text ? text.trim() || '     - 특이사항 없음' : '     - 특이사항 없음';
 
     const autoFormat = (val, setFunc, field, e) => {
+        if (e.nativeEvent.isComposing) return;
+
         if (e.key === 'Enter') {
             e.preventDefault();
             const { selectionStart, selectionEnd } = e.target;
