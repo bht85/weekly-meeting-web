@@ -6,7 +6,7 @@ import {
 import {
     MessageSquare, PlusCircle, CheckCircle2, Clock,
     AlertCircle, X, Send, Calendar, User, ArrowRight,
-    Filter, MoreHorizontal, FileText, Ban, BarChart3
+    Filter, MoreHorizontal, FileText, Ban, BarChart3, Activity
 } from 'lucide-react';
 
 // Enum-like constants
@@ -47,7 +47,8 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     const [myTeam, setMyTeam] = useState('전체'); // Default to 'All'
 
     // Filter states
-    const [filterStatus, setFilterStatus] = useState('All');
+    // Filter states
+    const [filterStatus, setFilterStatus] = useState('Active'); // Default 'Active' (Pending + In_Progress)
 
     // --- Real-time Data Fetching ---
     useEffect(() => {
@@ -197,7 +198,12 @@ const CollaborationDashboard = ({ db, user, departments }) => {
         }
 
         // 2. Status Filter
-        if (filterStatus !== 'All' && r.status !== filterStatus) return false;
+        // 2. Status Filter
+        if (filterStatus === 'Active') {
+            if (r.status !== 'Pending' && r.status !== 'In_Progress') return false;
+        } else if (filterStatus !== 'All' && r.status !== filterStatus) {
+            return false;
+        }
 
         return true;
     });
@@ -313,6 +319,20 @@ const CollaborationDashboard = ({ db, user, departments }) => {
             {/* Filters */}
             <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                 <div className="p-1.5 bg-slate-100 rounded text-slate-400 mr-2"><Filter className="w-4 h-4" /></div>
+
+                {/* Active (Pending + In_Progress) */}
+                <button
+                    onClick={() => setFilterStatus('Active')}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 ${filterStatus === 'Active'
+                        ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                        }`}
+                >
+                    <Activity className="w-3.5 h-3.5" /> 진행 현황
+                </button>
+
+                <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
                 {['All', 'Pending', 'In_Progress', 'Completed', 'Rejected'].map(st => (
                     <button
                         key={st}
