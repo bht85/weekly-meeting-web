@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     collection, addDoc, query, where, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy
@@ -35,6 +36,8 @@ const PRIORITY_COLORS = {
     'Medium': 'text-amber-700 bg-amber-50 border border-amber-200',
     'Low': 'text-emerald-700 bg-emerald-50 border border-emerald-200'
 };
+
+const TEAMS_WEBHOOK_URL = "https://composecoffee1.webhook.office.com/webhookb2/a63469e1-bb54-40b2-ac45-f2f8a8ec8405@0b88805d-c23f-4f56-bf41-c2da18c634f5/IncomingWebhook/58a6ded044d7405e9711d6c400c0f820/88f90d52-1a14-4668-a2c8-fa7e466d804f/V20V2K9s1MtIPt5XcTG1H70fuG59j_xkk1jBouNwSTvEs1";
 
 const CollaborationDashboard = ({ db, user, departments }) => {
     const [activeTab, setActiveTab] = useState('received'); // 'received' | 'sent'
@@ -79,6 +82,34 @@ const CollaborationDashboard = ({ db, user, departments }) => {
     }, [db, user, activeTab, myTeam]);
 
     // --- Handlers ---
+    const sendTeamsNotification = async (data) => {
+        try {
+            const message = {
+                "@type": "MessageCard",
+                "@context": "http://schema.org/extensions",
+                "themeColor": "0076D7",
+                "summary": "새로운 협업 요청이 등록되었습니다.",
+                "sections": [{
+                    "activityTitle": "📢 새로운 협업 요청 (New Request)",
+                    "activitySubtitle": `From ${data.requesterTeam} → To ${data.targetTeam}`,
+                    "facts": [
+                        { "name": "요청 제목", "value": data.title },
+                        { "name": "중요도", "value": data.priority },
+                        { "name": "마감 기한", "value": data.dueDate },
+                        { "name": "요청 내용", "value": data.description.substring(0, 100) + (data.description.length > 100 ? "..." : "") }
+                    ],
+                    "markdown": true
+                }]
+            };
+
+            await axios.post(TEAMS_WEBHOOK_URL, message);
+            console.log("Teams notification sent");
+        } catch (error) {
+            console.error("Failed to send Teams notification:", error);
+            // Don't block the UI flow even if notification fails
+        }
+    };
+
     const handleCreate = async (data) => {
         try {
             await addDoc(collection(db, 'collaboration_requests'), {
@@ -89,6 +120,10 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
+
+            // Send Teams Notification
+            await sendTeamsNotification(data);
+
             setIsFormOpen(false);
             alert('요청이 등록되었습니다.');
         } catch (e) {
