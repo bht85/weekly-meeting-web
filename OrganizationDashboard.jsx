@@ -1,0 +1,438 @@
+import React, { useState, useEffect } from 'react';
+import {
+    collection, addDoc, query, where, onSnapshot,
+    serverTimestamp, doc, updateDoc, deleteDoc, orderBy
+} from 'firebase/firestore';
+import {
+    Users, Plus, Mail, Briefcase, Calendar, ChevronRight,
+    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2
+} from 'lucide-react';
+
+const OrganizationDashboard = ({ db, departments }) => {
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual'
+    const [employees, setEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [selectedDeptForAdd, setSelectedDeptForAdd] = useState('');
+
+    // For Individual Tab
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+    // Filter departments for display (exclude '선택' and '전체')
+    const displayDepartments = departments.filter(d => d !== '선택' && d !== '전체');
+
+    useEffect(() => {
+        if (!db) return;
+        setLoading(true);
+        const q = query(collection(db, 'employees'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setEmployees(docs);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, [db]);
+
+    const handleAddEmployee = async (data) => {
+        try {
+            await addDoc(collection(db, 'employees'), {
+                ...data,
+                createdAt: serverTimestamp()
+            });
+            setIsAddModalOpen(false);
+            alert('직원이 등록되었습니다.');
+        } catch (error) {
+            console.error("Error adding employee: ", error);
+            alert("등록 중 오류가 발생했습니다.");
+        }
+    };
+
+    const handleDeleteEmployee = async (id) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+        try {
+            await deleteDoc(doc(db, 'employees', id));
+        } catch (error) {
+            console.error("Error deleting employee: ", error);
+            alert("삭제 중 오류가 발생했습니다.");
+        }
+    };
+
+    return (
+        <div className="bg-white min-h-screen p-6 rounded-xl shadow-sm border border-slate-200">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-100">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <Users className="w-6 h-6 text-indigo-700" />
+                        조직/인사 관리 (Organization)
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-1">
+                        전체 임직원 현황 및 개인별 업무 내역 조회
+                    </p>
+                </div>
+
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'overview'
+                                ? 'bg-white text-indigo-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        <LayoutGrid className="w-4 h-4" /> 조직도 현황
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('individual')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'individual'
+                                ? 'bg-white text-indigo-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        <List className="w-4 h-4" /> 인원별 업무
+                    </button>
+                </div>
+            </div>
+
+            {/* Content */}
+            {activeTab === 'overview' ? (
+                <TeamOverview
+                    employees={employees}
+                    departments={displayDepartments}
+                    onOpenAddModal={(dept) => {
+                        setSelectedDeptForAdd(dept);
+                        setIsAddModalOpen(true);
+                    }}
+                    onDeleteEmployee={handleDeleteEmployee}
+                />
+            ) : (
+                <IndividualTasks
+                    employees={employees}
+                    departments={displayDepartments}
+                    selectedEmployee={selectedEmployee}
+                    setSelectedEmployee={setSelectedEmployee}
+                />
+            )}
+
+            {/* Add Employee Modal */}
+            {isAddModalOpen && (
+                <AddEmployeeModal
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSubmit={handleAddEmployee}
+                    departments={displayDepartments}
+                    defaultDept={selectedDeptForAdd}
+                />
+            )}
+        </div>
+    );
+};
+
+const TeamOverview = ({ employees, departments, onOpenAddModal, onDeleteEmployee }) => {
+    return (
+        <div>
+            {/* Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                    <h4 className="text-indigo-600 font-bold text-sm uppercase mb-2">전체 임직원</h4>
+                    <p className="text-3xl font-bold text-indigo-900">{employees.length}명</p>
+                </div>
+                {/* Future KPI placeholders could go here */}
+            </div>
+
+            {/* Department Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {departments.map(dept => {
+                    const deptEmployees = employees.filter(e => e.department === dept);
+                    return (
+                        <div key={dept} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <Briefcase className="w-4 h-4 text-slate-500" />
+                                    {dept}
+                                </h3>
+                                <span className="bg-white px-2.5 py-1 rounded-full text-xs font-bold text-slate-600 border border-slate-200">
+                                    {deptEmployees.length}명
+                                </span>
+                            </div>
+                            <div className="p-4 min-h-[160px]">
+                                {deptEmployees.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {deptEmployees.map(emp => (
+                                            <div key={emp.id} className="flex justify-between items-start group">
+                                                <div className="flex gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                                                        {emp.name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-800">{emp.name} <span className="text-xs text-slate-400 font-normal">| {emp.position}</span></p>
+                                                        <p className="text-xs text-slate-400">{emp.email}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => onDeleteEmployee(emp.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all p-1"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm py-8">
+                                        <Users className="w-8 h-8 mb-2 opacity-50" />
+                                        등록된 직원이 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-3 border-t border-slate-50 bg-slate-50/50">
+                                <button
+                                    onClick={() => onOpenAddModal(dept)}
+                                    className="w-full py-2 flex items-center justify-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-dashed border-indigo-200 hover:border-indigo-300 bg-white"
+                                >
+                                    <Plus className="w-4 h-4" /> 직원 등록
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const IndividualTasks = ({ employees, departments, selectedEmployee, setSelectedEmployee }) => {
+    // Select first employee by default if none selected and list is not empty
+    useEffect(() => {
+        if (!selectedEmployee && employees.length > 0) {
+            setSelectedEmployee(employees[0]);
+        }
+    }, [employees, selectedEmployee, setSelectedEmployee]);
+
+    return (
+        <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-200px)]">
+            {/* Sidebar List */}
+            <div className="w-full md:w-1/4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-slate-200 font-bold text-slate-700 bg-slate-100/50">
+                    직원 목록
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-4">
+                    {departments.map(dept => {
+                        const deptEmps = employees.filter(e => e.department === dept);
+                        if (deptEmps.length === 0) return null;
+                        return (
+                            <div key={dept}>
+                                <h4 className="px-3 py-2 text-xs font-bold text-slate-400 uppercase">{dept}</h4>
+                                <div className="space-y-1">
+                                    {deptEmps.map(emp => (
+                                        <button
+                                            key={emp.id}
+                                            onClick={() => setSelectedEmployee(emp)}
+                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between transition-colors ${selectedEmployee?.id === emp.id
+                                                    ? 'bg-white shadow-sm ring-1 ring-slate-200 text-indigo-700 font-bold'
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                                }`}
+                                        >
+                                            <span>{emp.name}</span>
+                                            <span className="text-xs opacity-70">{emp.position}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col md:flex-row overflow-hidden">
+                {selectedEmployee ? (
+                    <>
+                        {/* Profile Info Side */}
+                        <div className="w-full md:w-64 border-r border-slate-100 p-6 flex flex-col items-center bg-slate-50/50">
+                            <div className="w-24 h-24 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-3xl font-bold text-slate-300 mb-4">
+                                {selectedEmployee.name[0]}
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800">{selectedEmployee.name}</h3>
+                            <p className="text-slate-500 font-medium mb-6">{selectedEmployee.position}</p>
+
+                            <div className="w-full space-y-4 text-sm">
+                                <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
+                                    <span className="text-slate-400">부서</span>
+                                    <span className="font-bold text-slate-700">{selectedEmployee.department}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
+                                    <span className="text-slate-400">이메일</span>
+                                    <span className="font-bold text-slate-700 truncate max-w-[150px]">{selectedEmployee.email}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
+                                    <span className="text-slate-400">입사일</span>
+                                    <span className="font-bold text-slate-700">{selectedEmployee.joinedAt}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
+                                    <span className="text-slate-400">상태</span>
+                                    <span className={`font-bold px-2 py-0.5 rounded text-xs ${selectedEmployee.status === '재직' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                                        }`}>
+                                        {selectedEmployee.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Task List Side (Placeholder) */}
+                        <div className="flex-1 p-6 bg-white overflow-y-auto">
+                            <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
+                                <List className="w-5 h-5 text-indigo-500" /> 담당 업무 리스트
+                            </h3>
+
+                            <div className="space-y-8">
+                                {/* In Progress */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-blue-600">
+                                        <Clock className="w-4 h-4" /> 진행 중인 업무
+                                        <span className="ml-auto bg-blue-50 px-2 py-0.5 rounded-full text-xs">0</span>
+                                    </div>
+                                    <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
+                                        아직 배정된 진행 중인 업무가 없습니다.
+                                    </div>
+                                </div>
+
+                                {/* Completed */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-emerald-600">
+                                        <CheckCircle2 className="w-4 h-4" /> 완료된 업무
+                                        <span className="ml-auto bg-emerald-50 px-2 py-0.5 rounded-full text-xs">0</span>
+                                    </div>
+                                    <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
+                                        완료된 업무 기록이 없습니다.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        선택된 직원이 없습니다.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept }) => {
+    const [formData, setFormData] = useState({
+        name: '',
+        position: '사원',
+        department: defaultDept || departments[0],
+        email: '',
+        status: '재직',
+        joinedAt: new Date().toISOString().split('T')[0]
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(formData);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <UserPlus className="w-5 h-5 text-indigo-600" /> 신규 직원 등록
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-500">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">이름</label>
+                        <input
+                            type="text"
+                            required
+                            className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">부서</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                                value={formData.department}
+                                onChange={e => setFormData({ ...formData, department: e.target.value })}
+                            >
+                                {departments.map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">직급</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                                value={formData.position}
+                                onChange={e => setFormData({ ...formData, position: e.target.value })}
+                            >
+                                <option value="사원">사원</option>
+                                <option value="주임">주임</option>
+                                <option value="대리">대리</option>
+                                <option value="과장">과장</option>
+                                <option value="차장">차장</option>
+                                <option value="부장">부장</option>
+                                <option value="이사">이사</option>
+                                <option value="대표">대표</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">이메일</label>
+                        <input
+                            type="email"
+                            required
+                            className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                            value={formData.email}
+                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">상태</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                                value={formData.status}
+                                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                            >
+                                <option value="재직">재직</option>
+                                <option value="휴직">휴직</option>
+                                <option value="퇴사">퇴사</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">입사일</label>
+                            <input
+                                type="date"
+                                required
+                                className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-600"
+                                value={formData.joinedAt}
+                                onChange={e => setFormData({ ...formData, joinedAt: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-lg transition-colors">취소</button>
+                        <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all">등록하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default OrganizationDashboard;
