@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     CheckCircle2, Plus, Trash2, Calendar, AlertCircle,
-    CheckSquare, Square, Filter, TrendingUp
+    CheckSquare, Square, Filter, TrendingUp, Edit, X, Check
 } from 'lucide-react';
 import {
     collection, addDoc, updateDoc, deleteDoc, doc,
@@ -14,6 +14,7 @@ const TodoDashboard = ({ db, user, departments }) => {
     const [todos, setTodos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [editingTodo, setEditingTodo] = useState(null); // For modal
 
     // New Task State
     const [taskInput, setTaskInput] = useState('');
@@ -73,6 +74,9 @@ const TodoDashboard = ({ db, user, departments }) => {
                 isCompleted: false,
                 priority: priority,
                 dueDate: dueDate,
+                priority: priority,
+                dueDate: dueDate,
+                subTasks: [], // Initialize sub-tasks
                 createdAt: serverTimestamp()
             });
             setTaskInput('');
@@ -81,6 +85,18 @@ const TodoDashboard = ({ db, user, departments }) => {
         } catch (error) {
             console.error("Error adding todo: ", error);
             alert("할 일을 추가하는 중 오류가 발생했습니다.");
+        }
+    };
+
+    const handleUpdateTodo = async (id, updates) => {
+        try {
+            const todoRef = doc(db, 'dept_todos', id);
+            await updateDoc(todoRef, updates);
+            // Local state update if needed, but snapshot listener handles it
+            setEditingTodo(null);
+        } catch (error) {
+            console.error("Error updating todo: ", error);
+            alert("수정 중 오류가 발생했습니다.");
         }
     };
 
@@ -258,7 +274,28 @@ const TodoDashboard = ({ db, user, departments }) => {
                                 <p className={`text-base font-medium break-words ${todo.isCompleted ? 'text-slate-400 line-through decoration-slate-400' : 'text-slate-800'}`}>
                                     {todo.task}
                                 </p>
+                                {/* Sub-task Progress Indicator */}
+                                {todo.subTasks && todo.subTasks.length > 0 && (
+                                    <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500 font-medium">
+                                        <div className="flex-1 max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 rounded-full"
+                                                style={{ width: `${Math.round((todo.subTasks.filter(st => st.isCompleted).length / todo.subTasks.length) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <span>
+                                            {todo.subTasks.filter(st => st.isCompleted).length}/{todo.subTasks.length}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
+
+                            <button
+                                onClick={() => setEditingTodo(todo)}
+                                className="text-slate-300 hover:text-indigo-500 p-1 rounded opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                                <Edit className="w-5 h-5" />
+                            </button>
 
                             <button
                                 onClick={() => handleDeleteTodo(todo.id)}
@@ -269,6 +306,158 @@ const TodoDashboard = ({ db, user, departments }) => {
                         </div>
                     ))
                 )}
+            </div>
+            {/* Detail/Edit Modal */}
+            {editingTodo && (
+                <TodoDetailModal
+                    todo={editingTodo}
+                    onClose={() => setEditingTodo(null)}
+                    onUpdate={handleUpdateTodo}
+                />
+            )}
+        </div>
+    );
+};
+
+const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
+    const [task, setTask] = useState(todo.task);
+    const [priority, setPriority] = useState(todo.priority);
+    const [dueDate, setDueDate] = useState(todo.dueDate);
+    const [subTasks, setSubTasks] = useState(todo.subTasks || []);
+    const [newSubTask, setNewSubTask] = useState('');
+
+    const handleSave = () => {
+        onUpdate(todo.id, {
+            task,
+            priority,
+            dueDate,
+            subTasks
+        });
+    };
+
+    const handleAddSubTask = (e) => {
+        e.preventDefault();
+        if (!newSubTask.trim()) return;
+        const newItem = {
+            id: Date.now().toString(),
+            content: newSubTask,
+            isCompleted: false
+        };
+        setSubTasks([...subTasks, newItem]);
+        setNewSubTask('');
+    };
+
+    const toggleSubTask = (id) => {
+        setSubTasks(subTasks.map(st =>
+            st.id === id ? { ...st, isCompleted: !st.isCompleted } : st
+        ));
+    };
+
+    const deleteSubTask = (id) => {
+        setSubTasks(subTasks.filter(st => st.id !== id));
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center sticky top-0">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Edit className="w-5 h-5 text-indigo-600" /> 업무 상세 및 수정
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-500">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    {/* Main Fields */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">할 일 내용</label>
+                            <input
+                                type="text"
+                                value={task}
+                                onChange={e => setTask(e.target.value)}
+                                className="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">중요도</label>
+                                <select
+                                    value={priority}
+                                    onChange={e => setPriority(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                >
+                                    <option value="High">High (높음)</option>
+                                    <option value="Medium">Medium (보통)</option>
+                                    <option value="Low">Low (낮음)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">마감일</label>
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={e => setDueDate(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 my-2"></div>
+
+                    {/* Sub-tasks Section */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">세부 할 일 (Sub-tasks)</label>
+
+                        <div className="space-y-2 mb-4">
+                            {subTasks.map(st => (
+                                <div key={st.id} className="flex items-start gap-3 group">
+                                    <button
+                                        onClick={() => toggleSubTask(st.id)}
+                                        className={`mt-0.5 ${st.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'}`}
+                                    >
+                                        {st.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                                    </button>
+                                    <span className={`flex-1 text-sm ${st.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                                        {st.content}
+                                    </span>
+                                    <button
+                                        onClick={() => deleteSubTask(st.id)}
+                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {subTasks.length === 0 && (
+                                <p className="text-sm text-slate-400 text-center py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                    세부 항목이 없습니다.
+                                </p>
+                            )}
+                        </div>
+
+                        <form onSubmit={handleAddSubTask} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newSubTask}
+                                onChange={e => setNewSubTask(e.target.value)}
+                                placeholder="세부 할 일을 입력하세요"
+                                className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                            <button type="submit" className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                        <button onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold transition-colors">취소</button>
+                        <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md shadow-indigo-200 transition-colors">저장 완료</button>
+                    </div>
+                </div>
             </div>
         </div>
     );
