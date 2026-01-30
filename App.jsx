@@ -6,7 +6,7 @@ import {
     RotateCcw, Archive, Megaphone, Menu, CheckCircle2, Loader2,
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
-    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor, CheckCircle2
+    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor
 } from 'lucide-react';
 import CollaborationDashboard from './CollaborationDashboard';
 import NewsDashboard from './NewsDashboard';
