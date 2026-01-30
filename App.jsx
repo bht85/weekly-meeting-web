@@ -1573,7 +1573,7 @@ function App() {
             {
                 isModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                             <div className="bg-blue-600 p-4 flex justify-between items-center sticky top-0 z-10">
                                 <h3 className="text-white font-bold text-lg flex items-center">
                                     {editingId ? <Edit className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
@@ -1614,7 +1614,7 @@ function App() {
                                                 onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
                                                 onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
                                                 placeholder={s.placeholder}
-                                                className="w-full border-gray-300 rounded-md text-sm p-3 border h-24"
+                                                className="w-full border-gray-300 rounded-md text-sm p-3 border h-60"
                                             />
                                         </div>
                                     ))}
