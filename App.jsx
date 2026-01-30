@@ -1000,7 +1000,7 @@ const TeamManagerModal = ({ onClose }) => (
 // --- 메인 앱 컴포넌트 ---
 function App() {
     const [user, setUser] = useState(null);
-    const [appMode, setAppMode] = useState('meeting');
+    const [appMode, setAppMode] = useState('news');
 
     // --- Meeting States ---
     const [minutes, setMinutes] = useState([]);
@@ -1286,24 +1286,36 @@ function App() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex items-center gap-8">
-                            <div className="flex items-center text-slate-800 font-bold text-xl cursor-pointer" onClick={() => setAppMode('meeting')}>
+                            <div className="flex items-center text-slate-800 font-bold text-xl cursor-pointer" onClick={() => setAppMode('news')}>
                                 <Layout className="w-6 h-6 mr-2 text-indigo-600" />
-                                <span className="hidden sm:inline">그룹웨어</span>
-                                <span className="sm:hidden">GW</span>
+                                <span className="hidden sm:inline">컴포즈커피</span>
+                                <span className="sm:hidden">컴포즈</span>
                             </div>
 
                             <div className="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
                                 <button
+                                    onClick={() => setAppMode('news')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'news' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <span className="flex items-center"><Monitor className="w-4 h-4 mr-2" />업계 동향</span>
+                                </button>
+                                <button
                                     onClick={() => setAppMode('meeting')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'meeting' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <span className="flex items-center"><FileText className="w-4 h-4 mr-2" />회의록</span>
+                                    <span className="flex items-center"><FileText className="w-4 h-4 mr-2" />주간회의록</span>
                                 </button>
                                 <button
                                     onClick={() => setAppMode('collaboration')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'collaboration' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><Share2 className="w-4 h-4 mr-2" />협업 요청</span>
+                                </button>
+                                <button
+                                    onClick={() => setAppMode('todo')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'todo' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2" />업무 관리</span>
                                 </button>
                                 <button
                                     onClick={() => setAppMode('kpi')}
@@ -1316,19 +1328,6 @@ function App() {
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'finance' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="flex items-center"><Database className="w-4 h-4 mr-2" />데이터</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setAppMode('news')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'news' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    <span className="flex items-center"><Monitor className="w-4 h-4 mr-2" />업계 동향</span>
-                                </button>
-                                <button
-                                    onClick={() => setAppMode('todo')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === 'todo' ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2" />업무 관리</span>
                                 </button>
                             </div>
                         </div>
@@ -1365,24 +1364,23 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
+                                <button onClick={() => { setAppMode('news'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'news' ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>
+                                    <Monitor className="w-5 h-5 mr-3" /> 업계 동향
+                                </button>
                                 <button onClick={() => { setAppMode('meeting'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'meeting' ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>
-                                    <FileText className="w-5 h-5 mr-3" /> 회의록 관리
+                                    <FileText className="w-5 h-5 mr-3" /> 주간회의록
                                 </button>
                                 <button onClick={() => { setAppMode('collaboration'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'collaboration' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
                                     <Share2 className="w-5 h-5 mr-3" /> 협업 요청
+                                </button>
+                                <button onClick={() => { setAppMode('todo'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'todo' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'}`}>
+                                    <CheckCircle2 className="w-5 h-5 mr-3" /> 업무 관리
                                 </button>
                                 <button onClick={() => { setAppMode('kpi'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'kpi' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
                                     <BarChart3 className="w-5 h-5 mr-3" /> KPI 대시보드
                                 </button>
                                 <button onClick={() => { setAppMode('finance'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'finance' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'}`}>
                                     <Database className="w-5 h-5 mr-3" /> 데이터
-                                </button>
-
-                                <button onClick={() => { setAppMode('news'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'news' ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>
-                                    <Monitor className="w-5 h-5 mr-3" /> 업계 동향
-                                </button>
-                                <button onClick={() => { setAppMode('todo'); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-md flex items-center ${appMode === 'todo' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'}`}>
-                                    <CheckCircle2 className="w-5 h-5 mr-3" /> 업무 관리
                                 </button>
                             </div>
                         </div>
