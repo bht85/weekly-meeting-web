@@ -13,6 +13,7 @@ const TodoDashboard = ({ db, user, departments }) => {
     const [selectedDept, setSelectedDept] = useState(departments[0] || '전체');
     const [todos, setTodos] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // New Task State
     const [taskInput, setTaskInput] = useState('');
@@ -31,6 +32,7 @@ const TodoDashboard = ({ db, user, departments }) => {
 
     useEffect(() => {
         setLoading(true);
+        setError(null);
         let q;
         const collectionRef = collection(db, 'dept_todos');
 
@@ -46,6 +48,10 @@ const TodoDashboard = ({ db, user, departments }) => {
                 ...doc.data()
             }));
             setTodos(fetchedTodos);
+            setLoading(false);
+        }, (err) => {
+            console.error("Error fetching todos:", err);
+            setError("데이터를 불러오는데 실패했습니다. (권한 또는 인덱스 문제)");
             setLoading(false);
         });
 
@@ -206,7 +212,16 @@ const TodoDashboard = ({ db, user, departments }) => {
             {/* Todo List */}
             <div className="space-y-3">
                 {loading ? (
-                    <div className="p-10 text-center text-slate-400">데이터를 불러오는 중...</div>
+                    <div className="p-10 text-center text-slate-400">
+                        <div className="animate-spin w-6 h-6 border-2 border-slate-300 border-t-emerald-600 rounded-full mx-auto mb-2"></div>
+                        데이터를 불러오는 중...
+                    </div>
+                ) : error ? (
+                    <div className="p-12 text-center bg-red-50 rounded-xl border border-red-200 text-red-600">
+                        <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>{error}</p>
+                        <p className="text-xs mt-2 text-red-400">관리자에게 문의해주세요.</p>
+                    </div>
                 ) : todos.length === 0 ? (
                     <div className="p-12 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
                         <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
