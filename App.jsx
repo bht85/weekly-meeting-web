@@ -1614,6 +1614,7 @@ function App() {
                                             <textarea
                                                 value={inputData[s.id]}
                                                 onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
+                                                onFocus={() => autoFocus(inputData[s.id], setInputData, s.id)}
                                                 onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
                                                 placeholder={s.placeholder}
                                                 className="w-full border-gray-300 rounded-md text-sm p-3 border h-60"
