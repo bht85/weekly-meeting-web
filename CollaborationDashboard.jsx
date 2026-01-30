@@ -104,7 +104,6 @@ const CollaborationDashboard = ({ db, user, departments }) => {
             await fetch(TEAMS_WEBHOOK_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(message)
             });
             console.log("Teams notification sent");
