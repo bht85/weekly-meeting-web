@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Users,
-    CheckSquare, Square, Filter, TrendingUp, Edit, X, Check, FileText
+    CheckSquare, Square, Filter, TrendingUp, Edit, X
 } from 'lucide-react';
 import {
     collection, addDoc, updateDoc, deleteDoc, doc,
@@ -75,10 +75,16 @@ const TodoDashboard = ({ db, user, departments }) => {
             await addDoc(collection(db, 'dept_todos'), {
                 department: todoData.department,
                 task: todoData.task,
-                description: todoData.description, // New field
+                description: todoData.description,
                 isCompleted: false,
                 priority: todoData.priority,
                 dueDate: todoData.dueDate,
+                assignees: todoData.assignees || [], // Array
+                assigneeIds: todoData.assigneeIds || [], // Array of IDs
+                // Backward compatibility
+                assigneeId: todoData.assignees?.[0]?.id || '',
+                assigneeName: todoData.assignees?.[0]?.name || '',
+                assigneePosition: todoData.assignees?.[0]?.position || '',
                 subTasks: [],
                 createdAt: serverTimestamp(),
                 createdBy: user?.email || 'unknown'
@@ -246,17 +252,26 @@ const TodoDashboard = ({ db, user, departments }) => {
                                 {todo.description && (
                                     <p className={`text-sm mt-1 line-clamp-2 ${todo.isCompleted ? 'text-slate-400' : 'text-gray-500'}`}>
                                         {todo.description}
-                                        {todo.description}
                                     </p>
                                 )}
 
-                                {/* Assignee Badge */}
-                                {todo.assigneeName && (
+                                {/* Assignee Badge (Multiple) */}
+                                {(todo.assignees && todo.assignees.length > 0) ? (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {todo.assignees.map(a => (
+                                            <div key={a.id} className="flex items-center gap-1.5 text-[11px] text-indigo-600 font-bold bg-indigo-50 w-fit px-2 py-0.5 rounded-full border border-indigo-100">
+                                                <Users className="w-3 h-3" />
+                                                {a.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : todo.assigneeName ? (
+                                    // Backward Compatibility for Single Assignee
                                     <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 font-bold bg-indigo-50 w-fit px-2 py-1 rounded-full border border-indigo-100">
                                         <Users className="w-3 h-3" />
                                         {todo.assigneeName} {todo.assigneePosition && <span className="text-indigo-400 font-normal">({todo.assigneePosition})</span>}
                                     </div>
-                                )}
+                                ) : null}
 
                                 {/* Sub-task Progress Indicator */}
                                 {todo.subTasks && todo.subTasks.length > 0 && (
@@ -319,14 +334,14 @@ const TodoDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
+// --- Sub Components ---
+
 const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept }) => {
     const [formData, setFormData] = useState({
         task: '',
         description: '',
         department: initialDept || departments[0],
-        assigneeId: '',
-        assigneeName: '',
-        assigneePosition: '',
+        assignees: [], // Array of {id, name, position}
         priority: 'Medium',
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
@@ -336,13 +351,40 @@ const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept 
         if (!formData.task.trim()) {
             return alert('할 일을 입력해주세요.');
         }
-        onSubmit(formData);
+        onSubmit({
+            ...formData,
+            // Ensure we save both detailed array and ID array for easier querying
+            assigneeIds: formData.assignees.map(a => a.id)
+        });
+    };
+
+    const handleAddAssignee = (e) => {
+        const empId = e.target.value;
+        if (!empId) return;
+
+        // Prevent duplicates
+        if (formData.assignees.some(a => a.id === empId)) return;
+
+        const emp = employees.find(e => e.id === empId);
+        if (emp) {
+            setFormData(prev => ({
+                ...prev,
+                assignees: [...prev.assignees, { id: emp.id, name: emp.name, position: emp.position }]
+            }));
+        }
+    };
+
+    const handleRemoveAssignee = (empId) => {
+        setFormData(prev => ({
+            ...prev,
+            assignees: prev.assignees.filter(a => a.id !== empId)
+        }));
     };
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
-                <div className="bg-slate-50 p-5 border-b border-slate-100 flex justify-between items-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+                <div className="bg-slate-50 p-5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                     <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                         <Plus className="w-5 h-5 text-indigo-600" /> 새 업무 작성
                     </h3>
@@ -351,7 +393,7 @@ const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept 
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">할 일 (Title) <span className="text-red-500">*</span></label>
                         <input
@@ -399,36 +441,43 @@ const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept 
                                 <option value="Low">Low (낮음)</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">담당자 지정 (Assignee)</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={formData.assigneeId}
-                                onChange={(e) => {
-                                    const selectedId = e.target.value;
-                                    if (!selectedId) {
-                                        setFormData({ ...formData, assigneeId: '', assigneeName: '', assigneePosition: '' });
-                                    } else {
-                                        const emp = employees.find(emp => emp.id === selectedId);
-                                        if (emp) {
-                                            setFormData({
-                                                ...formData,
-                                                assigneeId: emp.id,
-                                                assigneeName: emp.name,
-                                                assigneePosition: emp.position
-                                            });
-                                        }
-                                    }
-                                }}
-                            >
-                                <option value="">담당자 미지정</option>
-                                {employees
-                                    .filter(emp => emp.department === formData.department)
-                                    .map(emp => (
-                                        <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
-                                    ))}
-                            </select>
-                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">담당자 지정 (Assignees)</label>
+
+                        {/* Selected Assignees Tags */}
+                        {formData.assignees.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {formData.assignees.map(assignee => (
+                                    <span key={assignee.id} className="flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">
+                                        <Users className="w-3 h-3" />
+                                        {assignee.name} <span className="text-indigo-400 font-normal">({assignee.position})</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveAssignee(assignee.id)}
+                                            className="ml-1 hover:text-indigo-900 rounded-full p-0.5"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        <select
+                            className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value=""
+                            onChange={handleAddAssignee}
+                        >
+                            <option value="">담당자 추가...</option>
+                            {employees
+                                .filter(emp => emp.department === formData.department)
+                                .filter(emp => !formData.assignees.some(a => a.id === emp.id)) // Filter out already selected
+                                .map(emp => (
+                                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
+                                ))}
+                        </select>
                     </div>
 
                     <div>
@@ -440,12 +489,13 @@ const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept 
                             onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
                         />
                     </div>
-
-                    <div className="pt-2 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">취소</button>
-                        <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">업무 등록</button>
-                    </div>
                 </form>
+
+                {/* Footer Section - Fixed Alignment */}
+                <div className="p-5 flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 bg-white flex-shrink-0">
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">취소</button>
+                    <button type="button" onClick={handleSubmit} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">업무 등록</button>
+                </div>
             </div>
         </div>
     );
@@ -456,9 +506,14 @@ const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) =>
     const [description, setDescription] = useState(todo.description || '');
     const [priority, setPriority] = useState(todo.priority);
     const [dueDate, setDueDate] = useState(todo.dueDate);
-    const [assigneeId, setAssigneeId] = useState(todo.assigneeId || '');
-    const [assigneeName, setAssigneeName] = useState(todo.assigneeName || '');
-    const [assigneePosition, setAssigneePosition] = useState(todo.assigneePosition || '');
+
+    // Initialize assignees with backward compatibility
+    const [assignees, setAssignees] = useState(() => {
+        if (todo.assignees && Array.isArray(todo.assignees)) return todo.assignees;
+        if (todo.assigneeId) return [{ id: todo.assigneeId, name: todo.assigneeName, position: todo.assigneePosition }];
+        return [];
+    });
+
     const [subTasks, setSubTasks] = useState(todo.subTasks || []);
     const [newSubTask, setNewSubTask] = useState('');
 
@@ -468,9 +523,12 @@ const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) =>
             description,
             priority,
             dueDate,
-            assigneeId,
-            assigneeName,
-            assigneePosition,
+            assignees, // Save array
+            assigneeIds: assignees.map(a => a.id), // Save ID array for query
+            // Keep legacy fields for a while
+            assigneeId: assignees.length > 0 ? assignees[0].id : '',
+            assigneeName: assignees.length > 0 ? assignees[0].name : '',
+            assigneePosition: assignees.length > 0 ? assignees[0].position : '',
             subTasks
         });
     };
@@ -497,10 +555,24 @@ const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) =>
         setSubTasks(subTasks.filter(st => st.id !== id));
     };
 
+    const handleAddAssignee = (e) => {
+        const empId = e.target.value;
+        if (!empId) return;
+        if (assignees.some(a => a.id === empId)) return;
+        const emp = employees.find(e => e.id === empId);
+        if (emp) {
+            setAssignees([...assignees, { id: emp.id, name: emp.name, position: emp.position }]);
+        }
+    };
+
+    const handleRemoveAssignee = (empId) => {
+        setAssignees(assignees.filter(a => a.id !== empId));
+    };
+
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center sticky top-0">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                     <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                         <Edit className="w-5 h-5 text-indigo-600" /> 업무 상세 및 수정
                     </h3>
@@ -509,7 +581,7 @@ const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) =>
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
                     {/* Main Fields */}
                     <div className="space-y-4">
                         <div>
@@ -554,88 +626,97 @@ const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) =>
                             </div>
                         </div>
                     </div>
+
                     {/* Assignee for Edit Modal */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">담당자 (Assignee)</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">담당자 (Assignees)</label>
+
+                        {/* Tags */}
+                        {assignees.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {assignees.map(assignee => (
+                                    <span key={assignee.id} className="flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">
+                                        <Users className="w-3 h-3" />
+                                        {assignee.name} <span className="text-indigo-400 font-normal">({assignee.position})</span>
+                                        <button
+                                            onClick={() => handleRemoveAssignee(assignee.id)}
+                                            className="ml-1 hover:text-indigo-900 rounded-full p-0.5"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
                         <select
                             className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={assigneeId}
-                            onChange={(e) => {
-                                const selectedId = e.target.value;
-                                if (!selectedId) {
-                                    setAssigneeId('');
-                                    setAssigneeName('');
-                                    setAssigneePosition('');
-                                } else {
-                                    const emp = employees.find(emp => emp.id === selectedId);
-                                    if (emp) {
-                                        setAssigneeId(emp.id);
-                                        setAssigneeName(emp.name);
-                                        setAssigneePosition(emp.position);
-                                    }
-                                }
-                            }}
+                            value=""
+                            onChange={handleAddAssignee}
                         >
-                            <option value="">담당자 미지정</option>
+                            <option value="">담당자 추가...</option>
                             {employees
                                 .filter(emp => emp.department === todo.department)
+                                .filter(emp => !assignees.some(a => a.id === emp.id))
                                 .map(emp => (
                                     <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
                                 ))}
                         </select>
                     </div>
-                </div>
 
-                <div className="border-t border-slate-100 my-2"></div>
+                    <div className="border-t border-slate-100 my-2"></div>
 
-                {/* Sub-tasks Section */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-3">세부 할 일 (Sub-tasks)</label>
+                    {/* Sub-tasks Section */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">세부 할 일 (Sub-tasks)</label>
 
-                    <div className="space-y-2 mb-4">
-                        {subTasks.map(st => (
-                            <div key={st.id} className="flex items-start gap-3 group">
-                                <button
-                                    onClick={() => toggleSubTask(st.id)}
-                                    className={`mt-0.5 ${st.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'}`}
-                                >
-                                    {st.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                                </button>
-                                <span className={`flex-1 text-sm ${st.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                                    {st.content}
-                                </span>
-                                <button
-                                    onClick={() => deleteSubTask(st.id)}
-                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ))}
-                        {subTasks.length === 0 && (
-                            <p className="text-sm text-slate-400 text-center py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                세부 항목이 없습니다.
-                            </p>
-                        )}
+                        <div className="space-y-2 mb-4">
+                            {subTasks.map(st => (
+                                <div key={st.id} className="flex items-start gap-3 group">
+                                    <button
+                                        onClick={() => toggleSubTask(st.id)}
+                                        className={`mt-0.5 ${st.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'}`}
+                                    >
+                                        {st.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                                    </button>
+                                    <span className={`flex-1 text-sm ${st.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                                        {st.content}
+                                    </span>
+                                    <button
+                                        onClick={() => deleteSubTask(st.id)}
+                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {subTasks.length === 0 && (
+                                <p className="text-sm text-slate-400 text-center py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                    세부 항목이 없습니다.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Fixed Sub-task Input Alignment */}
+                        <form onSubmit={handleAddSubTask} className="flex w-full gap-2 items-center">
+                            <input
+                                type="text"
+                                value={newSubTask}
+                                onChange={e => setNewSubTask(e.target.value)}
+                                placeholder="세부 할 일을 입력하세요"
+                                className="flex-1 border border-slate-300 rounded-lg px-3 h-11 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                            <button type="submit" className="bg-slate-100 hover:bg-slate-200 text-slate-600 w-11 h-11 rounded-lg transition-colors flex items-center justify-center flex-shrink-0">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </form>
                     </div>
-
-                    <form onSubmit={handleAddSubTask} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={newSubTask}
-                            onChange={e => setNewSubTask(e.target.value)}
-                            placeholder="세부 할 일을 입력하세요"
-                            className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                        <button type="submit" className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors">
-                            <Plus className="w-5 h-5" />
-                        </button>
-                    </form>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
-                    <button onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold transition-colors">취소</button>
-                    <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md shadow-indigo-200 transition-colors">저장 완료</button>
+                {/* Footer Section - Fixed Alignment */}
+                <div className="p-5 flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 bg-white flex-shrink-0">
+                    <button onClick={onClose} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">취소</button>
+                    <button onClick={handleSave} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-200 transition-colors">저장 완료</button>
                 </div>
             </div>
         </div>

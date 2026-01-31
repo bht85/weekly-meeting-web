@@ -221,7 +221,7 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
         setLoadingTasks(true);
         const q = query(
             collection(db, 'dept_todos'),
-            where('assigneeId', '==', selectedEmployee.id),
+            where('assigneeIds', 'array-contains', selectedEmployee.id),
             orderBy('createdAt', 'desc')
         );
 
