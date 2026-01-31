@@ -18,8 +18,8 @@ import OrganizationDashboard from './OrganizationDashboard';
 import { initializeApp } from "firebase/app";
 import {
     getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
@@ -124,24 +124,75 @@ const ALLOWED_EMAILS = [
     "test@composecoffee.co.kr"        // 테스트 계정
 ];
 
-const LoginView = ({ onLogin }) => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-slate-100">
-            <div className="bg-indigo-600 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-indigo-200 shadow-lg">
-                <Layout className="w-8 h-8 text-white" />
+const LoginView = ({ onLogin, onSignup }) => {
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setError('');
+        if (isSignUp) {
+            onSignup(email, password);
+        } else {
+            onLogin(email, password);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-slate-100">
+                <div className="bg-indigo-600 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-indigo-200 shadow-lg">
+                    <Layout className="w-8 h-8 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900 mb-2">Compose Coffee</h1>
+                <p className="text-slate-500 mb-8">{isSignUp ? '새 계정 만들기' : '주간회의 시스템 로그인'}</p>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <input
+                            type="email"
+                            placeholder="이메일 (example@composecoffee.co.kr)"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <input
+                            type="password"
+                            placeholder="비밀번호 (6자리 이상)"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                            required
+                        />
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                    <button
+                        type="submit"
+                        className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg"
+                    >
+                        {isSignUp ? '회원가입' : '로그인'}
+                    </button>
+                </form>
+
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                    <button
+                        onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
+                        className="text-sm text-slate-500 hover:text-indigo-600 font-medium"
+                    >
+                        {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '계정이 없으신가요? 회원가입하기'}
+                    </button>
+                </div>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Compose Coffee</h1>
-            <p className="text-slate-500 mb-8">주간회의 시스템에 오신 것을 환영합니다.</p>
-            <button
-                onClick={onLogin}
-                className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-all shadow-sm"
-            >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                Google 계정으로 로그인
-            </button>
         </div>
-    </div>
-);
+    );
+};
 
 const UnauthorizedView = ({ email, onLogout }) => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
@@ -1102,13 +1153,26 @@ function App() {
         return () => unsubscribe();
     }, []);
 
-    const handleGoogleLogin = async () => {
-        const provider = new GoogleAuthProvider();
+    const handleLogin = async (email, password) => {
         try {
-            await signInWithPopup(auth, provider);
+            await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Login Failed:", error);
-            alert("로그인 중 오류가 발생했습니다.");
+            alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+        }
+    };
+
+    const handleSignup = async (email, password) => {
+        if (!ALLOWED_EMAILS.includes(email)) {
+            alert("허용되지 않은 이메일입니다. 관리자에게 문의하세요.");
+            return;
+        }
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            alert("회원가입이 완료되었습니다.");
+        } catch (error) {
+            console.error("Signup Failed:", error);
+            alert("회원가입 중 오류가 발생했습니다: " + error.message);
         }
     };
 
@@ -1364,7 +1428,7 @@ function App() {
 
     // 1. 비로그인 상태 -> 로그인 화면
     if (!user) {
-        return <LoginView onLogin={handleGoogleLogin} />;
+        return <LoginView onLogin={handleLogin} onSignup={handleSignup} />;
     }
 
     // 2. 로그인 상태지만 허용된 이메일이 아님 -> 권한 없음 화면
