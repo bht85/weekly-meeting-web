@@ -8,6 +8,30 @@ import {
     Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2
 } from 'lucide-react';
 
+const JOB_RANKS = {
+    "대표": 0, // Ensure Representative is top
+    "이사": 1,
+    "부장": 2,
+    "차장": 3,
+    "과장": 4,
+    "팀장": 5, // Depending on user's specific request "팀장" was 1 in example, but usually position hierarchy varies. User said: "팀장": 1, "부장": 2... I should follow user's exact map.
+    // User provided: "팀장": 1, "부장": 2, etc. I will follow THAT exactly.
+};
+
+// User provided rank mapping
+const USER_DEFINED_RANKS = {
+    "팀장": 1,
+    "부장": 2,
+    "차장": 3,
+    "과장": 4,
+    "대리": 5,
+    "주임": 6,
+    "사원": 7,
+    "인턴": 8
+};
+
+const getRank = (position) => USER_DEFINED_RANKS[position] || 99;
+
 const OrganizationDashboard = ({ db, departments }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual'
     const [employees, setEmployees] = useState([]);
@@ -30,6 +54,15 @@ const OrganizationDashboard = ({ db, departments }) => {
                 id: doc.id,
                 ...doc.data()
             }));
+
+            // Sort by Rank
+            docs.sort((a, b) => {
+                const rankA = getRank(a.position);
+                const rankB = getRank(b.position);
+                if (rankA !== rankB) return rankA - rankB;
+                return a.name.localeCompare(b.name); // Secondary sort by name
+            });
+
             setEmployees(docs);
             setLoading(false);
         });
@@ -214,22 +247,39 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
         }
     }, [employees, selectedEmployee, setSelectedEmployee]);
 
-    // Fetch tasks for selected employee
+    // Fetch tasks for selected employee (Updated with Client-side filtering)
     useEffect(() => {
         if (!db || !selectedEmployee) return;
 
         setLoadingTasks(true);
-        const q = query(
-            collection(db, 'dept_todos'),
-            where('assigneeIds', 'array-contains', selectedEmployee.id),
-            orderBy('createdAt', 'desc')
-        );
+        // Fetch tasks for the employee's department (Optimization)
+        // If department is null, fetch all (using fallback)
+        let q;
+        if (selectedEmployee.department) {
+            q = query(
+                collection(db, 'dept_todos'),
+                where('department', '==', selectedEmployee.department),
+                orderBy('createdAt', 'desc')
+            );
+        } else {
+            q = query(
+                collection(db, 'dept_todos'),
+                orderBy('createdAt', 'desc')
+            );
+        }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            const ongoing = fetched.filter(t => !t.isCompleted);
-            const completed = fetched.filter(t => t.isCompleted);
+            // Client-side filtering for compatibility (Single vs Multi Assignee)
+            const employeeTasks = allTasks.filter(task =>
+                // Old version (Single) compatibility || New version (Multi) check
+                task.assigneeId === selectedEmployee.id ||
+                (task.assignees && task.assignees.some(a => a.id === selectedEmployee.id))
+            );
+
+            const ongoing = employeeTasks.filter(t => !t.isCompleted);
+            const completed = employeeTasks.filter(t => t.isCompleted);
 
             setTasks({ ongoing, completed });
             setLoadingTasks(false);
