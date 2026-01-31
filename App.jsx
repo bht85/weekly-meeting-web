@@ -1499,24 +1499,7 @@ function App() {
                             >
                                 <Lock className="w-5 h-5" />
                             </button>
-                            {appMode === 'meeting' && (
-                                <>
-                                    <a href="https://composecoffee1-my.sharepoint.com/:x:/g/personal/choihy_composecoffee_co_kr/IQBRHgvwRo3ZT5ytCTKVpBlRAcE4zXsMEqjohnr8xTI-RJ0?rtime=CQM385lC3kg"
-                                        target="_blank" rel="noreferrer"
-                                        className="hidden md:flex items-center px-3 py-2 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors border border-gray-200"
-                                    >
-                                        <Archive className="w-4 h-4 mr-1" /> 기존 자료
-                                    </a>
-                                    <button
-                                        onClick={() => currentView === 'minutes' ? setIsModalOpen(true) : setIsFeedbackModalOpen(true)}
-                                        className={`flex items-center px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm transition-colors ${currentView === 'minutes' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                                    >
-                                        <PlusCircle className="w-4 h-4 mr-2" />
-                                        <span className="hidden sm:inline">{currentView === 'minutes' ? '회의록 작성' : '의견 작성'}</span>
-                                        <span className="sm:hidden">작성</span>
-                                    </button>
-                                </>
-                            )}
+
                             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-gray-500">
                                 <Menu className="w-6 h-6" />
                             </button>
@@ -1587,19 +1570,36 @@ function App() {
                 {/* [MODE 3] 회의록 시스템 */}
                 {appMode === 'meeting' && (
                     <>
-                        <div className="flex space-x-4 border-b border-gray-200 mb-6">
-                            <button
-                                onClick={() => setCurrentView('minutes')}
-                                className={`pb-3 text-sm font-medium transition-colors flex items-center border-b-2 ${currentView === 'minutes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <Users className="w-4 h-4 mr-2" />부서 회의록
-                            </button>
-                            <button
-                                onClick={() => setCurrentView('management')}
-                                className={`pb-3 text-sm font-medium transition-colors flex items-center border-b-2 ${currentView === 'management' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <Megaphone className="w-4 h-4 mr-2" />경영본부 회의
-                            </button>
+                        <div className="flex flex-col md:flex-row justify-between items-end border-b border-gray-200 mb-6 gap-4">
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => setCurrentView('minutes')}
+                                    className={`pb-3 text-sm font-medium transition-colors flex items-center border-b-2 ${currentView === 'minutes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <Users className="w-4 h-4 mr-2" />부서 회의록
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('management')}
+                                    className={`pb-3 text-sm font-medium transition-colors flex items-center border-b-2 ${currentView === 'management' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <Megaphone className="w-4 h-4 mr-2" />경영본부 회의
+                                </button>
+                            </div>
+                            <div className="flex items-center space-x-2 pb-2">
+                                <a href="https://composecoffee1-my.sharepoint.com/:x:/g/personal/choihy_composecoffee_co_kr/IQBRHgvwRo3ZT5ytCTKVpBlRAcE4zXsMEqjohnr8xTI-RJ0?rtime=CQM385lC3kg"
+                                    target="_blank" rel="noreferrer"
+                                    className="px-3 py-2 text-sm text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm transition-colors flex items-center"
+                                >
+                                    <Archive className="w-4 h-4 mr-2 text-slate-500" /> 기존 자료
+                                </a>
+                                <button
+                                    onClick={() => currentView === 'minutes' ? setIsModalOpen(true) : setIsFeedbackModalOpen(true)}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md transition-colors flex items-center"
+                                >
+                                    <PlusCircle className="w-4 h-4 mr-2" />
+                                    {currentView === 'minutes' ? '회의록 작성' : '의견 작성'}
+                                </button>
+                            </div>
                         </div>
 
                         {currentView === 'minutes' && (
