@@ -1606,7 +1606,7 @@ function App() {
                                         <select value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="text-sm border-gray-300 rounded-md shadow-sm p-1.5 border">
                                             <option value="recent">최근 2주</option>
                                             <option value="">전체 날짜</option>
-                                            {allDates.map(d => <option key={d} value={d}>{d}</option>)}
+                                            {allDates?.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                         <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="text-sm border-gray-300 rounded-md shadow-sm p-1.5 border">
                                             <option value="전체">전체 부서</option>
@@ -1619,14 +1619,14 @@ function App() {
                                 </div>
 
                                 <div className="space-y-8">
-                                    {filteredDates.length === 0 ? (
+                                    {(!filteredDates || filteredDates.length === 0) ? (
                                         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
                                             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                                             <p className="text-gray-500">등록된 회의록이 없습니다.</p>
                                         </div>
                                     ) : filteredDates.map(date => {
-                                        const daysMinutes = minutes.filter(m => m.date === date && (selectedDept === '전체' || m.department === selectedDept));
-                                        if (daysMinutes.length === 0) return null;
+                                        const daysMinutes = minutes?.filter(m => m.date === date && (selectedDept === '전체' || m.department === selectedDept));
+                                        if (!daysMinutes || daysMinutes.length === 0) return null;
 
                                         return (
                                             <div key={date} className="space-y-4">
@@ -1685,12 +1685,12 @@ function App() {
                                 </div>
 
                                 <div className="space-y-6">
-                                    {feedbacks.length === 0 ? (
+                                    {(!feedbacks || feedbacks.length === 0) ? (
                                         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-indigo-200">
                                             <Megaphone className="w-16 h-16 text-indigo-200 mx-auto mb-4" />
                                             <p className="text-gray-500">등록된 경영본부 회의록이 없습니다.</p>
                                         </div>
-                                    ) : feedbacks.map(fb => (
+                                    ) : feedbacks?.map(fb => (
                                         <div key={fb.id} className="bg-white rounded-xl shadow-md border border-indigo-100 overflow-hidden">
                                             <div className="bg-indigo-50 px-6 py-4 flex justify-between items-center border-b border-indigo-100">
                                                 <h3 className="text-lg font-bold text-indigo-900 flex items-center">
