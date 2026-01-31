@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     CheckCircle2, Plus, Trash2, Calendar, AlertCircle,
-    CheckSquare, Square, Filter, TrendingUp, Edit, X, Check
+    CheckSquare, Square, Filter, TrendingUp, Edit, X, Check, FileText
 } from 'lucide-react';
 import {
     collection, addDoc, updateDoc, deleteDoc, doc,
@@ -14,23 +14,15 @@ const TodoDashboard = ({ db, user, departments }) => {
     const [todos, setTodos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [editingTodo, setEditingTodo] = useState(null); // For modal
-
-    // New Task State
-    const [taskInput, setTaskInput] = useState('');
-    const [priority, setPriority] = useState('Medium');
-    const [dueDate, setDueDate] = useState('');
+    const [editingTodo, setEditingTodo] = useState(null); // For edit modal
+    const [isFormOpen, setIsFormOpen] = useState(false); // For create modal
 
     // Derived State for Statistics
     const totalTasks = todos.length;
     const completedTasks = todos.filter(t => t.isCompleted).length;
     const progressRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-    // Filtered Todos for Display
-    // Currently we query by department if selectedDept is not '전체' or '선택'
-    // But since we want to show statistics for the selected department, we can just fetch all for now or query based on selection.
-    // To make it simple and responsive, let's fetch based on selection.
-
+    // Initial load & Real-time sync
     useEffect(() => {
         setLoading(true);
         setError(null);
@@ -59,29 +51,20 @@ const TodoDashboard = ({ db, user, departments }) => {
         return () => unsubscribe();
     }, [db, selectedDept]);
 
-    const handleAddTodo = async (e) => {
-        e.preventDefault();
-        if (!taskInput.trim()) return;
-        if (selectedDept === '전체' || selectedDept === '선택') {
-            alert('업무를 추가할 구체적인 부서를 선택해주세요.');
-            return;
-        }
-
+    const handleCreateTodo = async (todoData) => {
         try {
             await addDoc(collection(db, 'dept_todos'), {
-                department: selectedDept,
-                task: taskInput,
+                department: todoData.department,
+                task: todoData.task,
+                description: todoData.description, // New field
                 isCompleted: false,
-                priority: priority,
-                dueDate: dueDate,
-                priority: priority,
-                dueDate: dueDate,
-                subTasks: [], // Initialize sub-tasks
-                createdAt: serverTimestamp()
+                priority: todoData.priority,
+                dueDate: todoData.dueDate,
+                subTasks: [],
+                createdAt: serverTimestamp(),
+                createdBy: user?.email || 'unknown'
             });
-            setTaskInput('');
-            setPriority('Medium');
-            setDueDate('');
+            setIsFormOpen(false);
         } catch (error) {
             console.error("Error adding todo: ", error);
             alert("할 일을 추가하는 중 오류가 발생했습니다.");
@@ -92,7 +75,6 @@ const TodoDashboard = ({ db, user, departments }) => {
         try {
             const todoRef = doc(db, 'dept_todos', id);
             await updateDoc(todoRef, updates);
-            // Local state update if needed, but snapshot listener handles it
             setEditingTodo(null);
         } catch (error) {
             console.error("Error updating todo: ", error);
@@ -147,7 +129,7 @@ const TodoDashboard = ({ db, user, departments }) => {
                         <p className="text-sm text-slate-500 mt-1">부서별 중요 업무 및 마감기한 관리</p>
                     </div>
 
-                    <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
                         <div className="relative">
                             <select
                                 value={selectedDept}
@@ -161,6 +143,14 @@ const TodoDashboard = ({ db, user, departments }) => {
                             </select>
                             <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         </div>
+
+                        {/* New Task Button */}
+                        <button
+                            onClick={() => setIsFormOpen(true)}
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-indigo-200 transition-all hover:-translate-y-0.5"
+                        >
+                            <Plus className="w-4 h-4" /> 새 업무 작성
+                        </button>
                     </div>
                 </div>
 
@@ -184,47 +174,6 @@ const TodoDashboard = ({ db, user, departments }) => {
                 </div>
             </div>
 
-            {/* Input Form */}
-            <form onSubmit={handleAddTodo} className="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-end">
-                <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">할 일 내용</label>
-                    <input
-                        type="text"
-                        value={taskInput}
-                        onChange={(e) => setTaskInput(e.target.value)}
-                        placeholder="새로운 업무를 입력하세요..."
-                        className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                </div>
-                <div className="w-full md:w-40">
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">중요도</label>
-                    <select
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                        className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
-                    >
-                        <option value="High">High (높음)</option>
-                        <option value="Medium">Medium (보통)</option>
-                        <option value="Low">Low (낮음)</option>
-                    </select>
-                </div>
-                <div className="w-full md:w-40">
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">마감일</label>
-                    <input
-                        type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors min-w-[100px]"
-                >
-                    <Plus className="w-5 h-5" /> 추가
-                </button>
-            </form>
-
             {/* Todo List */}
             <div className="space-y-3">
                 {loading ? (
@@ -242,6 +191,7 @@ const TodoDashboard = ({ db, user, departments }) => {
                     <div className="p-12 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
                         <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>등록된 업무가 없습니다.</p>
+                        <button onClick={() => setIsFormOpen(true)} className="text-indigo-600 font-bold mt-2 hover:underline">첫 업무를 등록해보세요</button>
                     </div>
                 ) : (
                     todos.map(todo => (
@@ -267,16 +217,22 @@ const TodoDashboard = ({ db, user, departments }) => {
                                     {todo.dueDate && (
                                         <span className={`text-xs flex items-center gap-1 ${todo.isCompleted ? 'text-slate-400' : 'text-slate-500'}`}>
                                             <Calendar className="w-3 h-3" /> {todo.dueDate}
-                                            {/* D-Day Logic Optional */}
                                         </span>
                                     )}
                                 </div>
                                 <p className={`text-base font-medium break-words ${todo.isCompleted ? 'text-slate-400 line-through decoration-slate-400' : 'text-slate-800'}`}>
                                     {todo.task}
                                 </p>
+                                {/* Description Sub-text */}
+                                {todo.description && (
+                                    <p className={`text-sm mt-1 line-clamp-2 ${todo.isCompleted ? 'text-slate-400' : 'text-gray-500'}`}>
+                                        {todo.description}
+                                    </p>
+                                )}
+
                                 {/* Sub-task Progress Indicator */}
                                 {todo.subTasks && todo.subTasks.length > 0 && (
-                                    <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500 font-medium">
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 font-medium">
                                         <div className="flex-1 max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-emerald-500 rounded-full"
@@ -307,6 +263,17 @@ const TodoDashboard = ({ db, user, departments }) => {
                     ))
                 )}
             </div>
+
+            {/* Create Todo Modal */}
+            {isFormOpen && (
+                <TodoFormModal
+                    onClose={() => setIsFormOpen(false)}
+                    onSubmit={handleCreateTodo}
+                    departments={departments}
+                    initialDept={selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept}
+                />
+            )}
+
             {/* Detail/Edit Modal */}
             {editingTodo && (
                 <TodoDetailModal
@@ -319,8 +286,110 @@ const TodoDashboard = ({ db, user, departments }) => {
     );
 };
 
+// --- Sub Components ---
+
+const TodoFormModal = ({ onClose, onSubmit, departments, initialDept }) => {
+    const [formData, setFormData] = useState({
+        task: '',
+        description: '',
+        department: initialDept || departments[0],
+        priority: 'Medium',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!formData.task.trim()) {
+            return alert('할 일을 입력해주세요.');
+        }
+        onSubmit(formData);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                <div className="bg-slate-50 p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-indigo-600" /> 새 업무 작성
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">할 일 (Title) <span className="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            className="w-full border border-slate-300 rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            placeholder="업무 제목을 입력하세요"
+                            value={formData.task}
+                            onChange={e => setFormData({ ...formData, task: e.target.value })}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">상세 내용 (Description)</label>
+                        <textarea
+                            className="w-full border border-slate-300 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            placeholder="업무에 대한 상세 설명을 적어주세요..."
+                            value={formData.description}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        ></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">담당 부서</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.department}
+                                onChange={e => setFormData({ ...formData, department: e.target.value })}
+                            >
+                                {departments.filter(d => d !== '선택' && d !== '전체').map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">중요도</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.priority}
+                                onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                            >
+                                <option value="High">High (높음)</option>
+                                <option value="Medium">Medium (보통)</option>
+                                <option value="Low">Low (낮음)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">마감일</label>
+                        <input
+                            type="date"
+                            className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={formData.dueDate}
+                            onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="pt-2 flex gap-3">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">취소</button>
+                        <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">업무 등록</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
     const [task, setTask] = useState(todo.task);
+    const [description, setDescription] = useState(todo.description || '');
     const [priority, setPriority] = useState(todo.priority);
     const [dueDate, setDueDate] = useState(todo.dueDate);
     const [subTasks, setSubTasks] = useState(todo.subTasks || []);
@@ -329,6 +398,7 @@ const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
     const handleSave = () => {
         onUpdate(todo.id, {
             task,
+            description,
             priority,
             dueDate,
             subTasks
@@ -358,7 +428,7 @@ const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center sticky top-0">
                     <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
@@ -380,6 +450,15 @@ const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
                                 onChange={e => setTask(e.target.value)}
                                 className="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">상세 설명</label>
+                            <textarea
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm resize-none h-20 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                placeholder="상세 내용을 입력하세요..."
+                            ></textarea>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
