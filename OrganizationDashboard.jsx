@@ -78,8 +78,8 @@ const OrganizationDashboard = ({ db, departments }) => {
                     <button
                         onClick={() => setActiveTab('overview')}
                         className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'overview'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'bg-white text-indigo-700 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <LayoutGrid className="w-4 h-4" /> 조직도 현황
@@ -87,8 +87,8 @@ const OrganizationDashboard = ({ db, departments }) => {
                     <button
                         onClick={() => setActiveTab('individual')}
                         className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'individual'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'bg-white text-indigo-700 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <List className="w-4 h-4" /> 인원별 업무
@@ -109,6 +109,7 @@ const OrganizationDashboard = ({ db, departments }) => {
                 />
             ) : (
                 <IndividualTasks
+                    db={db}
                     employees={employees}
                     departments={displayDepartments}
                     selectedEmployee={selectedEmployee}
@@ -202,13 +203,49 @@ const TeamOverview = ({ employees, departments, onOpenAddModal, onDeleteEmployee
     );
 };
 
-const IndividualTasks = ({ employees, departments, selectedEmployee, setSelectedEmployee }) => {
-    // Select first employee by default if none selected and list is not empty
+const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSelectedEmployee }) => {
+    const [tasks, setTasks] = useState({ ongoing: [], completed: [] });
+    const [loadingTasks, setLoadingTasks] = useState(false);
+
+    // Select first employee by default
     useEffect(() => {
         if (!selectedEmployee && employees.length > 0) {
             setSelectedEmployee(employees[0]);
         }
     }, [employees, selectedEmployee, setSelectedEmployee]);
+
+    // Fetch tasks for selected employee
+    useEffect(() => {
+        if (!db || !selectedEmployee) return;
+
+        setLoadingTasks(true);
+        const q = query(
+            collection(db, 'dept_todos'),
+            where('assigneeId', '==', selectedEmployee.id),
+            orderBy('createdAt', 'desc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const ongoing = fetched.filter(t => !t.isCompleted);
+            const completed = fetched.filter(t => t.isCompleted);
+
+            setTasks({ ongoing, completed });
+            setLoadingTasks(false);
+        });
+
+        return () => unsubscribe();
+    }, [db, selectedEmployee]);
+
+    const getPriorityColor = (p) => {
+        switch (p) {
+            case 'High': return 'text-red-700 bg-red-50 border-red-200';
+            case 'Medium': return 'text-amber-700 bg-amber-50 border-amber-200';
+            case 'Low': return 'text-blue-700 bg-blue-50 border-blue-200';
+            default: return 'text-slate-700 bg-slate-50 border-slate-200';
+        }
+    };
 
     return (
         <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-200px)]">
@@ -230,8 +267,8 @@ const IndividualTasks = ({ employees, departments, selectedEmployee, setSelected
                                             key={emp.id}
                                             onClick={() => setSelectedEmployee(emp)}
                                             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between transition-colors ${selectedEmployee?.id === emp.id
-                                                    ? 'bg-white shadow-sm ring-1 ring-slate-200 text-indigo-700 font-bold'
-                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                                ? 'bg-white shadow-sm ring-1 ring-slate-200 text-indigo-700 font-bold'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                                 }`}
                                         >
                                             <span>{emp.name}</span>
@@ -278,37 +315,99 @@ const IndividualTasks = ({ employees, departments, selectedEmployee, setSelected
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Task Summary */}
+                            <div className="w-full mt-6 pt-6 border-t border-slate-200">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-3">업무 요약</h4>
+                                <div className="grid grid-cols-2 gap-2 text-center">
+                                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                                        <div className="text-lg font-bold text-blue-600">{tasks.ongoing.length}</div>
+                                        <div className="text-[10px] text-slate-400">진행중</div>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                                        <div className="text-lg font-bold text-emerald-600">{tasks.completed.length}</div>
+                                        <div className="text-[10px] text-slate-400">완료</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Task List Side (Placeholder) */}
+                        {/* Task List Side */}
                         <div className="flex-1 p-6 bg-white overflow-y-auto">
                             <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
                                 <List className="w-5 h-5 text-indigo-500" /> 담당 업무 리스트
                             </h3>
 
-                            <div className="space-y-8">
-                                {/* In Progress */}
-                                <div>
-                                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-blue-600">
-                                        <Clock className="w-4 h-4" /> 진행 중인 업무
-                                        <span className="ml-auto bg-blue-50 px-2 py-0.5 rounded-full text-xs">0</span>
-                                    </div>
-                                    <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
-                                        아직 배정된 진행 중인 업무가 없습니다.
-                                    </div>
+                            {loadingTasks ? (
+                                <div className="text-center py-10 text-slate-400">
+                                    <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                                    로딩 중...
                                 </div>
+                            ) : (
+                                <div className="space-y-8">
+                                    {/* In Progress */}
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4 text-sm font-bold text-blue-600">
+                                            <Clock className="w-4 h-4" /> 진행 중인 업무
+                                            <span className="ml-auto bg-blue-50 px-2 py-0.5 rounded-full text-xs">{tasks.ongoing.length}</span>
+                                        </div>
 
-                                {/* Completed */}
-                                <div>
-                                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-emerald-600">
-                                        <CheckCircle2 className="w-4 h-4" /> 완료된 업무
-                                        <span className="ml-auto bg-emerald-50 px-2 py-0.5 rounded-full text-xs">0</span>
+                                        {tasks.ongoing.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {tasks.ongoing.map(task => (
+                                                    <div key={task.id} className="p-4 bg-white border border-blue-100 rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className={`px-2 py-0.5 text-[10px] font-bold border rounded ${getPriorityColor(task.priority)}`}>
+                                                                {task.priority}
+                                                            </span>
+                                                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                                <Calendar className="w-3 h-3" /> {task.dueDate}
+                                                            </span>
+                                                        </div>
+                                                        <h4 className="font-bold text-slate-800 text-sm mb-1">{task.task}</h4>
+                                                        {task.description && <p className="text-xs text-slate-500 line-clamp-1">{task.description}</p>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
+                                                현재 배정된 진행 중인 업무가 없습니다.
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
-                                        완료된 업무 기록이 없습니다.
+
+                                    {/* Completed */}
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4 text-sm font-bold text-emerald-600">
+                                            <CheckCircle2 className="w-4 h-4" /> 완료된 업무
+                                            <span className="ml-auto bg-emerald-50 px-2 py-0.5 rounded-full text-xs">{tasks.completed.length}</span>
+                                        </div>
+
+                                        {tasks.completed.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {tasks.completed.map(task => (
+                                                    <div key={task.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                                        <div className="flex justify-between items-start mb-1 opacity-60">
+                                                            <span className={`px-2 py-0.5 text-[10px] font-bold border rounded bg-slate-200 border-slate-300 text-slate-600`}>
+                                                                {task.priority}
+                                                            </span>
+                                                            <span className="text-xs text-slate-400">
+                                                                완료됨
+                                                            </span>
+                                                        </div>
+                                                        <h4 className="font-bold text-slate-500 text-sm line-through decoration-slate-400">{task.task}</h4>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-sm bg-slate-50/50">
+                                                완료된 업무 기록이 없습니다.
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </>
                 ) : (

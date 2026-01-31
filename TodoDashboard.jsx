@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    CheckCircle2, Plus, Trash2, Calendar, AlertCircle,
+    CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Users,
     CheckSquare, Square, Filter, TrendingUp, Edit, X, Check, FileText
 } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ const TodoDashboard = ({ db, user, departments }) => {
     // State
     const [selectedDept, setSelectedDept] = useState(departments[0] || '전체');
     const [todos, setTodos] = useState([]);
+    const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [editingTodo, setEditingTodo] = useState(null); // For edit modal
@@ -28,6 +29,17 @@ const TodoDashboard = ({ db, user, departments }) => {
             setSelectedDept(user.department);
         }
     }, [user, departments]);
+
+    // Fetch Employees
+    useEffect(() => {
+        if (!db) return;
+        const q = query(collection(db, 'employees'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const emps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setEmployees(emps);
+        });
+        return () => unsubscribe();
+    }, [db]);
 
     // Initial load & Real-time sync
     useEffect(() => {
@@ -234,7 +246,16 @@ const TodoDashboard = ({ db, user, departments }) => {
                                 {todo.description && (
                                     <p className={`text-sm mt-1 line-clamp-2 ${todo.isCompleted ? 'text-slate-400' : 'text-gray-500'}`}>
                                         {todo.description}
+                                        {todo.description}
                                     </p>
+                                )}
+
+                                {/* Assignee Badge */}
+                                {todo.assigneeName && (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 font-bold bg-indigo-50 w-fit px-2 py-1 rounded-full border border-indigo-100">
+                                        <Users className="w-3 h-3" />
+                                        {todo.assigneeName} {todo.assigneePosition && <span className="text-indigo-400 font-normal">({todo.assigneePosition})</span>}
+                                    </div>
                                 )}
 
                                 {/* Sub-task Progress Indicator */}
@@ -277,6 +298,7 @@ const TodoDashboard = ({ db, user, departments }) => {
                     onClose={() => setIsFormOpen(false)}
                     onSubmit={handleCreateTodo}
                     departments={departments}
+                    employees={employees}
                     initialDept={user?.department || (selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept)}
                 />
             )}
@@ -287,6 +309,8 @@ const TodoDashboard = ({ db, user, departments }) => {
                     todo={editingTodo}
                     onClose={() => setEditingTodo(null)}
                     onUpdate={handleUpdateTodo}
+                    departments={departments}
+                    employees={employees}
                 />
             )}
         </div>
@@ -295,11 +319,14 @@ const TodoDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
-const TodoFormModal = ({ onClose, onSubmit, departments, initialDept }) => {
+const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept }) => {
     const [formData, setFormData] = useState({
         task: '',
         description: '',
         department: initialDept || departments[0],
+        assigneeId: '',
+        assigneeName: '',
+        assigneePosition: '',
         priority: 'Medium',
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
@@ -372,6 +399,36 @@ const TodoFormModal = ({ onClose, onSubmit, departments, initialDept }) => {
                                 <option value="Low">Low (낮음)</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">담당자 지정 (Assignee)</label>
+                            <select
+                                className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.assigneeId}
+                                onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    if (!selectedId) {
+                                        setFormData({ ...formData, assigneeId: '', assigneeName: '', assigneePosition: '' });
+                                    } else {
+                                        const emp = employees.find(emp => emp.id === selectedId);
+                                        if (emp) {
+                                            setFormData({
+                                                ...formData,
+                                                assigneeId: emp.id,
+                                                assigneeName: emp.name,
+                                                assigneePosition: emp.position
+                                            });
+                                        }
+                                    }
+                                }}
+                            >
+                                <option value="">담당자 미지정</option>
+                                {employees
+                                    .filter(emp => emp.department === formData.department)
+                                    .map(emp => (
+                                        <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
+                                    ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div>
@@ -394,11 +451,14 @@ const TodoFormModal = ({ onClose, onSubmit, departments, initialDept }) => {
     );
 };
 
-const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
+const TodoDetailModal = ({ todo, onClose, onUpdate, departments, employees }) => {
     const [task, setTask] = useState(todo.task);
     const [description, setDescription] = useState(todo.description || '');
     const [priority, setPriority] = useState(todo.priority);
     const [dueDate, setDueDate] = useState(todo.dueDate);
+    const [assigneeId, setAssigneeId] = useState(todo.assigneeId || '');
+    const [assigneeName, setAssigneeName] = useState(todo.assigneeName || '');
+    const [assigneePosition, setAssigneePosition] = useState(todo.assigneePosition || '');
     const [subTasks, setSubTasks] = useState(todo.subTasks || []);
     const [newSubTask, setNewSubTask] = useState('');
 
@@ -408,6 +468,9 @@ const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
             description,
             priority,
             dueDate,
+            assigneeId,
+            assigneeName,
+            assigneePosition,
             subTasks
         });
     };
@@ -491,58 +554,88 @@ const TodoDetailModal = ({ todo, onClose, onUpdate }) => {
                             </div>
                         </div>
                     </div>
-
-                    <div className="border-t border-slate-100 my-2"></div>
-
-                    {/* Sub-tasks Section */}
+                    {/* Assignee for Edit Modal */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">세부 할 일 (Sub-tasks)</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">담당자 (Assignee)</label>
+                        <select
+                            className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={assigneeId}
+                            onChange={(e) => {
+                                const selectedId = e.target.value;
+                                if (!selectedId) {
+                                    setAssigneeId('');
+                                    setAssigneeName('');
+                                    setAssigneePosition('');
+                                } else {
+                                    const emp = employees.find(emp => emp.id === selectedId);
+                                    if (emp) {
+                                        setAssigneeId(emp.id);
+                                        setAssigneeName(emp.name);
+                                        setAssigneePosition(emp.position);
+                                    }
+                                }
+                            }}
+                        >
+                            <option value="">담당자 미지정</option>
+                            {employees
+                                .filter(emp => emp.department === todo.department)
+                                .map(emp => (
+                                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
+                                ))}
+                        </select>
+                    </div>
+                </div>
 
-                        <div className="space-y-2 mb-4">
-                            {subTasks.map(st => (
-                                <div key={st.id} className="flex items-start gap-3 group">
-                                    <button
-                                        onClick={() => toggleSubTask(st.id)}
-                                        className={`mt-0.5 ${st.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'}`}
-                                    >
-                                        {st.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                                    </button>
-                                    <span className={`flex-1 text-sm ${st.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                                        {st.content}
-                                    </span>
-                                    <button
-                                        onClick={() => deleteSubTask(st.id)}
-                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
-                            {subTasks.length === 0 && (
-                                <p className="text-sm text-slate-400 text-center py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                    세부 항목이 없습니다.
-                                </p>
-                            )}
-                        </div>
+                <div className="border-t border-slate-100 my-2"></div>
 
-                        <form onSubmit={handleAddSubTask} className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newSubTask}
-                                onChange={e => setNewSubTask(e.target.value)}
-                                placeholder="세부 할 일을 입력하세요"
-                                className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                            />
-                            <button type="submit" className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors">
-                                <Plus className="w-5 h-5" />
-                            </button>
-                        </form>
+                {/* Sub-tasks Section */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-3">세부 할 일 (Sub-tasks)</label>
+
+                    <div className="space-y-2 mb-4">
+                        {subTasks.map(st => (
+                            <div key={st.id} className="flex items-start gap-3 group">
+                                <button
+                                    onClick={() => toggleSubTask(st.id)}
+                                    className={`mt-0.5 ${st.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'}`}
+                                >
+                                    {st.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                                </button>
+                                <span className={`flex-1 text-sm ${st.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                                    {st.content}
+                                </span>
+                                <button
+                                    onClick={() => deleteSubTask(st.id)}
+                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                        {subTasks.length === 0 && (
+                            <p className="text-sm text-slate-400 text-center py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                세부 항목이 없습니다.
+                            </p>
+                        )}
                     </div>
 
-                    <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
-                        <button onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold transition-colors">취소</button>
-                        <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md shadow-indigo-200 transition-colors">저장 완료</button>
-                    </div>
+                    <form onSubmit={handleAddSubTask} className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newSubTask}
+                            onChange={e => setNewSubTask(e.target.value)}
+                            placeholder="세부 할 일을 입력하세요"
+                            className="flex-1 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                        <button type="submit" className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors">
+                            <Plus className="w-5 h-5" />
+                        </button>
+                    </form>
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                    <button onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold transition-colors">취소</button>
+                    <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md shadow-indigo-200 transition-colors">저장 완료</button>
                 </div>
             </div>
         </div>
