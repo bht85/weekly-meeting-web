@@ -1158,11 +1158,23 @@ function App() {
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Login Failed:", error);
-            alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+            let msg = "로그인 중 오류가 발생했습니다.";
+            switch (error.code) {
+                case 'auth/invalid-email': msg = "이메일 형식이 올바르지 않습니다."; break;
+                case 'auth/user-not-found': msg = "가입되지 않은 이메일입니다."; break;
+                case 'auth/wrong-password': msg = "비밀번호가 틀렸습니다."; break;
+                case 'auth/too-many-requests': msg = "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."; break;
+                default: msg = `로그인 오류: ${error.code}`;
+            }
+            alert(msg);
         }
     };
 
     const handleSignup = async (email, password) => {
+        if (password.length < 6) {
+            alert("보안을 위해 비밀번호는 6자 이상 입력해 주세요.");
+            return;
+        }
         if (!ALLOWED_EMAILS.includes(email)) {
             alert("허용되지 않은 이메일입니다. 관리자에게 문의하세요.");
             return;
@@ -1172,7 +1184,14 @@ function App() {
             alert("회원가입이 완료되었습니다.");
         } catch (error) {
             console.error("Signup Failed:", error);
-            alert("회원가입 중 오류가 발생했습니다: " + error.message);
+            let msg = "회원가입 중 오류가 발생했습니다.";
+            switch (error.code) {
+                case 'auth/email-already-in-use': msg = "이미 가입된 이메일입니다. 로그인해 주세요."; break;
+                case 'auth/weak-password': msg = "비밀번호는 최소 6자 이상이어야 합니다."; break;
+                case 'auth/invalid-email': msg = "이메일 형식이 올바르지 않습니다."; break;
+                default: msg = `가입 오류: ${error.code}`;
+            }
+            alert(msg);
         }
     };
 
