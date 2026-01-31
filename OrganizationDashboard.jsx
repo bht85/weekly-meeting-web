@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import {
     Users, Plus, Mail, Briefcase, Calendar, ChevronRight,
-    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2
+    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2, Edit2
 } from 'lucide-react';
 
 const JOB_RANKS = {
@@ -38,6 +38,7 @@ const OrganizationDashboard = ({ db, departments }) => {
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedDeptForAdd, setSelectedDeptForAdd] = useState('');
+    const [editingEmployee, setEditingEmployee] = useState(null);
 
     // For Individual Tab
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -63,23 +64,40 @@ const OrganizationDashboard = ({ db, departments }) => {
                 return a.name.localeCompare(b.name); // Secondary sort by name
             });
 
+            // Update selectedEmployee if it was updated
+            if (selectedEmployee) {
+                const updated = docs.find(d => d.id === selectedEmployee.id);
+                if (updated) setSelectedEmployee(updated);
+            }
+
             setEmployees(docs);
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [db]);
+    }, [db, selectedEmployee]);
 
-    const handleAddEmployee = async (data) => {
+    const handleSaveEmployee = async (data) => {
         try {
-            await addDoc(collection(db, 'employees'), {
-                ...data,
-                createdAt: serverTimestamp()
-            });
+            if (editingEmployee) {
+                // Update existing
+                const empRef = doc(db, 'employees', editingEmployee.id);
+                await updateDoc(empRef, {
+                    ...data,
+                });
+                alert('직원 정보가 수정되었습니다.');
+            } else {
+                // Create new
+                await addDoc(collection(db, 'employees'), {
+                    ...data,
+                    createdAt: serverTimestamp()
+                });
+                alert('직원이 등록되었습니다.');
+            }
             setIsAddModalOpen(false);
-            alert('직원이 등록되었습니다.');
+            setEditingEmployee(null);
         } catch (error) {
-            console.error("Error adding employee: ", error);
-            alert("등록 중 오류가 발생했습니다.");
+            console.error("Error saving employee: ", error);
+            alert("저장 중 오류가 발생했습니다.");
         }
     };
 
@@ -87,10 +105,24 @@ const OrganizationDashboard = ({ db, departments }) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
             await deleteDoc(doc(db, 'employees', id));
+            if (selectedEmployee && selectedEmployee.id === id) {
+                setSelectedEmployee(null);
+            }
         } catch (error) {
             console.error("Error deleting employee: ", error);
             alert("삭제 중 오류가 발생했습니다.");
         }
+    };
+
+    const openEditModal = (employee) => {
+        setEditingEmployee(employee);
+        setIsAddModalOpen(true);
+    };
+
+    const openAddModal = (dept) => {
+        setEditingEmployee(null);
+        setSelectedDeptForAdd(dept);
+        setIsAddModalOpen(true);
     };
 
     return (
@@ -134,10 +166,7 @@ const OrganizationDashboard = ({ db, departments }) => {
                 <TeamOverview
                     employees={employees}
                     departments={displayDepartments}
-                    onOpenAddModal={(dept) => {
-                        setSelectedDeptForAdd(dept);
-                        setIsAddModalOpen(true);
-                    }}
+                    onOpenAddModal={openAddModal}
                     onDeleteEmployee={handleDeleteEmployee}
                 />
             ) : (
@@ -147,16 +176,19 @@ const OrganizationDashboard = ({ db, departments }) => {
                     departments={displayDepartments}
                     selectedEmployee={selectedEmployee}
                     setSelectedEmployee={setSelectedEmployee}
+                    onEdit={openEditModal}
+                    onDelete={handleDeleteEmployee}
                 />
             )}
 
-            {/* Add Employee Modal */}
+            {/* Add/Edit Employee Modal */}
             {isAddModalOpen && (
                 <AddEmployeeModal
-                    onClose={() => setIsAddModalOpen(false)}
-                    onSubmit={handleAddEmployee}
+                    onClose={() => { setIsAddModalOpen(false); setEditingEmployee(null); }}
+                    onSubmit={handleSaveEmployee}
                     departments={displayDepartments}
                     defaultDept={selectedDeptForAdd}
+                    employeeToEdit={editingEmployee}
                 />
             )}
         </div>
@@ -236,7 +268,7 @@ const TeamOverview = ({ employees, departments, onOpenAddModal, onDeleteEmployee
     );
 };
 
-const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSelectedEmployee }) => {
+const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSelectedEmployee, onEdit, onDelete }) => {
     const [tasks, setTasks] = useState({ ongoing: [], completed: [] });
     const [loadingTasks, setLoadingTasks] = useState(false);
 
@@ -337,8 +369,26 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
                 {selectedEmployee ? (
                     <>
                         {/* Profile Info Side */}
-                        <div className="w-full md:w-64 border-r border-slate-100 p-6 flex flex-col items-center bg-slate-50/50">
-                            <div className="w-24 h-24 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-3xl font-bold text-slate-300 mb-4">
+                        <div className="w-full md:w-64 border-r border-slate-100 p-6 flex flex-col items-center bg-slate-50/50 relative">
+                            {/* Edit/Delete Buttons */}
+                            <div className="absolute top-4 right-4 flex gap-1">
+                                <button
+                                    onClick={() => onEdit(selectedEmployee)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-full transition-all"
+                                    title="정보 수정"
+                                >
+                                    <div className="w-4 h-4"><Edit2 className="w-4 h-4" /></div>
+                                </button>
+                                <button
+                                    onClick={() => onDelete(selectedEmployee.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-full transition-all"
+                                    title="삭제"
+                                >
+                                    <div className="w-4 h-4"><Trash2 className="w-4 h-4" /></div>
+                                </button>
+                            </div>
+
+                            <div className="w-24 h-24 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-3xl font-bold text-slate-300 mb-4 mt-2">
                                 {selectedEmployee.name[0]}
                             </div>
                             <h3 className="text-xl font-bold text-slate-800">{selectedEmployee.name}</h3>
@@ -470,7 +520,9 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
     );
 };
 
-const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept }) => {
+const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept, employeeToEdit }) => {
+    const isEditMode = !!employeeToEdit;
+
     const [formData, setFormData] = useState({
         name: '',
         position: '사원',
@@ -479,6 +531,19 @@ const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept }) => {
         status: '재직',
         joinedAt: new Date().toISOString().split('T')[0]
     });
+
+    useEffect(() => {
+        if (employeeToEdit) {
+            setFormData({
+                name: employeeToEdit.name,
+                position: employeeToEdit.position,
+                department: employeeToEdit.department,
+                email: employeeToEdit.email,
+                status: employeeToEdit.status,
+                joinedAt: employeeToEdit.joinedAt,
+            });
+        }
+    }, [employeeToEdit]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -490,7 +555,8 @@ const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept }) => {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        <UserPlus className="w-5 h-5 text-indigo-600" /> 신규 직원 등록
+                        <UserPlus className="w-5 h-5 text-indigo-600" />
+                        {isEditMode ? '직원 정보 수정' : '신규 직원 등록'}
                     </h3>
                     <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-500">
                         <X className="w-5 h-5" />
@@ -576,7 +642,9 @@ const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept }) => {
 
                     <div className="pt-4 flex gap-3">
                         <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-lg transition-colors">취소</button>
-                        <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all">등록하기</button>
+                        <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all">
+                            {isEditMode ? '수정하기' : '등록하기'}
+                        </button>
                     </div>
                 </form>
             </div>
