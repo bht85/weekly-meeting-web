@@ -232,8 +232,25 @@ const PERIODS = [
 ];
 
 // ==========================================
+// ==========================================
 // [KPI 대시보드 컴포넌트] (Firestore 연동 - 기간별)
 // ==========================================
+
+// 아이콘 매핑 헬퍼 함수
+const getIconComponent = (iconName) => {
+    switch (iconName) {
+        case 'dollar': return <DollarSign className="w-5 h-5" />;
+        case 'bag': return <ShoppingBag className="w-5 h-5" />;
+        case 'code': return <Code className="w-5 h-5" />;
+        case 'users': return <Users className="w-5 h-5" />;
+        case 'global': return <RotateCcw className="w-5 h-5" />;
+        case 'truck': return <Archive className="w-5 h-5" />;
+        case 'monitor': return <Layout className="w-5 h-5" />;
+        case 'legal': return <Scale className="w-5 h-5" />;
+        default: return <Briefcase className="w-5 h-5" />;
+    }
+};
+
 const KPIDashboard = () => {
     const [selectedDeptId, setSelectedDeptId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
