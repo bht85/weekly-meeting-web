@@ -8,27 +8,35 @@ const CalendarDashboard = ({ db, departments }) => {
     const [collabs, setCollabs] = useState([]);
     const [filterDept, setFilterDept] = useState('전체');
     const [events, setEvents] = useState([]);
-    const [selectedEvent, setSelectedEvent] = useState(null); // 모달 상태
+    const [selectedEvent, setSelectedEvent] = useState(null);
 
     // --- Data Fetching ---
     useEffect(() => {
-        // 1. Fetch Todos (status: progress or pending) - dueDate 필수 확인
+        // 1. Fetch Todos
+        // Note: TodoDashboard saves 'isCompleted' (boolean), not 'status'.
+        // We fetch incomplete tasks (isCompleted == false).
+        // If 'status' field exists in legacy data, we might need a composite query, 
+        // but for now relying on isCompleted checks is safer based on TodoDashboard.jsx.
         const todoQuery = query(
             collection(db, 'dept_todos'),
-            where('status', 'in', ['progress', 'pending'])
+            where('isCompleted', '==', false)
         );
         const unsubTodo = onSnapshot(todoQuery, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // dueDate가 있는 항목만 필터링 (DB 쿼리로도 가능하지만 안전장치)
+            // Filter ones with dueDate
             setTodos(loaded.filter(t => t.dueDate));
         });
 
-        // 2. Fetch Collaboration Requests (all) - 반려 제외
+        // 2. Fetch Collaboration Requests (all)
         const collabQuery = query(collection(db, 'collaboration_requests'));
         const unsubCollab = onSnapshot(collabQuery, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // 반려(rejected) 상태 제외 및 dueDate 있는 항목만
-            setCollabs(loaded.filter(c => c.status !== '반려' && c.dueDate));
+            // Filter out '반려' or 'Rejected' and ensure dueDate exists
+            setCollabs(loaded.filter(c =>
+                c.status !== '반려' &&
+                c.status !== 'Rejected' &&
+                c.dueDate
+            ));
         });
 
         return () => { unsubTodo(); unsubCollab(); };
@@ -40,15 +48,17 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Todos -> Events
         todos.forEach(todo => {
+            // Mapping Logic for Todos
+            // Field: task (content), department (from), dueDate (date), isCompleted (status state)
             if (filterDept === '전체' || todo.department === filterDept) {
                 merged.push({
                     id: `todo-${todo.id}`,
                     type: 'task',
-                    title: todo.task,
+                    title: todo.task || '(제목 없음)', // from task field
+                    desc: todo.task, // todo doesn't have separate content, usually task is the content
                     date: todo.dueDate,
-                    dept: todo.department,
-                    description: todo.description,
-                    status: todo.status, // progress, pending
+                    from: todo.department || '미지정', // mapped to 'from'
+                    status: todo.status || (todo.isCompleted ? '완료' : '진행'), // fallback for status
                     manager: todo.manager || '미지정'
                 });
             }
@@ -56,17 +66,24 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Collabs -> Events
         collabs.forEach(collab => {
-            if (filterDept === '전체' || collab.fromDept === filterDept || collab.toDept === filterDept) {
+            // Mapping Logic for Collabs
+            // Field: fromTeam/fromDept -> from
+            // Field: toTeam/toDept -> to
+            // Field: content/description -> desc
+            const fromTeam = collab.fromTeam || collab.fromDept || '(알수없음)';
+            const toTeam = collab.toTeam || collab.toDept || '(알수없음)';
+
+            if (filterDept === '전체' || fromTeam === filterDept || toTeam === filterDept) {
                 merged.push({
                     id: `collab-${collab.id}`,
                     type: 'collab',
-                    title: collab.title,
+                    title: collab.title || collab.content || '(제목 없음)',
+                    desc: collab.content || collab.description || '',
                     date: collab.dueDate,
-                    dept: `${collab.fromDept} → ${collab.toDept}`,
-                    description: collab.content,
-                    status: collab.status, // 대기, 진행, 완료 등
-                    from: collab.fromDept,
-                    to: collab.toDept
+                    from: fromTeam,
+                    to: toTeam,
+                    dept: `${fromTeam} → ${toTeam}`, // Derived display string
+                    status: collab.status || '요청'
                 });
             }
         });
@@ -89,12 +106,10 @@ const CalendarDashboard = ({ db, departments }) => {
     // Generate Calendar Grid
     const renderCalendarGrid = () => {
         const grid = [];
-        // Empty cells
         for (let i = 0; i < firstDay; i++) {
             grid.push(<div key={`empty-${i}`} className="h-32 bg-slate-50 border-b border-r border-slate-100"></div>);
         }
 
-        // Days
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const dayEvents = events.filter(e => e.date === dateStr);
@@ -114,13 +129,15 @@ const CalendarDashboard = ({ db, departments }) => {
                                     ? 'bg-blue-50 border-blue-100 text-blue-700'
                                     : 'bg-purple-50 border-purple-100 text-purple-700'
                                     }`}
-                                title="클릭하여 상세 정보 보기"
+                                title={`[${event.status}] ${event.title}`}
                             >
                                 <div className="flex items-center gap-1">
                                     {event.type === 'task' ? <Briefcase className="w-3 h-3 flex-shrink-0" /> : <Share2 className="w-3 h-3 flex-shrink-0" />}
                                     <span className="truncate flex-1 font-medium">{event.title}</span>
                                 </div>
-                                <div className="text-[10px] opacity-75 truncate mt-0.5">{event.dept}</div>
+                                <div className="text-[10px] opacity-75 truncate mt-0.5">
+                                    {event.type === 'task' ? event.from : `${event.from}→${event.to}`}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -130,21 +147,23 @@ const CalendarDashboard = ({ db, departments }) => {
         return grid;
     };
 
-    // Helper: Badge Style for Status
     const getStatusBadge = (status) => {
         const styles = {
             'progress': 'bg-blue-100 text-blue-800',
             'pending': 'bg-gray-100 text-gray-800',
             '완료': 'bg-green-100 text-green-800',
             '대기': 'bg-yellow-100 text-yellow-800',
-            '진행': 'bg-blue-100 text-blue-800'
+            '진행': 'bg-blue-100 text-blue-800',
+            '요청': 'bg-purple-100 text-purple-800',
+            'Rejected': 'bg-red-100 text-red-800',
+            '반려': 'bg-red-100 text-red-800',
+            '승인': 'bg-green-100 text-green-800'
         };
         return styles[status] || 'bg-gray-100 text-gray-800';
     };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 relative">
-            {/* Header */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-4">
                     <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
@@ -182,7 +201,6 @@ const CalendarDashboard = ({ db, departments }) => {
                 </div>
             </div>
 
-            {/* Calendar Grid */}
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
                 <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
                     {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
@@ -196,11 +214,9 @@ const CalendarDashboard = ({ db, departments }) => {
                 </div>
             </div>
 
-            {/* --- Detail Modal --- */}
             {selectedEvent && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSelectedEvent(null)}>
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        {/* Modal Header */}
                         <div className={`p-4 flex justify-between items-center ${selectedEvent.type === 'task' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                             <div className="flex items-center gap-2 text-white">
                                 {selectedEvent.type === 'task' ? <Briefcase className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
@@ -213,7 +229,6 @@ const CalendarDashboard = ({ db, departments }) => {
                             </button>
                         </div>
 
-                        {/* Modal Content */}
                         <div className="p-6 space-y-6">
                             <div>
                                 <h4 className="text-xl font-bold text-gray-900 mb-1">{selectedEvent.title}</h4>
@@ -235,7 +250,10 @@ const CalendarDashboard = ({ db, departments }) => {
                                         {selectedEvent.type === 'task' ? '담당 부서' : '요청 흐름'}
                                     </div>
                                     <div className="text-sm font-semibold text-gray-700">
-                                        {selectedEvent.dept}
+                                        {selectedEvent.type === 'task' ?
+                                            `담당: ${selectedEvent.from}` :
+                                            `${selectedEvent.from} → ${selectedEvent.to}`
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -243,7 +261,7 @@ const CalendarDashboard = ({ db, departments }) => {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">상세 내용</label>
                                 <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border border-gray-200 h-32 overflow-y-auto">
-                                    {selectedEvent.description || '(내용 없음)'}
+                                    {selectedEvent.desc || '(내용 없음)'}
                                 </div>
                             </div>
 
