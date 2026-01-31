@@ -18,7 +18,9 @@ import OrganizationDashboard from './OrganizationDashboard';
 import { initializeApp } from "firebase/app";
 import {
     getAuth,
-    signInAnonymously,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
     onAuthStateChanged
 } from 'firebase/auth';
 import {
@@ -109,6 +111,57 @@ const NAV_ITEMS = [
     { id: 'kpi', label: 'KPI', icon: BarChart3 },
     { id: 'finance', label: '데이터', icon: Database },
 ];
+
+const ALLOWED_EMAILS = [
+    "daisy@composecoffee.co.kr",      // 경영지원본부장
+    "choihy@composecoffee.co.kr",     // 재무팀
+    "esc913@composecoffee.co.kr",     // 인사팀
+    "sophia@composecoffee.co.kr",     // 해외사업팀
+    "smin@composecoffee.co.kr",       // 재무기획팀
+    "donghee.han@composecoffee.co.kr",// 법무팀
+    "IT@composecoffee.co.kr",         // IT지원팀
+    "sclee@composecoffee.co.kr",      // 구매물류팀
+    "test@composecoffee.co.kr"        // 테스트 계정
+];
+
+const LoginView = ({ onLogin }) => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-slate-100">
+            <div className="bg-indigo-600 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-indigo-200 shadow-lg">
+                <Layout className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">Compose Coffee</h1>
+            <p className="text-slate-500 mb-8">주간회의 시스템에 오신 것을 환영합니다.</p>
+            <button
+                onClick={onLogin}
+                className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-all shadow-sm"
+            >
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                Google 계정으로 로그인
+            </button>
+        </div>
+    </div>
+);
+
+const UnauthorizedView = ({ email, onLogout }) => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-red-100">
+            <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">접근 권한이 없습니다</h2>
+            <p className="text-slate-500 mb-6 break-all">
+                계정 <span className="font-bold text-slate-800">{email}</span>은(는)<br />허용된 사용자가 아닙니다.
+            </p>
+            <button
+                onClick={onLogout}
+                className="px-6 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+            >
+                로그아웃
+            </button>
+        </div>
+    </div>
+);
 const DEPARTMENTS_META = [
     { id: 'finance_team', name: '재무팀', icon: 'dollar' },
     { id: 'finance_plan', name: '재무기획팀', icon: 'dollar' },
@@ -1042,16 +1095,31 @@ function App() {
     const [editingFeedbackId, setEditingFeedbackId] = useState(null);
 
     useEffect(() => {
-        const initAuth = async () => {
-            try {
-                await signInAnonymously(auth);
-            } catch (error) {
-                console.error("Auth Error:", error);
-            }
-        };
-        initAuth();
-        return onAuthStateChanged(auth, (u) => setUser(u));
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setLoading(false);
+        });
+        return () => unsubscribe();
     }, []);
+
+    const handleGoogleLogin = async () => {
+        const provider = new GoogleAuthProvider();
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Login Failed:", error);
+            alert("로그인 중 오류가 발생했습니다.");
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            setUser(null);
+        } catch (error) {
+            console.error("Logout Failed:", error);
+        }
+    };
 
     useEffect(() => {
         const q1 = query(collection(db, 'weekly_minutes'));
@@ -1294,9 +1362,17 @@ function App() {
         </div>
     );
 
-    const allDates = [...new Set([...minutes.map(m => m.date), ...feedbacks.map(f => f.date)])].sort((a, b) => b.localeCompare(a));
-    const filteredDates = selectedDate === 'recent' ? allDates.slice(0, 2) : (selectedDate ? [selectedDate] : allDates);
+    // 1. 비로그인 상태 -> 로그인 화면
+    if (!user) {
+        return <LoginView onLogin={handleGoogleLogin} />;
+    }
 
+    // 2. 로그인 상태지만 허용된 이메일이 아님 -> 권한 없음 화면
+    if (!ALLOWED_EMAILS.includes(user.email)) {
+        return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
+    }
+
+    // 3. 정상 접속
     return (
         <div className="min-h-screen bg-slate-50/50 font-sans text-slate-800 pb-20">
             {/* 상단 네비게이션 (헤더) */}
@@ -1328,6 +1404,14 @@ function App() {
 
                         {/* 우측 유틸리티 버튼들 */}
                         <div className="flex items-center space-x-2">
+                            <span className="hidden md:block text-slate-500 text-sm mr-2">{user.email.split('@')[0]}님</span>
+                            <button
+                                onClick={handleLogout}
+                                className="text-slate-400 hover:text-slate-600 p-2"
+                                title="로그아웃"
+                            >
+                                <Lock className="w-5 h-5" />
+                            </button>
                             {appMode === 'meeting' && (
                                 <>
                                     <a href="https://composecoffee1-my.sharepoint.com/:x:/g/personal/choihy_composecoffee_co_kr/IQBRHgvwRo3ZT5ytCTKVpBlRAcE4zXsMEqjohnr8xTI-RJ0?rtime=CQM385lC3kg"
