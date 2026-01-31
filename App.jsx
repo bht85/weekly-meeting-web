@@ -407,7 +407,7 @@ const KPIDashboard = () => {
         return 'bg-red-500';
     };
 
-    const selectedDeptKpis = selectedDeptId ? (deptDataMap[selectedDeptId]?.kpis || []) : [];
+    const selectedDeptKpis = selectedDeptId ? (deptDataMap?.[selectedDeptId]?.kpis || []) : [];
     const selectedDeptMeta = DEPARTMENTS_META.find(d => d.id === selectedDeptId);
 
     if (loading) return <div className="p-10 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
@@ -456,7 +456,7 @@ const KPIDashboard = () => {
             {selectedDeptId === null ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {DEPARTMENTS_META.map((dept) => {
-                        const deptRecord = deptDataMap[dept.id] || { kpis: [] };
+                        const deptRecord = deptDataMap?.[dept.id] || { kpis: [] };
                         const score = getDeptScore(deptRecord.kpis);
                         return (
                             <div key={dept.id} onClick={() => setSelectedDeptId(dept.id)}
@@ -493,7 +493,7 @@ const KPIDashboard = () => {
                                             <span>{Math.round(calculateAchievement(kpi.target, kpi.current, kpi.lowerIsBetter))}%</span>
                                         </div>
                                     ))}
-                                    {deptRecord.kpis.slice(0, commonKpis.length > 0 ? 1 : 2).map(kpi => (
+                                    {deptRecord?.kpis && (deptRecord.kpis || []).slice(0, commonKpis.length > 0 ? 1 : 2).map(kpi => (
                                         <div key={kpi.id} className="flex justify-between text-xs text-slate-500">
                                             <span>{kpi.name}</span>
                                             <span>{Math.round(calculateAchievement(kpi.target, kpi.current, kpi.lowerIsBetter))}%</span>
@@ -536,7 +536,7 @@ const KPIDashboard = () => {
                         <div className="divide-y divide-slate-100">
                             {commonKpis.length > 0 && (
                                 <div className="bg-slate-50/50">
-                                    {commonKpis.map((kpi) => {
+                                    {(commonKpis || []).map((kpi) => {
                                         const achievement = calculateAchievement(kpi.target, kpi.current, kpi.lowerIsBetter);
                                         return (
                                             <div key={kpi.id} className="p-4 border-l-4 border-slate-300 bg-slate-50">
@@ -582,7 +582,7 @@ const KPIDashboard = () => {
                                     <p className="text-sm mt-2">상단의 '팀 지표 추가' 버튼을 눌러보세요.</p>
                                 </div>
                             )}
-                            {selectedDeptKpis.map((kpi) => {
+                            {(selectedDeptKpis || []).map((kpi) => {
                                 const achievement = calculateAchievement(kpi.target, kpi.current, kpi.lowerIsBetter);
                                 return (
                                     <div key={kpi.id} className="p-4 hover:bg-slate-50 transition-colors">

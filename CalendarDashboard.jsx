@@ -13,10 +13,6 @@ const CalendarDashboard = ({ db, departments }) => {
     // --- Data Fetching ---
     useEffect(() => {
         // 1. Fetch Todos
-        // Note: TodoDashboard saves 'isCompleted' (boolean), not 'status'.
-        // We fetch incomplete tasks (isCompleted == false).
-        // If 'status' field exists in legacy data, we might need a composite query, 
-        // but for now relying on isCompleted checks is safer based on TodoDashboard.jsx.
         const todoQuery = query(
             collection(db, 'dept_todos'),
             where('isCompleted', '==', false)
@@ -48,17 +44,16 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Todos -> Events
         todos.forEach(todo => {
-            // Mapping Logic for Todos
-            // Field: task (content), department (from), dueDate (date), isCompleted (status state)
             if (filterDept === '전체' || todo.department === filterDept) {
                 merged.push({
                     id: `todo-${todo.id}`,
                     type: 'task',
-                    title: todo.task || '(제목 없음)', // from task field
-                    desc: todo.task, // todo doesn't have separate content, usually task is the content
+                    title: todo.task || '(제목 없음)',
+                    desc: todo.task,
                     date: todo.dueDate,
-                    from: todo.department || '미지정', // mapped to 'from'
-                    status: todo.status || (todo.isCompleted ? '완료' : '진행'), // fallback for status
+                    from: todo.department || '미지정', // for backward compatibility in list view
+                    department: todo.department || '미지정', // Explicit mapping
+                    status: todo.status || (todo.isCompleted ? '완료' : '진행'),
                     manager: todo.manager || '미지정'
                 });
             }
@@ -66,12 +61,8 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Collabs -> Events
         collabs.forEach(collab => {
-            // Mapping Logic for Collabs
-            // Field: fromTeam/fromDept -> from
-            // Field: toTeam/toDept -> to
-            // Field: content/description -> desc
-            const fromTeam = collab.fromTeam || collab.fromDept || '(알수없음)';
-            const toTeam = collab.toTeam || collab.toDept || '(알수없음)';
+            const fromTeam = collab.fromTeam || collab.fromDept || collab.from || '정보 없음';
+            const toTeam = collab.toTeam || collab.toDept || collab.to || '정보 없음';
 
             if (filterDept === '전체' || fromTeam === filterDept || toTeam === filterDept) {
                 merged.push({
@@ -82,7 +73,7 @@ const CalendarDashboard = ({ db, departments }) => {
                     date: collab.dueDate,
                     from: fromTeam,
                     to: toTeam,
-                    dept: `${fromTeam} → ${toTeam}`, // Derived display string
+                    dept: `${fromTeam} → ${toTeam}`,
                     status: collab.status || '요청'
                 });
             }
@@ -250,10 +241,19 @@ const CalendarDashboard = ({ db, departments }) => {
                                         {selectedEvent.type === 'task' ? '담당 부서' : '요청 흐름'}
                                     </div>
                                     <div className="text-sm font-semibold text-gray-700">
-                                        {selectedEvent.type === 'task' ?
-                                            `담당: ${selectedEvent.from}` :
-                                            `${selectedEvent.from} → ${selectedEvent.to}`
-                                        }
+                                        {/* 조건부 렌더링 수정 */}
+                                        {selectedEvent.type === 'collab' && (
+                                            <div className="flex gap-2 items-center">
+                                                <span className="font-bold">{selectedEvent.from}</span>
+                                                <span className="text-gray-400">→</span>
+                                                <span className="font-bold">{selectedEvent.to}</span>
+                                            </div>
+                                        )}
+                                        {selectedEvent.type === 'task' && (
+                                            <div>
+                                                <span className="font-bold">{selectedEvent.department || selectedEvent.from}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
