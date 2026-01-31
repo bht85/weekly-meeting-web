@@ -307,7 +307,7 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
             const employeeTasks = allTasks.filter(task =>
                 // Old version (Single) compatibility || New version (Multi) check
                 task.assigneeId === selectedEmployee.id ||
-                (task.assignees && task.assignees.some(a => a.id === selectedEmployee.id))
+                (Array.isArray(task.assignees) && task.assignees.some(a => a.id === selectedEmployee.id))
             );
 
             const ongoing = employeeTasks.filter(t => !t.isCompleted);
