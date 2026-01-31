@@ -125,6 +125,18 @@ const ALLOWED_EMAILS = [
     "test@composecoffee.co.kr"        // 테스트 계정
 ];
 
+const USER_DEPT_MAP = {
+    "daisy@composecoffee.co.kr": "경영지원본부", // (관리자급)
+    "choihy@composecoffee.co.kr": "재무팀",
+    "esc913@composecoffee.co.kr": "인사총무팀",
+    "sophia@composecoffee.co.kr": "해외사업팀",
+    "smin@composecoffee.co.kr": "재무기획팀",
+    "donghee.han@composecoffee.co.kr": "법무팀",
+    "IT@composecoffee.co.kr": "IT지원팀",
+    "sclee@composecoffee.co.kr": "구매물류팀",
+    "test@composecoffee.co.kr": "IT지원팀" // 테스트 계정은 IT팀으로 매핑
+};
+
 const LoginView = ({ onLogin, onSignup }) => {
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
@@ -830,7 +842,21 @@ function App() {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
+            if (currentUser) {
+                const dept = USER_DEPT_MAP[currentUser.email] || '기타';
+                const userWithDept = { ...currentUser, department: dept };
+                setUser(userWithDept);
+
+                // 로그인 시 작성 폼 부서 자동 선택
+                if (DEPARTMENTS.includes(dept)) {
+                    setInputDept(dept);
+                    // 뷰 필터는 '전체'로 시작하거나 본인 부서로 시작? (요청 : 부서 선택을 자동화)
+                    // 작성 시 자동화는 setInputDept로 해결.
+                    // 조회 시는 사용자 자유도가 중요하므로 '전체' 유지하거나 필요 시 변경.
+                }
+            } else {
+                setUser(null);
+            }
             setLoading(false);
         });
         return () => unsubscribe();

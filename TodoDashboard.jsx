@@ -22,6 +22,13 @@ const TodoDashboard = ({ db, user, departments }) => {
     const completedTasks = todos.filter(t => t.isCompleted).length;
     const progressRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
+    // Auto-select department based on logged-in user
+    useEffect(() => {
+        if (user?.department && departments.includes(user.department)) {
+            setSelectedDept(user.department);
+        }
+    }, [user, departments]);
+
     // Initial load & Real-time sync
     useEffect(() => {
         setLoading(true);
@@ -270,7 +277,7 @@ const TodoDashboard = ({ db, user, departments }) => {
                     onClose={() => setIsFormOpen(false)}
                     onSubmit={handleCreateTodo}
                     departments={departments}
-                    initialDept={selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept}
+                    initialDept={user?.department || (selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept)}
                 />
             )}
 

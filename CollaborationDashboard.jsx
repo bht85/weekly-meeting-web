@@ -425,6 +425,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                     onSubmit={handleCreate}
                     departments={departments}
                     myTeam={myTeam === '선택' ? '' : myTeam}
+                    userDept={user?.department}
                 />
             )}
 
@@ -444,9 +445,9 @@ const CollaborationDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
-const RequestFormModal = ({ onClose, onSubmit, departments }) => {
+const RequestFormModal = ({ onClose, onSubmit, departments, userDept }) => {
     const [formData, setFormData] = useState({
-        requesterTeam: '',
+        requesterTeam: userDept || '',
         targetTeam: '',
         title: '',
         description: '',
