@@ -61,19 +61,20 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Collabs -> Events
         collabs.forEach(collab => {
-            const fromTeam = collab.fromTeam || collab.fromDept || collab.from || '정보 없음';
-            const toTeam = collab.toTeam || collab.toDept || collab.to || '정보 없음';
+            // ★ 핵심 수정: 가능한 모든 필드명을 다 검사해서 값이 있는 것을 가져옴 ★
+            const sender = collab.department || collab.fromTeam || collab.from || collab.team || collab.fromDept || '발신팀 미상';
+            const receiver = collab.targetDepartment || collab.toTeam || collab.to || collab.target || collab.toDept || '수신팀 미상';
 
-            if (filterDept === '전체' || fromTeam === filterDept || toTeam === filterDept) {
+            if (filterDept === '전체' || sender === filterDept || receiver === filterDept) {
                 merged.push({
                     id: `collab-${collab.id}`,
                     type: 'collab',
                     title: collab.title || collab.content || '(제목 없음)',
                     desc: collab.content || collab.description || '',
                     date: collab.dueDate,
-                    from: fromTeam,
-                    to: toTeam,
-                    dept: `${fromTeam} → ${toTeam}`,
+                    from: sender,
+                    to: receiver,
+                    dept: `${sender} → ${receiver}`,
                     status: collab.status || '요청'
                 });
             }
