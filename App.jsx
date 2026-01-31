@@ -1455,6 +1455,10 @@ function App() {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
     }
 
+    // --- [복구] 날짜 데이터 계산 로직 ---
+    const allDates = [...new Set([...(minutes?.map(m => m.date) || []), ...(feedbacks?.map(f => f.date) || [])])].sort((a, b) => b.localeCompare(a));
+    const filteredDates = selectedDate === 'recent' ? allDates.slice(0, 2) : (selectedDate ? [selectedDate] : allDates);
+
     // 3. 정상 접속
     return (
         <div className="min-h-screen bg-slate-50/50 font-sans text-slate-800 pb-20">
