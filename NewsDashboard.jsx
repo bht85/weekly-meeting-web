@@ -267,6 +267,7 @@ const NewsDashboard = () => {
             </div>
 
             {/* Content */}
+            {/* Content */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
@@ -284,49 +285,47 @@ const NewsDashboard = () => {
                             관련된 최신 기사가 없습니다.
                         </div>
                     ) : (
-                        articles.map((item, index) => {
-                            const thumbnail = getThumbnail(item);
-                            return (
-                                <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full">
-                                    <div className="p-5 flex-1 flex flex-col">
-                                        <div className="flex items-start justify-between gap-3 mb-3">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                                {item.author || '뉴스'}
-                                            </span>
-                                            <span className="text-xs text-slate-400 flex items-center shrink-0">
-                                                <Calendar className="w-3 h-3 mr-1" />
-                                                {formatDate(item.pubDate)}
-                                            </span>
-                                        </div>
+                        [...articles]
+                            .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+                            .slice(0, 8)
+                            .map((item, index) => {
+                                const thumbnail = getThumbnail(item);
+                                return (
+                                    <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full">
+                                        <div className="p-5 flex-1 flex flex-col">
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                                    {item.author || '뉴스'}
+                                                </span>
+                                                <span className="text-xs text-slate-400 flex items-center shrink-0">
+                                                    <Calendar className="w-3 h-3 mr-1" />
+                                                    {formatDate(item.pubDate)}
+                                                </span>
+                                            </div>
 
-                                        <h3 className="text-gray-900 font-bold text-lg leading-snug mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                                            <a href={item.link} target="_blank" rel="noopener noreferrer">
-                                                {item.title}
-                                            </a>
-                                        </h3>
+                                            <h3 className="text-gray-900 font-bold text-lg leading-snug mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                                                <a href={item.link} target="_blank" rel="noopener noreferrer">
+                                                    {item.title}
+                                                </a>
+                                            </h3>
 
-                                        {/* Description Snippet (optional, html stripped) */}
-                                        {/* <p className="text-sm text-slate-600 line-clamp-3 mb-4 flex-1">
-                                            {item.description.replace(/<[^>]+>/g, '')}
-                                        </p> */}
-
-                                        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100">
-                                            <span className="text-xs text-slate-500 font-medium truncate max-w-[150px]">
-                                                {item.source?.title || 'Google News'}
-                                            </span>
-                                            <a
-                                                href={item.link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center"
-                                            >
-                                                원문 보기 <ExternalLink className="w-3 h-3 ml-1" />
-                                            </a>
+                                            <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100">
+                                                <span className="text-xs text-slate-500 font-medium truncate max-w-[150px]">
+                                                    {item.source?.title || 'Google News'}
+                                                </span>
+                                                <a
+                                                    href={item.link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center"
+                                                >
+                                                    원문 보기 <ExternalLink className="w-3 h-3 ml-1" />
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })
+                                );
+                            })
                     )}
                 </div>
             )}
