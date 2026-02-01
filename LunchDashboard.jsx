@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     Utensils, MapPin, Star, Coffee, Plus, Search, Dices, X, ExternalLink,
-    ThumbsUp, MessageCircle, Zap
+    ThumbsUp, MessageCircle, Zap, Trash2
 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
 const CATEGORIES = [
     { id: 'all', label: '전체', icon: Utensils },
@@ -206,6 +206,22 @@ const LunchDashboard = ({ db, user }) => {
         }
     };
 
+    const handleClearAll = async () => {
+        if (!window.confirm('모든 맛집 데이터를 삭제하시겠습니까? \n이 작업은 되돌릴 수 없습니다.')) return;
+
+        try {
+            const querySnapshot = await getDocs(collection(db, 'office_restaurants'));
+            const deletePromises = querySnapshot.docs.map(document =>
+                deleteDoc(doc(db, 'office_restaurants', document.id))
+            );
+            await Promise.all(deletePromises);
+            alert('초기화 완료! 다시 자동 채우기를 해주세요.');
+        } catch (error) {
+            console.error("Error clearing data: ", error);
+            alert('데이터 삭제 중 오류가 발생했습니다.');
+        }
+    };
+
     const getCategoryLabel = (catId) => CATEGORIES.find(c => c.id === catId)?.label || catId;
 
     const filteredRestaurants = filter === 'all'
@@ -234,6 +250,13 @@ const LunchDashboard = ({ db, user }) => {
                             리스트 자동 채우기
                         </button>
                     )}
+                    <button
+                        onClick={handleClearAll}
+                        className="flex items-center gap-2 px-3 py-2.5 bg-red-500 text-white rounded-lg font-bold shadow-md hover:bg-red-600 transition-all"
+                        title="리스트 초기화"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
                     <button
                         onClick={handleRandomPick}
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg font-bold shadow-md hover:shadow-lg hover:brightness-110 transition-all"
