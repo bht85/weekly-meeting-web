@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Utensils, MapPin, Star, Coffee, Plus, Search, Dices, X, ExternalLink,
-    ThumbsUp, MessageCircle
+    ThumbsUp, MessageCircle, Zap
 } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -105,6 +105,37 @@ const LunchDashboard = ({ db, user }) => {
         }, 100);
     };
 
+    const handleAutoFill = async () => {
+        if (!window.confirm('가상의 맛집 데이터 10개를 자동으로 추가하시겠습니까?')) return;
+
+        const sampleData = [
+            { name: '순대국밥 맛집', category: 'korean', rating: '4.5', comment: '해장에 최고, 국물이 진해요', recommender: '김철수', url: 'https://map.naver.com' },
+            { name: '회사 앞 돈까스', category: 'japanese', rating: '4.0', comment: '점심시간 웨이팅 있음, 치즈돈까스 추천', recommender: '이영희', url: 'https://map.naver.com' },
+            { name: '직화 쭈꾸미', category: 'korean', rating: '4.8', comment: '매운거 땡길 때 필수 코스', recommender: '박부장', url: 'https://map.naver.com' },
+            { name: '홍콩반점', category: 'chinese', rating: '3.5', comment: '가성비 좋은 짜장면', recommender: '최사원', url: 'https://map.naver.com' },
+            { name: '스타벅스 리저브', category: 'cafe', rating: '5.0', comment: '법카 찬스 쓸 때 가는 곳', recommender: '서단', url: 'https://map.naver.com' },
+            { name: '버거킹', category: 'western', rating: '4.2', comment: '빠르게 먹고 쉬고 싶을 때', recommender: '익명', url: 'https://map.naver.com' },
+            { name: '전주 콩나물국밥', category: 'korean', rating: '4.3', comment: '가성비 최고, 밥 리필 가능', recommender: '정대리', url: 'https://map.naver.com' },
+            { name: '베트남 쌀국수', category: 'western', rating: '4.6', comment: '비 오는 날 생각나는 국물', recommender: '한과장', url: 'https://map.naver.com' },
+            { name: '참치 김치찌개', category: 'korean', rating: '4.1', comment: '계란말이 무한리필 됨', recommender: '송팀장', url: 'https://map.naver.com' },
+            { name: '샌드위치 전문점', category: 'cafe', rating: '4.7', comment: '다이어트할 때 추천', recommender: '유지인', url: 'https://map.naver.com' },
+        ];
+
+        try {
+            for (const data of sampleData) {
+                await addDoc(collection(db, 'office_restaurants'), {
+                    ...data,
+                    rating: Number(data.rating),
+                    createdAt: serverTimestamp()
+                });
+            }
+            alert('샘플 데이터 10개가 추가되었습니다!');
+        } catch (error) {
+            console.error("Error adding sample data: ", error);
+            alert('데이터 추가 중 오류가 발생했습니다.');
+        }
+    };
+
     const getCategoryLabel = (catId) => CATEGORIES.find(c => c.id === catId)?.label || catId;
 
     const filteredRestaurants = filter === 'all'
@@ -123,6 +154,16 @@ const LunchDashboard = ({ db, user }) => {
                     <p className="text-slate-500 mt-1">오늘 점심 뭐 먹지? 직원들이 직접 추천하는 찐맛집 컬렉션</p>
                 </div>
                 <div className="flex gap-3">
+                    {/* Bulk Insert Button - Only visible when empty */}
+                    {restaurants.length === 0 && (
+                        <button
+                            onClick={handleAutoFill}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg font-bold shadow-md hover:bg-green-700 transition-all animate-pulse"
+                        >
+                            <Zap className="w-5 h-5" />
+                            리스트 자동 채우기
+                        </button>
+                    )}
                     <button
                         onClick={handleRandomPick}
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg font-bold shadow-md hover:shadow-lg hover:brightness-110 transition-all"
@@ -147,8 +188,8 @@ const LunchDashboard = ({ db, user }) => {
                         key={cat.id}
                         onClick={() => setFilter(cat.id)}
                         className={`px-4 py-2 rounded-full text-sm font-bold transition-all border ${filter === cat.id
-                                ? 'bg-orange-500 text-white border-orange-500 shadow-md'
-                                : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300 hover:text-orange-500'
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-md'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300 hover:text-orange-500'
                             }`}
                     >
                         {cat.label}
