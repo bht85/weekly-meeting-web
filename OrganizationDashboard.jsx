@@ -281,17 +281,20 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
         // 1. 직원 목록이 아직 없거나, 이미 누군가 선택되어 있다면 패스
         if (employees.length === 0 || selectedEmployee) return;
 
-        // 2. [핵심] 로그인한 유저의 이메일과 일치하는 직원을 찾음
-        const me = employees.find(emp => emp.email === user?.email);
+        const userDept = user?.department;
 
-        if (me) {
-            // 3. '나'를 찾았으면 나를 선택
-            setSelectedEmployee(me);
+        // 2. [핵심] 내 부서(`userDept`)에 속한 직원 중 첫 번째 사람을 찾음
+        // (보통 본인이거나, 같은 팀 동료가 선택됨)
+        const myTeamMember = employees.find(emp => emp.department === userDept);
+
+        if (myTeamMember) {
+            // 3. 내 팀원이 있으면 그 사람(보통 나)을 선택
+            setSelectedEmployee(myTeamMember);
         } else {
-            // 4. '나'를 못 찾았으면(관리자 등), 기존대로 리스트의 첫 번째(직급 1순위) 선택
+            // 4. 내 팀원이 목록에 없으면(관리자 모드 등), 전체 목록의 1등 선택
             setSelectedEmployee(employees[0]);
         }
-    }, [employees, selectedEmployee, setSelectedEmployee, user?.email]);
+    }, [employees, user?.department]); // selectedEmployee는 의존성에서 제외하여 최초 1회만 동작하게 함
 
     // 2. Fetch All Tasks Once (on Mount or Department Change)
     useEffect(() => {
