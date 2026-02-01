@@ -278,30 +278,20 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
 
     // 1. Initial Selection: Auto-select user if present, otherwise first employee
     useEffect(() => {
-        if (!selectedEmployee && employees.length > 0) {
-            // Check if current user is in the employee list (match by email if available, or name as fallback)
-            // Using name primarily as per prompt "내 이름(로그인 유저)이 있는지 찾아"
-            // But checking email is safer if available in user object. user.email is usually present.
-            // Employee data also has email.
-            let me = null;
-            if (user?.email) {
-                me = employees.find(e => e.email === user.email);
-            }
-            // Fallback to name if email match fails or user doesn't have email in prop (unlikely)
-            if (!me && user?.displayName) { // user.displayName might not be set, user object from App has ...currentUser.
-                // In App.jsx: user object is Firebase User + department.
-                // Firebase user might not have displayName set depending on signup flow.
-                // Assuming user knows their "name" which is used in OrganizationDashboard.
-                // Let's rely on email which is robust.
-            }
+        // 1. 직원 목록이 아직 없거나, 이미 누군가 선택되어 있다면 패스
+        if (employees.length === 0 || selectedEmployee) return;
 
-            if (me) {
-                setSelectedEmployee(me);
-            } else {
-                setSelectedEmployee(employees[0]);
-            }
+        // 2. [핵심] 로그인한 유저의 이메일과 일치하는 직원을 찾음
+        const me = employees.find(emp => emp.email === user?.email);
+
+        if (me) {
+            // 3. '나'를 찾았으면 나를 선택
+            setSelectedEmployee(me);
+        } else {
+            // 4. '나'를 못 찾았으면(관리자 등), 기존대로 리스트의 첫 번째(직급 1순위) 선택
+            setSelectedEmployee(employees[0]);
         }
-    }, [employees, selectedEmployee, setSelectedEmployee, user]);
+    }, [employees, selectedEmployee, setSelectedEmployee, user?.email]);
 
     // 2. Fetch All Tasks Once (on Mount or Department Change)
     useEffect(() => {
