@@ -7,8 +7,9 @@ import {
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
     ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor,
-    Globe, User, CheckSquare
+    CheckSquare, Utensils
 } from 'lucide-react';
+import LunchDashboard from './LunchDashboard';
 import CollaborationDashboard from './CollaborationDashboard';
 import NewsDashboard from './NewsDashboard';
 import TodoDashboard from './TodoDashboard';
@@ -106,6 +107,7 @@ const FEEDBACK_TEAMS = [
 const NAV_ITEMS = [
     { id: 'news', label: '업계 동향', icon: Monitor },
     { id: 'calendar', label: '캘린더', icon: Calendar },
+    { id: 'lunch', label: '맛집/식단', icon: Utensils },
     { id: 'meeting', label: '주간회의록', icon: FileText },
     { id: 'collaboration', label: '협업 요청', icon: Share2 },
     { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
@@ -1253,6 +1255,9 @@ function App() {
 
                 {/* [MODE 5] 업계 동향 */}
                 {appMode === 'news' && <NewsDashboard />}
+
+                {/* [MODE 9] 맛집/식단 (New) */}
+                {appMode === 'lunch' && <LunchDashboard db={db} user={user} />}
 
                 {/* [MODE 4] 협업 요청 */}
                 {appMode === 'collaboration' && (
