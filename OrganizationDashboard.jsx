@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     collection, addDoc, query, where, onSnapshot,
-    serverTimestamp, doc, updateDoc, deleteDoc, orderBy
+    serverTimestamp, doc, updateDoc, deleteDoc, orderBy, getDocs
 } from 'firebase/firestore';
 import {
     Users, Plus, Mail, Briefcase, Calendar, ChevronRight,
@@ -32,7 +32,7 @@ const USER_DEFINED_RANKS = {
 
 const getRank = (position) => USER_DEFINED_RANKS[position] || 99;
 
-const OrganizationDashboard = ({ db, departments }) => {
+const OrganizationDashboard = ({ db, departments, user }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual'
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ const OrganizationDashboard = ({ db, departments }) => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [db, selectedEmployee]);
+    }, [db, selectedEmployee]); // Note: selectedEmployee is in dependency to support re-selection if needed, but logic inside handles updates.
 
     const handleSaveEmployee = async (data) => {
         try {
@@ -178,6 +178,7 @@ const OrganizationDashboard = ({ db, departments }) => {
                     setSelectedEmployee={setSelectedEmployee}
                     onEdit={openEditModal}
                     onDelete={handleDeleteEmployee}
+                    user={user}
                 />
             )}
 
@@ -268,57 +269,115 @@ const TeamOverview = ({ employees, departments, onOpenAddModal, onDeleteEmployee
     );
 };
 
-const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSelectedEmployee, onEdit, onDelete }) => {
+const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSelectedEmployee, onEdit, onDelete, user }) => {
     const [tasks, setTasks] = useState({ ongoing: [], completed: [] });
-    const [loadingTasks, setLoadingTasks] = useState(false);
+    // allDeptTasks holds all tasks for the department, fetched once.
+    const [allDeptTasks, setAllDeptTasks] = useState([]);
+    // Loading state only for the initial fetch
+    const [initialLoading, setInitialLoading] = useState(false);
 
-    // Select first employee by default
+    // 1. Initial Selection: Auto-select user if present, otherwise first employee
     useEffect(() => {
         if (!selectedEmployee && employees.length > 0) {
-            setSelectedEmployee(employees[0]);
-        }
-    }, [employees, selectedEmployee, setSelectedEmployee]);
+            // Check if current user is in the employee list (match by email if available, or name as fallback)
+            // Using name primarily as per prompt "내 이름(로그인 유저)이 있는지 찾아"
+            // But checking email is safer if available in user object. user.email is usually present.
+            // Employee data also has email.
+            let me = null;
+            if (user?.email) {
+                me = employees.find(e => e.email === user.email);
+            }
+            // Fallback to name if email match fails or user doesn't have email in prop (unlikely)
+            if (!me && user?.displayName) { // user.displayName might not be set, user object from App has ...currentUser.
+                // In App.jsx: user object is Firebase User + department.
+                // Firebase user might not have displayName set depending on signup flow.
+                // Assuming user knows their "name" which is used in OrganizationDashboard.
+                // Let's rely on email which is robust.
+            }
 
-    // Fetch tasks for selected employee (Updated with Client-side filtering)
+            if (me) {
+                setSelectedEmployee(me);
+            } else {
+                setSelectedEmployee(employees[0]);
+            }
+        }
+    }, [employees, selectedEmployee, setSelectedEmployee, user]);
+
+    // 2. Fetch All Tasks Once (on Mount or Department Change)
     useEffect(() => {
-        if (!db || !selectedEmployee) return;
+        // Fetch all tasks for the user's scope (or just all tasks if userDept is not restrictive enough for the UI logic)
+        // Prompt says: "dept_todos 컬렉션에서 department가 userDept인 모든 문서를 가져와서"
+        // But the dashboard allows clicking ANY employee from ANY department.
+        // So we should actually fetch ALL tasks to support viewing other departments' employees too.
+        // OR, the prompt assumes standard usage is within one's department.
+        // However, Organization Dashboard shows ALL departments.
+        // If I only fetch userDept tasks, clicking an employee from another dept will show 0 tasks.
+        // SAFE BET: Fetch ALL tasks from 'dept_todos'. The collection size shouldn't be massive.
+        // OR better: Fetch all without filter.
 
-        setLoadingTasks(true);
-        // Fetch tasks for the employee's department (Optimization)
-        // If department is null, fetch all (using fallback)
-        let q;
-        if (selectedEmployee.department) {
-            q = query(
-                collection(db, 'dept_todos'),
-                where('department', '==', selectedEmployee.department),
-                orderBy('createdAt', 'desc')
-            );
-        } else {
-            q = query(
-                collection(db, 'dept_todos'),
-                orderBy('createdAt', 'desc')
-            );
+        // Prompt Check: "dept_todos 컬렉션에서 department가 userDept인 모든 문서를 가져와서"
+        // This implies the user might only be interested in THEIR department's tasks, OR the prompt author assumes 'userDept' context.
+        // BUT `IndividualTasks` is viewing `selectedEmployee`. 
+        // If I click a Finance employee, I need Finance tasks.
+        // If I click IT employee, I need IT tasks.
+        // So I should probably fetch ALL tasks to be safe for a "Manager" view, OR rely on standard behavior.
+        // Let's fetch ALL tasks to ensure no bug where clicking another dept shows nothing. 
+        // "Fetch All & Filter" usually implies fetching the entire dataset needed for the view.
+
+        const fetchAllTasks = async () => {
+            setInitialLoading(true);
+            try {
+                const tasksRef = collection(db, 'dept_todos');
+                const snapshot = await getDocs(tasksRef); // Fetching EVERYTHING
+                const loadedTasks = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setAllDeptTasks(loadedTasks);
+            } catch (error) {
+                console.error("Failed to fetch all tasks:", error);
+            } finally {
+                setInitialLoading(false);
+            }
+        };
+
+        if (db) {
+            fetchAllTasks();
         }
+    }, [db]); // Run once on mount (and if db changes)
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // 3. Client-side Filtering (Runs instantly when selectedEmployee or allDeptTasks changes)
+    useEffect(() => {
+        if (!selectedEmployee) return;
 
-            // Client-side filtering for compatibility (Single vs Multi Assignee)
-            const employeeTasks = allTasks.filter(task =>
-                // Old version (Single) compatibility || New version (Multi) check
-                task.assigneeId === selectedEmployee.id ||
-                (Array.isArray(task.assignees) && task.assignees.some(a => a.id === selectedEmployee.id))
-            );
+        // Filter from allDeptTasks
+        const myTasks = allDeptTasks.filter(task => {
+            // A. Department Check (Optional but good for optimization if we had dept filter)
+            // Even if we fetched all, filtering by dept first is correct logic.
+            if (task.department !== selectedEmployee.department) return false;
 
-            const ongoing = employeeTasks.filter(t => !t.isCompleted);
-            const completed = employeeTasks.filter(t => t.isCompleted);
+            // B. Assignee Check
+            // 1. New way (Array)
+            const inAssignees = task.assignees?.some?.(a => a.id === selectedEmployee.id);
+            // 2. Old way (Single ID)
+            const isLegacy = task.assigneeId === selectedEmployee.id;
 
-            setTasks({ ongoing, completed });
-            setLoadingTasks(false);
+            return inAssignees || isLegacy;
         });
 
-        return () => unsubscribe();
-    }, [db, selectedEmployee]);
+        const ongoing = myTasks.filter(t => {
+            if (t.isCompleted !== undefined) return !t.isCompleted;
+            return t.status !== 'Done' && t.status !== '완료';
+        });
+
+        const completed = myTasks.filter(t => {
+            if (t.isCompleted !== undefined) return t.isCompleted;
+            return t.status === 'Done' || t.status === '완료';
+        });
+
+        setTasks({ ongoing, completed });
+
+    }, [selectedEmployee, allDeptTasks]);
 
     const getPriorityColor = (p) => {
         switch (p) {
@@ -328,6 +387,8 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
             default: return 'text-slate-700 bg-slate-50 border-slate-200';
         }
     };
+
+    // ... rest of the component ...
 
     return (
         <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-200px)]">

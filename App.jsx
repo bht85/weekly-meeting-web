@@ -1279,7 +1279,7 @@ function App() {
 
                 {/* [MODE 7] 조직/인사 */}
                 {appMode === 'org' && (
-                    <OrganizationDashboard db={db} departments={DEPARTMENTS} />
+                    <OrganizationDashboard db={db} departments={DEPARTMENTS} user={user} />
                 )}
 
                 {/* [MODE 3] 회의록 시스템 */}
