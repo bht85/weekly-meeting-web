@@ -109,16 +109,86 @@ const LunchDashboard = ({ db, user }) => {
         if (!window.confirm('가상의 맛집 데이터 10개를 자동으로 추가하시겠습니까?')) return;
 
         const sampleData = [
-            { name: '순대국밥 맛집', category: 'korean', rating: '4.5', comment: '해장에 최고, 국물이 진해요', recommender: '김철수', url: 'https://map.naver.com' },
-            { name: '회사 앞 돈까스', category: 'japanese', rating: '4.0', comment: '점심시간 웨이팅 있음, 치즈돈까스 추천', recommender: '이영희', url: 'https://map.naver.com' },
-            { name: '직화 쭈꾸미', category: 'korean', rating: '4.8', comment: '매운거 땡길 때 필수 코스', recommender: '박부장', url: 'https://map.naver.com' },
-            { name: '홍콩반점', category: 'chinese', rating: '3.5', comment: '가성비 좋은 짜장면', recommender: '최사원', url: 'https://map.naver.com' },
-            { name: '스타벅스 리저브', category: 'cafe', rating: '5.0', comment: '법카 찬스 쓸 때 가는 곳', recommender: '서단', url: 'https://map.naver.com' },
-            { name: '버거킹', category: 'western', rating: '4.2', comment: '빠르게 먹고 쉬고 싶을 때', recommender: '익명', url: 'https://map.naver.com' },
-            { name: '전주 콩나물국밥', category: 'korean', rating: '4.3', comment: '가성비 최고, 밥 리필 가능', recommender: '정대리', url: 'https://map.naver.com' },
-            { name: '베트남 쌀국수', category: 'western', rating: '4.6', comment: '비 오는 날 생각나는 국물', recommender: '한과장', url: 'https://map.naver.com' },
-            { name: '참치 김치찌개', category: 'korean', rating: '4.1', comment: '계란말이 무한리필 됨', recommender: '송팀장', url: 'https://map.naver.com' },
-            { name: '샌드위치 전문점', category: 'cafe', rating: '4.7', comment: '다이어트할 때 추천', recommender: '유지인', url: 'https://map.naver.com' },
+            {
+                name: '소문난성수감자탕',
+                category: 'korean',
+                rating: '4.6',
+                comment: '백종원 3대천왕 나온 곳, 점심엔 웨이팅 필수!',
+                recommender: '최훈영',
+                url: 'https://map.naver.com/p/search/성수%20소문난감자탕'
+            },
+            {
+                name: '대림국수 성수점',
+                category: 'japanese',
+                rating: '4.5',
+                comment: '꼬치국수가 정말 맛있어요. 면발이 쫄깃함.',
+                recommender: '박선민',
+                url: 'https://map.naver.com/p/search/성수%20대림국수'
+            },
+            {
+                name: '칙피스 성수점',
+                category: 'western',
+                rating: '4.7',
+                comment: '다이어트할 때 가는 곳. 샐러드가 푸짐해요.',
+                recommender: '이슬기',
+                url: 'https://map.naver.com/p/search/성수%20칙피스'
+            },
+            {
+                name: '전자방',
+                category: 'chinese',
+                rating: '4.4',
+                comment: '퓨전 중식당. 마라 감바스랑 탕수육 추천!',
+                recommender: '한동희',
+                url: 'https://map.naver.com/p/search/성수%20전자방'
+            },
+            {
+                name: '탐광',
+                category: 'japanese',
+                rating: '4.3',
+                comment: '에비카츠동(새우튀김 덮밥) 비주얼이 미쳤음.',
+                recommender: '이승찬',
+                url: 'https://map.naver.com/p/search/성수%20탐광'
+            },
+            {
+                name: '할머니의 레시피',
+                category: 'korean',
+                rating: '4.2',
+                comment: '깔끔한 가정식 백반. 속 편한 밥 먹고 싶을 때.',
+                recommender: '윤지인',
+                url: 'https://map.naver.com/p/search/성수%20할머니의레시피'
+            },
+            {
+                name: '르프리크',
+                category: 'western',
+                rating: '4.8',
+                comment: '성수동 수제버거 1티어. 내쉬빌 치킨버거 강추.',
+                recommender: '오희규',
+                url: 'https://map.naver.com/p/search/성수%20르프리크'
+            },
+            {
+                name: '오레노카츠 성수점',
+                category: 'japanese',
+                rating: '4.5',
+                comment: '치즈 돈까스랑 카레가 맛있음. 무난한 점심.',
+                recommender: '차은성',
+                url: 'https://map.naver.com/p/search/성수%20오레노카츠'
+            },
+            {
+                name: '어니언 성수',
+                category: 'cafe',
+                rating: '4.6',
+                comment: '빵지순례 필수 코스. 팡도르랑 커피 조합 굿.',
+                recommender: '경태현',
+                url: 'https://map.naver.com/p/search/성수%20어니언'
+            },
+            {
+                name: '다로베',
+                category: 'western',
+                rating: '4.4',
+                comment: '화덕피자 맛집. 회식이나 기분 낼 때 추천.',
+                recommender: '아서',
+                url: 'https://map.naver.com/p/search/성수%20다로베'
+            }
         ];
 
         try {
