@@ -107,12 +107,12 @@ const FEEDBACK_TEAMS = [
 const NAV_ITEMS = [
     { id: 'news', label: '업계 동향', icon: Monitor },
     { id: 'calendar', label: '캘린더', icon: Calendar },
-    { id: 'lunch', label: '맛집/식단', icon: Utensils },
     { id: 'meeting', label: '주간회의록', icon: FileText },
     { id: 'collaboration', label: '협업 요청', icon: Share2 },
     { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
     { id: 'org', label: '조직/인사', icon: Users },
     { id: 'kpi', label: 'KPI', icon: BarChart3 },
+    { id: 'lunch', label: '맛집/식단', icon: Utensils },
 ];
 
 const ALLOWED_EMAILS = [

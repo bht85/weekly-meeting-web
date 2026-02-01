@@ -60,7 +60,6 @@ const LunchDashboard = ({ db, user }) => {
             await addDoc(collection(db, 'office_restaurants'), {
                 ...newRestaurant,
                 rating: Number(newRestaurant.rating),
-                recommender: user.email.split('@')[0], // ID만 표시
                 createdAt: serverTimestamp()
             });
             setIsAddModalOpen(false);
@@ -114,7 +113,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'korean',
                 rating: '4.6',
                 comment: '백종원 3대천왕 나온 곳, 점심엔 웨이팅 필수!',
-                recommender: '최훈영',
                 url: 'https://map.naver.com/p/search/성수%20소문난감자탕'
             },
             {
@@ -122,7 +120,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'japanese',
                 rating: '4.5',
                 comment: '꼬치국수가 정말 맛있어요. 면발이 쫄깃함.',
-                recommender: '박선민',
                 url: 'https://map.naver.com/p/search/성수%20대림국수'
             },
             {
@@ -130,7 +127,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'western',
                 rating: '4.7',
                 comment: '다이어트할 때 가는 곳. 샐러드가 푸짐해요.',
-                recommender: '이슬기',
                 url: 'https://map.naver.com/p/search/성수%20칙피스'
             },
             {
@@ -138,7 +134,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'chinese',
                 rating: '4.4',
                 comment: '퓨전 중식당. 마라 감바스랑 탕수육 추천!',
-                recommender: '한동희',
                 url: 'https://map.naver.com/p/search/성수%20전자방'
             },
             {
@@ -146,7 +141,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'japanese',
                 rating: '4.3',
                 comment: '에비카츠동(새우튀김 덮밥) 비주얼이 미쳤음.',
-                recommender: '이승찬',
                 url: 'https://map.naver.com/p/search/성수%20탐광'
             },
             {
@@ -154,7 +148,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'korean',
                 rating: '4.2',
                 comment: '깔끔한 가정식 백반. 속 편한 밥 먹고 싶을 때.',
-                recommender: '윤지인',
                 url: 'https://map.naver.com/p/search/성수%20할머니의레시피'
             },
             {
@@ -162,7 +155,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'western',
                 rating: '4.8',
                 comment: '성수동 수제버거 1티어. 내쉬빌 치킨버거 강추.',
-                recommender: '오희규',
                 url: 'https://map.naver.com/p/search/성수%20르프리크'
             },
             {
@@ -170,7 +162,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'japanese',
                 rating: '4.5',
                 comment: '치즈 돈까스랑 카레가 맛있음. 무난한 점심.',
-                recommender: '차은성',
                 url: 'https://map.naver.com/p/search/성수%20오레노카츠'
             },
             {
@@ -178,7 +169,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'cafe',
                 rating: '4.6',
                 comment: '빵지순례 필수 코스. 팡도르랑 커피 조합 굿.',
-                recommender: '경태현',
                 url: 'https://map.naver.com/p/search/성수%20어니언'
             },
             {
@@ -186,7 +176,6 @@ const LunchDashboard = ({ db, user }) => {
                 category: 'western',
                 rating: '4.4',
                 comment: '화덕피자 맛집. 회식이나 기분 낼 때 추천.',
-                recommender: '아서',
                 url: 'https://map.naver.com/p/search/성수%20다로베'
             }
         ];
@@ -319,8 +308,7 @@ const LunchDashboard = ({ db, user }) => {
                                 <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600 mb-4 min-h-[60px]">
                                     "{restaurant.comment}"
                                 </div>
-                                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                                    <span className="text-slate-400">추천: <span className="font-medium text-slate-600">{restaurant.recommender}</span></span>
+                                <div className="flex items-center justify-end pt-3 border-t border-slate-100 text-xs">
                                     {restaurant.url && (
                                         <a
                                             href={restaurant.url}
