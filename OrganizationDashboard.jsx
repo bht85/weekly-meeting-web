@@ -499,10 +499,10 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
                                 <List className="w-5 h-5 text-indigo-500" /> 담당 업무 리스트
                             </h3>
 
-                            {loadingTasks ? (
+                            {initialLoading ? (
                                 <div className="text-center py-10 text-slate-400">
                                     <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                                    로딩 중...
+                                    업무 데이터 동기화 중...
                                 </div>
                             ) : (
                                 <div className="space-y-8">
