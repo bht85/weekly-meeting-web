@@ -915,6 +915,39 @@ function App() {
         }
     };
 
+    // --- 30분 자동 로그아웃 (비활동 시) ---
+    useEffect(() => {
+        let timeoutId;
+
+        const resetTimer = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (user) {
+                // 30분(1000 * 60 * 30 밀리초) 후 자동 로그아웃
+                timeoutId = setTimeout(() => {
+                    handleLogout();
+                    alert("30분 동안 활동이 없어 자동 로그아웃 되었습니다.");
+                }, 30 * 60 * 1000);
+            }
+        };
+
+        const handleActivity = () => {
+            resetTimer();
+        };
+
+        // 감지할 사용자 활동 이벤트 목록
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+
+        if (user) {
+            resetTimer();
+            events.forEach(event => window.addEventListener(event, handleActivity));
+        }
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            events.forEach(event => window.removeEventListener(event, handleActivity));
+        };
+    }, [user]);
+
     useEffect(() => {
         const q1 = query(collection(db, 'weekly_minutes'));
         const unsub1 = onSnapshot(q1, (snapshot) => {
