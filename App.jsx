@@ -1197,44 +1197,49 @@ function App() {
             {/* 상단 네비게이션 (헤더) */}
             <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex items-center gap-8">
-                            <div className="flex items-center text-slate-800 font-bold text-xl cursor-pointer" onClick={() => setAppMode('news')}>
-                                <Layout className="w-6 h-6 mr-2 text-indigo-600" />
-                                <span className="hidden sm:inline">컴포즈커피</span>
-                                <span className="sm:hidden">컴포즈</span>
+                    <div className="flex justify-between h-14 items-center">
+                        {/* 좌측: 로고 + 네비 메뉴 */}
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center text-slate-800 font-bold text-base cursor-pointer shrink-0" onClick={() => setAppMode('news')}>
+                                <Layout className="w-5 h-5 mr-1.5 text-indigo-600" />
+                                <span className="hidden lg:inline">컴포즈커피</span>
                             </div>
 
-                            <div className="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
+                            <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
                                 {NAV_ITEMS.map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
                                             key={item.id}
                                             onClick={() => setAppMode(item.id)}
-                                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${appMode === item.id ? 'bg-white text-indigo-900 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                                            title={item.label}
+                                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${appMode === item.id
+                                                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+                                                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                                                }`}
                                         >
-                                            <span className="flex items-center"><IconComponent className="w-4 h-4 mr-2" />{item.label}</span>
+                                            <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                                            <span className="hidden lg:inline">{item.label}</span>
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        {/* 우측 유틸리티 버튼들 */}
-                        <div className="flex items-center space-x-2">
-                            <span className="text-slate-500 text-sm mr-1 hidden sm:block">{user.email.split('@')[0]}님</span>
+                        {/* 우측: 사용자 정보 + 로그아웃 + 모바일 메뉴 */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-slate-400 text-xs hidden xl:block truncate max-w-[120px]">{user.email.split('@')[0]}님</span>
                             <button
                                 onClick={handleLogout}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg text-sm font-medium transition-all"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg text-xs font-medium transition-all"
                                 title="로그아웃"
                             >
-                                <Lock className="w-4 h-4" />
+                                <Lock className="w-3.5 h-3.5" />
                                 <span className="hidden sm:inline">로그아웃</span>
                             </button>
 
-                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-gray-500">
-                                <Menu className="w-6 h-6" />
+                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-1.5 text-gray-500">
+                                <Menu className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
