@@ -8,19 +8,42 @@ import {
     query, where, onSnapshot, serverTimestamp, orderBy
 } from 'firebase/firestore';
 
+// 월 옵션 생성 (당월 포함 최근 12개월)
+const getMonthOptions = () => {
+    const now = new Date();
+    const options = [];
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월${i === 0 ? ' (이번 달)' : ''}`;
+        options.push({ value, label });
+    }
+    return options;
+};
+
+const MONTH_OPTIONS = getMonthOptions();
+
 const TodoDashboard = ({ db, user, departments }) => {
     // State
     const [selectedDept, setSelectedDept] = useState(departments[0] || '전체');
+    const [selectedMonth, setSelectedMonth] = useState(MONTH_OPTIONS[0].value); // 당월 기본
     const [todos, setTodos] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [editingTodo, setEditingTodo] = useState(null); // For edit modal
-    const [isFormOpen, setIsFormOpen] = useState(false); // For create modal
+    const [editingTodo, setEditingTodo] = useState(null);
+    const [isFormOpen, setIsFormOpen] = useState(false);
 
-    // Derived State for Statistics
-    const totalTasks = todos.length;
-    const completedTasks = todos.filter(t => t.isCompleted).length;
+    // 월 필터링된 할 일 목록
+    const filteredTodos = todos.filter(todo => {
+        if (!selectedMonth || selectedMonth === 'all') return true;
+        if (!todo.dueDate) return false;
+        return todo.dueDate.startsWith(selectedMonth);
+    });
+
+    // Derived State for Statistics (필터링된 기준)
+    const totalTasks = filteredTodos.length;
+    const completedTasks = filteredTodos.filter(t => t.isCompleted).length;
     const progressRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
     // Auto-select department based on logged-in user
@@ -154,7 +177,22 @@ const TodoDashboard = ({ db, user, departments }) => {
                         <p className="text-sm text-slate-500 mt-1">부서별 중요 업무 및 마감기한 관리</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        {/* 월 선택 */}
+                        <div className="relative">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="appearance-none bg-white border border-slate-300 text-slate-700 py-2.5 pl-4 pr-10 rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-sm text-sm"
+                            >
+                                {MONTH_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+
+                        {/* 부서 선택 */}
                         <div className="relative">
                             <select
                                 value={selectedDept}
@@ -185,6 +223,9 @@ const TodoDashboard = ({ db, user, departments }) => {
                         <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-slate-400" />
                             {selectedDept} 업무 진행률
+                            <span className="text-xs font-normal text-slate-400">
+                                ({MONTH_OPTIONS.find(o => o.value === selectedMonth)?.label})
+                            </span>
                         </span>
                         <span className="text-2xl font-bold text-slate-800">
                             {progressRate}% <span className="text-sm text-slate-400 font-normal">({completedTasks}/{totalTasks})</span>
@@ -212,14 +253,15 @@ const TodoDashboard = ({ db, user, departments }) => {
                         <p>{error}</p>
                         <p className="text-xs mt-2 text-red-400">관리자에게 문의해주세요.</p>
                     </div>
-                ) : todos.length === 0 ? (
+                ) : filteredTodos.length === 0 ? (
                     <div className="p-12 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
                         <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>등록된 업무가 없습니다.</p>
-                        <button onClick={() => setIsFormOpen(true)} className="text-indigo-600 font-bold mt-2 hover:underline">첫 업무를 등록해보세요</button>
+                        <p>해당 월에 등록된 업무가 없습니다.</p>
+                        <p className="text-xs mt-1 text-slate-300">{MONTH_OPTIONS.find(o => o.value === selectedMonth)?.label} 기준</p>
+                        <button onClick={() => setIsFormOpen(true)} className="text-indigo-600 font-bold mt-2 hover:underline">새 업무 등록하기</button>
                     </div>
                 ) : (
-                    todos.map(todo => (
+                    filteredTodos.map(todo => (
                         <div
                             key={todo.id}
                             className={`bg-white p-4 rounded-xl border transition-all hover:shadow-md flex items-start gap-4 group ${todo.isCompleted ? 'border-slate-200 bg-slate-50' : 'border-slate-200'}`}
