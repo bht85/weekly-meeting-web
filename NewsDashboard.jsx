@@ -1,242 +1,275 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Newspaper, ExternalLink, Calendar, Loader2, Search, Coffee, TrendingUp, Scale, AlertCircle, X, Hash, BarChart3, Cloud } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    Newspaper, ExternalLink, Calendar, Loader2, Search,
+    Coffee, TrendingUp, Scale, AlertCircle, X, Hash,
+    BarChart3, Cloud, RefreshCw
+} from 'lucide-react';
 
+// ─── 뉴스 카테고리 & 키워드 필터 설정 ───────────────────────
 const NEWS_CATEGORIES = [
-    { id: 'compose', label: '컴포즈커피', query: '컴포즈커피', icon: Coffee },
-    { id: 'low_cost', label: '저가 커피 프랜차이즈', query: '저가 커피 프랜차이즈', icon: TrendingUp },
-    { id: 'bean_price', label: '국제 원두 가격', query: '국제 원두 가격', icon: Scale },
-    { id: 'legislation', label: '프랜차이즈 법안', query: '프랜차이즈 법안', icon: Newspaper },
+    {
+        id: 'compose',
+        label: '컴포즈커피',
+        icon: Coffee,
+        color: 'blue',
+        keywords: ['컴포즈', '컴포즈커피', 'compose coffee'],
+    },
+    {
+        id: 'low_cost',
+        label: '저가 커피 프랜차이즈',
+        icon: TrendingUp,
+        color: 'emerald',
+        keywords: ['저가 커피', '저가커피', '메가커피', '빽다방', '이디야', '컴포즈', '더벤티', '커피 프랜차이즈', '커피전문점'],
+    },
+    {
+        id: 'bean_price',
+        label: '국제 원두 가격',
+        icon: Scale,
+        color: 'amber',
+        keywords: ['원두', '원두 가격', '커피 원두', '아라비카', '로부스타', '커피 가격', '원자재'],
+    },
+    {
+        id: 'legislation',
+        label: '프랜차이즈 법안',
+        icon: Newspaper,
+        color: 'violet',
+        keywords: ['프랜차이즈', '가맹점', '가맹사업', '공정위', '가맹법'],
+    },
 ];
 
+// ─── RSS 소스 설정 (feed2json.org 경유) ───────────────────────
+const RSS_SOURCES = [
+    { name: '연합뉴스', url: 'https://www.yna.co.kr/rss/economy.xml' },
+    { name: '한국경제', url: 'https://www.hankyung.com/feed/economy' },
+    { name: '매일경제', url: 'https://www.mk.co.kr/rss/40300001/' },
+];
+
+const toFeed2JsonUrl = (rssUrl) =>
+    `https://feed2json.org/convert?url=${encodeURIComponent(rssUrl)}`;
+
+// ─── 색상 헬퍼 ───────────────────────────────────────────────
+const COLOR_MAP = {
+    blue: { tab: 'bg-blue-600 text-white ring-blue-200', badge: 'bg-blue-50 text-blue-700', dot: 'bg-blue-500' },
+    emerald: { tab: 'bg-emerald-600 text-white ring-emerald-200', badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+    amber: { tab: 'bg-amber-500 text-white ring-amber-200', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+    violet: { tab: 'bg-violet-600 text-white ring-violet-200', badge: 'bg-violet-50 text-violet-700', dot: 'bg-violet-500' },
+};
+
+// ─── 날짜 포맷 ───────────────────────────────────────────────
+const formatDate = (dateString) => {
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffH = Math.floor((now - date) / 3600000);
+        if (diffH < 1) return '방금 전';
+        if (diffH < 24) return `${diffH}시간 전`;
+        const diffD = Math.floor(diffH / 24);
+        if (diffD < 7) return `${diffD}일 전`;
+        return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+    } catch { return dateString; }
+};
+
+// ─── Market Radar 더미 데이터 ─────────────────────────────────
+const DUMMY_POOLS = [
+    [
+        { text: '가격 인상', value: 50 }, { text: '저가 커피', value: 30 }, { text: '신메뉴', value: 25 },
+        { text: '폐점률', value: 15 }, { text: '배달비', value: 10 }, { text: 'MZ세대', value: 20 },
+        { text: '친환경 빨대', value: 12 }, { text: '매장 확대', value: 35 }, { text: '로스팅', value: 8 },
+        { text: '여름 시즌', value: 22 },
+    ],
+    [
+        { text: '글로벌 진출', value: 45 }, { text: '원두 수입', value: 28 }, { text: '키오스크', value: 32 },
+        { text: '인건비', value: 40 }, { text: '디카페인', value: 25 }, { text: '콜드브루', value: 18 },
+        { text: '멤버십', value: 15 }, { text: '팝업 스토어', value: 20 }, { text: '경쟁 심화', value: 38 },
+        { text: '스페셜티', value: 12 },
+    ],
+];
+
+const getWordStyle = (value) => {
+    if (value >= 40) return 'text-3xl font-bold text-red-600';
+    if (value >= 30) return 'text-2xl font-bold text-orange-500';
+    if (value >= 20) return 'text-xl font-semibold text-blue-600';
+    if (value >= 15) return 'text-lg font-medium text-slate-600';
+    return 'text-sm text-slate-400';
+};
+
+// ─── 메인 컴포넌트 ────────────────────────────────────────────
 const NewsDashboard = () => {
     const [activeTab, setActiveTab] = useState('compose');
-    const [articles, setArticles] = useState([]);
+    const [allArticles, setAllArticles] = useState([]);   // 전체 수집 기사
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [lastUpdated, setLastUpdated] = useState(null);
 
-    // Market Radar State
+    // Market Radar
     const [targetKeywords, setTargetKeywords] = useState(['메가커피', '컴포즈커피', '스타벅스', '이디야', '원두 가격']);
     const [newKeyword, setNewKeyword] = useState('');
     const [trendWords, setTrendWords] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    // Dummy Data Pool for Simulation
-    const DUMMY_DATA_POOLS = [
-        [
-            { text: '가격 인상', value: 50 }, { text: '저가 커피', value: 30 }, { text: '신메뉴', value: 25 },
-            { text: '폐점률', value: 15 }, { text: '배달비', value: 10 }, { text: 'MZ세대', value: 20 },
-            { text: '친환경 빨대', value: 12 }, { text: '매장 확대', value: 35 }, { text: '로스팅', value: 8 },
-            { text: '여름 시즌', value: 22 }
-        ],
-        [
-            { text: '글로벌 진출', value: 45 }, { text: '원두 수입', value: 28 }, { text: '키오스크', value: 32 },
-            { text: '인건비', value: 40 }, { text: '디카페인', value: 25 }, { text: '콜드브루', value: 18 },
-            { text: '멤버십', value: 15 }, { text: '팝업 스토어', value: 20 }, { text: '경쟁 심화', value: 38 },
-            { text: '스페셜티', value: 12 }
-        ]
-    ];
+    // ── RSS 수집 (3개 소스 병렬 fetch) ──
+    const fetchAllNews = useCallback(async () => {
+        setLoading(true);
+        setError(null);
 
+        try {
+            const results = await Promise.allSettled(
+                RSS_SOURCES.map(src =>
+                    fetch(toFeed2JsonUrl(src.url))
+                        .then(r => r.json())
+                        .then(d => (d.items || []).map(item => ({
+                            ...item,
+                            _source: src.name,
+                            title: item.title || '',
+                            url: item.url || item.guid || '#',
+                            date: item.date_published || item.date_modified || '',
+                        })))
+                )
+            );
+
+            const merged = results
+                .filter(r => r.status === 'fulfilled')
+                .flatMap(r => r.value);
+
+            if (merged.length === 0) {
+                setError('뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            } else {
+                // 중복 제거(title 기준) & 최신순 정렬
+                const seen = new Set();
+                const unique = merged
+                    .filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+                setAllArticles(unique);
+                setLastUpdated(new Date());
+            }
+        } catch (err) {
+            console.error(err);
+            setError('네트워크 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchAllNews(); }, [fetchAllNews]);
+
+    // ── 현재 탭 기사 필터링 ──
+    const filteredArticles = (() => {
+        const cat = NEWS_CATEGORIES.find(c => c.id === activeTab);
+        if (!cat) return [];
+        return allArticles
+            .filter(a => cat.keywords.some(kw => a.title.includes(kw)))
+            .slice(0, 12);
+    })();
+
+    const activeCat = NEWS_CATEGORIES.find(c => c.id === activeTab);
+    const colors = COLOR_MAP[activeCat?.color || 'blue'];
+
+    // ── Market Radar 핸들러 ──
     const handleAddKeyword = () => {
         if (newKeyword.trim() && !targetKeywords.includes(newKeyword.trim())) {
             setTargetKeywords([...targetKeywords, newKeyword.trim()]);
             setNewKeyword('');
         }
     };
-
-    const handleRemoveKeyword = (keyword) => {
-        setTargetKeywords(targetKeywords.filter(k => k !== keyword));
-    };
-
     const handleAnalyze = () => {
         setIsAnalyzing(true);
-        setTrendWords(null); // Clear previous result
+        setTrendWords(null);
         setTimeout(() => {
-            const randomIndex = Math.floor(Math.random() * DUMMY_DATA_POOLS.length);
-            setTrendWords(DUMMY_DATA_POOLS[randomIndex]);
+            setTrendWords(DUMMY_POOLS[Math.floor(Math.random() * DUMMY_POOLS.length)]);
             setIsAnalyzing(false);
         }, 1500);
     };
 
-    const getWordStyle = (value) => {
-        // Simple scaling logic
-        let sizeClass = 'text-sm';
-        let colorClass = 'text-slate-400';
-
-        if (value >= 40) {
-            sizeClass = 'text-3xl font-bold';
-            colorClass = 'text-red-600';
-        } else if (value >= 30) {
-            sizeClass = 'text-2xl font-bold';
-            colorClass = 'text-orange-500';
-        } else if (value >= 20) {
-            sizeClass = 'text-xl font-semibold';
-            colorClass = 'text-blue-600';
-        } else if (value >= 15) {
-            sizeClass = 'text-lg font-medium';
-            colorClass = 'text-slate-600';
-        }
-
-        return `${sizeClass} ${colorClass}`;
-    };
-
-    useEffect(() => {
-        const fetchNews = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const category = NEWS_CATEGORIES.find(c => c.id === activeTab);
-                const query = category ? category.query : '커피';
-                // Google News RSS URL
-                const googleRssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=ko&gl=KR&ceid=KR:ko`;
-                // RSS to JSON Converter (rss2json.com)
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(googleRssUrl)}`;
-
-                const response = await axios.get(apiUrl);
-
-                if (response.data.status === 'ok') {
-                    setArticles(response.data.items);
-                } else {
-                    setError('뉴스를 불러오는데 실패했습니다.');
-                }
-            } catch (err) {
-                console.error("News fetch error:", err);
-                setError('네트워크 오류가 발생했습니다.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchNews();
-    }, [activeTab]);
-
-    const formatDate = (dateString) => {
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-
-            if (diffHours < 1) return '방금 전';
-            if (diffHours < 24) return `${diffHours}시간 전`;
-            return `${date.getMonth() + 1}월 ${date.getDate()}일`;
-        } catch (e) {
-            return dateString;
-        }
-    };
-
-    // Helper to extract image or return default
-    const getThumbnail = (item) => {
-        // rss2json often returns enclosure within 'enclosure' object or description
-        if (item.enclosure && item.enclosure.link) {
-            return item.enclosure.link;
-        }
-        // Google News RSS descriptions often contain HTML with images, but rss2json might strip them or put them in content.
-        // For simple Zero Cost version, we might fall back to icons if no image found.
-        return null;
-    };
-
     return (
         <div className="bg-gray-50 min-h-screen p-4 rounded-xl">
-            {/* Header */}
+
+            {/* ── Header ── */}
             <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 pb-6">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <Newspaper className="w-6 h-6 text-blue-600" /> 업계 동향 (Industry News)
                     </h2>
-                    <p className="text-sm text-slate-500 mt-1">실시간 뉴스 모니터링 대시보드</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                        연합뉴스 · 한국경제 · 매일경제 실시간 수집
+                        {lastUpdated && (
+                            <span className="ml-2 text-slate-400">
+                                · 마지막 업데이트: {formatDate(lastUpdated.toISOString())}
+                            </span>
+                        )}
+                    </p>
                 </div>
+                <button
+                    onClick={fetchAllNews}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-sm font-medium text-slate-600 shadow-sm transition-colors disabled:opacity-50"
+                >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    새로 고침
+                </button>
             </div>
 
-            {/* Market Radar Section */}
+            {/* ── Market Radar ── */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-indigo-600" /> Market Radar (경쟁사 키워드 분석)
                 </h3>
-
                 <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Left Panel: Keyword Management */}
                     <div className="lg:w-1/3 flex flex-col gap-4">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex-1 flex flex-col">
                             <label className="text-sm font-semibold text-slate-700 mb-2 block">관심 키워드 관리</label>
-
                             <div className="flex gap-2 mb-3">
                                 <input
-                                    type="text"
-                                    value={newKeyword}
-                                    onChange={(e) => setNewKeyword(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
+                                    type="text" value={newKeyword}
+                                    onChange={e => setNewKeyword(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleAddKeyword()}
                                     placeholder="키워드 입력"
                                     className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 />
-                                <button
-                                    onClick={handleAddKeyword}
-                                    className="px-3 py-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors"
-                                >
+                                <button onClick={handleAddKeyword}
+                                    className="px-3 py-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors">
                                     추가
                                 </button>
                             </div>
-
-                            <div className="flex flex-wrap gap-2 mb-4 content-start">
-                                {targetKeywords.map(keyword => (
-                                    <span key={keyword} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 shadow-sm">
-                                        <Hash className="w-3 h-3 text-slate-400" />
-                                        {keyword}
-                                        <button
-                                            onClick={() => handleRemoveKeyword(keyword)}
-                                            className="text-slate-400 hover:text-red-500 transition-colors"
-                                        >
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {targetKeywords.map(kw => (
+                                    <span key={kw} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 shadow-sm">
+                                        <Hash className="w-3 h-3 text-slate-400" />{kw}
+                                        <button onClick={() => setTargetKeywords(targetKeywords.filter(k => k !== kw))}
+                                            className="text-slate-400 hover:text-red-500">
                                             <X className="w-3 h-3" />
                                         </button>
                                     </span>
                                 ))}
                             </div>
-
                             <div className="mt-auto">
-                                <button
-                                    onClick={handleAnalyze}
-                                    disabled={isAnalyzing}
-                                    className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {isAnalyzing ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" /> 분석 중...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Search className="w-4 h-4" /> AI 트렌드 분석 시작
-                                        </>
-                                    )}
+                                <button onClick={handleAnalyze} disabled={isAnalyzing}
+                                    className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {isAnalyzing
+                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중...</>
+                                        : <><Search className="w-4 h-4" /> AI 트렌드 분석 시작</>}
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    {/* Right Panel: Word Cloud Visualization */}
                     <div className="lg:w-2/3">
-                        <div className="bg-slate-50 rounded-xl border border-slate-100 h-64 lg:h-full min-h-[250px] relative overflow-hidden flex items-center justify-center p-6">
+                        <div className="bg-slate-50 rounded-xl border border-slate-100 h-64 lg:h-full min-h-[250px] flex items-center justify-center p-6">
                             {!trendWords && !isAnalyzing && (
                                 <div className="text-center text-slate-400">
                                     <Cloud className="w-12 h-12 mx-auto mb-2 opacity-20" />
                                     <p className="text-sm">분석 시작 버튼을 눌러 주요 이슈를 확인하세요.</p>
                                 </div>
                             )}
-
                             {isAnalyzing && (
                                 <div className="flex flex-col items-center justify-center">
                                     <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
                                     <p className="text-sm font-medium text-indigo-800 animate-pulse">AI가 뉴스를 분석 중입니다...</p>
                                 </div>
                             )}
-
                             {trendWords && !isAnalyzing && (
-                                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 w-full h-full content-center">
-                                    {trendWords.map((word, idx) => (
-                                        <span
-                                            key={idx}
-                                            className={`${getWordStyle(word.value)} transition-all duration-500 hover:scale-110 cursor-default`}
-                                        >
-                                            {word.text}
+                                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 w-full content-center">
+                                    {trendWords.map((w, i) => (
+                                        <span key={i} className={`${getWordStyle(w.value)} transition-all duration-500 hover:scale-110 cursor-default`}>
+                                            {w.text}
                                         </span>
                                     ))}
                                 </div>
@@ -246,87 +279,93 @@ const NewsDashboard = () => {
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex overflow-x-auto pb-4 gap-2 scrollbar-hide mb-6">
-                {NEWS_CATEGORIES.map((category) => {
-                    const Icon = category.icon;
+            {/* ── Tabs ── */}
+            <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-hide mb-6">
+                {NEWS_CATEGORIES.map(cat => {
+                    const Icon = cat.icon;
+                    const isActive = activeTab === cat.id;
+                    const c = COLOR_MAP[cat.color];
+                    // 해당 카테고리 기사 수 미리 계산
+                    const count = allArticles.filter(a =>
+                        cat.keywords.some(kw => a.title.includes(kw))
+                    ).length;
                     return (
-                        <button
-                            key={category.id}
-                            onClick={() => setActiveTab(category.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${activeTab === category.id
-                                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-200 ring-offset-1'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-                                }`}
-                        >
+                        <button key={cat.id} onClick={() => setActiveTab(cat.id)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${isActive
+                                    ? `${c.tab} shadow-md ring-2 ring-offset-1`
+                                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                                }`}>
                             <Icon className="w-4 h-4" />
-                            {category.label}
+                            {cat.label}
+                            {!loading && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-white/30 text-white' : 'bg-slate-100 text-slate-500'
+                                    }`}>
+                                    {count}
+                                </span>
+                            )}
                         </button>
                     );
                 })}
             </div>
 
-            {/* Content */}
-            {/* Content */}
+            {/* ── Content ── */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-                    <p className="text-slate-500 font-medium animate-pulse">최신 뉴스를 불러오는 중입니다...</p>
+                    <p className="text-slate-500 font-medium animate-pulse">
+                        연합뉴스 · 한국경제 · 매일경제에서 뉴스를 수집하고 있습니다...
+                    </p>
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-20 text-red-500">
-                    <AlertCircle className="w-10 h-10 mb-2" />
-                    <p>{error}</p>
+                    <AlertCircle className="w-10 h-10 mb-3" />
+                    <p className="font-medium mb-3">{error}</p>
+                    <button onClick={fetchAllNews}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors">
+                        <RefreshCw className="w-4 h-4" /> 다시 시도
+                    </button>
+                </div>
+            ) : filteredArticles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <Newspaper className="w-12 h-12 mb-3 opacity-30" />
+                    <p className="font-medium">관련 기사가 없습니다</p>
+                    <p className="text-sm mt-1">수집된 최신 기사 중 해당 키워드 뉴스가 없습니다.</p>
+                    <button onClick={fetchAllNews}
+                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition-colors">
+                        <RefreshCw className="w-4 h-4" /> 새로 고침
+                    </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {articles.length === 0 ? (
-                        <div className="col-span-full text-center py-10 text-slate-500">
-                            관련된 최신 기사가 없습니다.
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {filteredArticles.map((item, idx) => (
+                        <div key={idx}
+                            className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+                            {/* 색상 강조 바 */}
+                            <div className={`h-1 ${colors.dot}`} />
+                            <div className="p-5 flex-1 flex flex-col">
+                                <div className="flex items-start justify-between gap-2 mb-3">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors.badge}`}>
+                                        {item._source}
+                                    </span>
+                                    <span className="text-xs text-slate-400 flex items-center shrink-0">
+                                        <Calendar className="w-3 h-3 mr-1" />
+                                        {formatDate(item.date)}
+                                    </span>
+                                </div>
+                                <h3 className="text-gray-900 font-bold text-sm leading-snug mb-3 line-clamp-3 group-hover:text-blue-600 transition-colors flex-1">
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer">
+                                        {item.title}
+                                    </a>
+                                </h3>
+                                <div className="pt-3 border-t border-slate-100">
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                        원문 보기 <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        [...articles]
-                            .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-                            .slice(0, 8)
-                            .map((item, index) => {
-                                const thumbnail = getThumbnail(item);
-                                return (
-                                    <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full">
-                                        <div className="p-5 flex-1 flex flex-col">
-                                            <div className="flex items-start justify-between gap-3 mb-3">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                                    {item.author || '뉴스'}
-                                                </span>
-                                                <span className="text-xs text-slate-400 flex items-center shrink-0">
-                                                    <Calendar className="w-3 h-3 mr-1" />
-                                                    {formatDate(item.pubDate)}
-                                                </span>
-                                            </div>
-
-                                            <h3 className="text-gray-900 font-bold text-lg leading-snug mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                                                <a href={item.link} target="_blank" rel="noopener noreferrer">
-                                                    {item.title}
-                                                </a>
-                                            </h3>
-
-                                            <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100">
-                                                <span className="text-xs text-slate-500 font-medium truncate max-w-[150px]">
-                                                    {item.source?.title || 'Google News'}
-                                                </span>
-                                                <a
-                                                    href={item.link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center"
-                                                >
-                                                    원문 보기 <ExternalLink className="w-3 h-3 ml-1" />
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                    )}
+                    ))}
                 </div>
             )}
         </div>
