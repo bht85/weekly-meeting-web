@@ -69,9 +69,7 @@ const DEPARTMENTS = [
     "재무팀",
     "재무기획팀",
     "인사총무팀",
-    "해외사업팀",
     "법무팀",
-    "구매물류팀",
     "IT지원팀"
 ];
 
@@ -80,9 +78,7 @@ const TEAM_ORDER = [
     "재무팀",
     "재무기획팀",
     "인사총무팀",
-    "해외사업팀",
     "법무팀",
-    "구매물류팀",
     "IT지원팀"
 ];
 
@@ -97,9 +93,7 @@ const FEEDBACK_TEAMS = [
     { id: 'finance', label: '재무팀' },
     { id: 'finance_plan', label: '재무기획팀' },
     { id: 'hr', label: '인사총무팀' },
-    { id: 'global', label: '해외사업팀' },
     { id: 'legal', label: '법무팀' },
-    { id: 'logistics', label: '구매물류팀' },
     { id: 'it', label: 'IT지원팀' }
 ];
 
@@ -118,13 +112,12 @@ const NAV_ITEMS = [
 const ALLOWED_EMAILS = [
     "daisy@composecoffee.co.kr",      // 경영지원본부장
     "choihy@composecoffee.co.kr",     // 재무팀
-    "esc913@composecoffee.co.kr",     // 인사팀
+    "esc913@composecoffee.co.kr",     // 인사총무팀
     "sophia@composecoffee.co.kr",     // 해외사업팀
     "smin@composecoffee.co.kr",       // 재무기획팀
     "donghee.han@composecoffee.co.kr",// 법무팀
     "IT@composecoffee.co.kr",         // IT지원팀
     "sclee@composecoffee.co.kr",      // 구매물류팀
-    "test@composecoffee.co.kr"        // 테스트 계정
 ];
 
 const USER_DEPT_MAP = {
@@ -136,7 +129,6 @@ const USER_DEPT_MAP = {
     "donghee.han@composecoffee.co.kr": "법무팀",
     "IT@composecoffee.co.kr": "IT지원팀",
     "sclee@composecoffee.co.kr": "구매물류팀",
-    "test@composecoffee.co.kr": "IT지원팀" // 테스트 계정은 IT팀으로 매핑
 };
 
 const LoginView = ({ onLogin, onSignup }) => {
@@ -232,9 +224,7 @@ const DEPARTMENTS_META = [
     { id: 'finance_team', name: '재무팀', icon: 'dollar' },
     { id: 'finance_plan', name: '재무기획팀', icon: 'dollar' },
     { id: 'hr_ga', name: '인사총무팀', icon: 'users' },
-    { id: 'global_biz', name: '해외사업팀', icon: 'global' },
     { id: 'legal_team', name: '법무팀', icon: 'legal' },
-    { id: 'logistics', name: '구매물류팀', icon: 'truck' },
     { id: 'it_support', name: 'IT지원팀', icon: 'monitor' }
 ];
 
@@ -836,7 +826,7 @@ function App() {
     const [inputData, setInputData] = useState({ report: '', progress: '', discussion: '' });
     const [feedbackInputDate, setFeedbackInputDate] = useState('');
     const [feedbackInputData, setFeedbackInputData] = useState({
-        finance: '', finance_plan: '', hr: '', global: '', legal: '', logistics: '', it: ''
+        finance: '', finance_plan: '', hr: '', legal: '', it: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -915,18 +905,18 @@ function App() {
         }
     };
 
-    // --- 30분 자동 로그아웃 (비활동 시) ---
+    // --- 10분 자동 로그아웃 (비활동 시) ---
     useEffect(() => {
         let timeoutId;
 
         const resetTimer = () => {
             if (timeoutId) clearTimeout(timeoutId);
             if (user) {
-                // 30분(1000 * 60 * 30 밀리초) 후 자동 로그아웃
+                // 10분(1000 * 60 * 10 밀리초) 후 자동 로그아웃
                 timeoutId = setTimeout(() => {
                     handleLogout();
-                    alert("30분 동안 활동이 없어 자동 로그아웃 되었습니다.");
-                }, 30 * 60 * 1000);
+                    alert("10분 동안 활동이 없어 자동 로그아웃 되었습니다.");
+                }, 10 * 60 * 1000);
             }
         };
 
@@ -1070,9 +1060,7 @@ function App() {
             finance: processText(feedbackInputData.finance),
             finance_plan: processText(feedbackInputData.finance_plan),
             hr: processText(feedbackInputData.hr),
-            global: processText(feedbackInputData.global),
             legal: processText(feedbackInputData.legal),
-            logistics: processText(feedbackInputData.logistics),
             it: processText(feedbackInputData.it),
             authorId: user.uid,
             createdAt: serverTimestamp()
@@ -1104,7 +1092,7 @@ function App() {
 
     const handleCloseFeedbackModal = () => {
         setEditingFeedbackId(null);
-        setFeedbackInputData({ finance: '', finance_plan: '', hr: '', global: '', legal: '', logistics: '', it: '' });
+        setFeedbackInputData({ finance: '', finance_plan: '', hr: '', legal: '', it: '' });
         setFeedbackInputDate('');
         setIsFeedbackModalOpen(false);
     };
@@ -1127,10 +1115,10 @@ function App() {
                 });
             });
         } else {
-            csvContent += "날짜,재무팀,재무기획팀,인사총무팀,해외사업팀,법무팀,구매물류팀,IT지원팀\n";
+            csvContent += "날짜,재무팀,재무기획팀,인사총무팀,법무팀,IT지원팀\n";
             targetDates.forEach(d => {
                 feedbacks.filter(f => f.date === d).forEach(f => {
-                    csvContent += `${f.date},${clean(format(f.finance))},${clean(format(f.finance_plan))},${clean(format(f.hr))},${clean(format(f.global))},${clean(format(f.legal))},${clean(format(f.logistics))},${clean(format(f.it))}\n`;
+                    csvContent += `${f.date},${clean(format(f.finance))},${clean(format(f.finance_plan))},${clean(format(f.hr))},${clean(format(f.legal))},${clean(format(f.it))}\n`;
                 });
             });
         }
@@ -1235,13 +1223,14 @@ function App() {
 
                         {/* 우측 유틸리티 버튼들 */}
                         <div className="flex items-center space-x-2">
-                            <span className="hidden md:block text-slate-500 text-sm mr-2">{user.email.split('@')[0]}님</span>
+                            <span className="text-slate-500 text-sm mr-1 hidden sm:block">{user.email.split('@')[0]}님</span>
                             <button
                                 onClick={handleLogout}
-                                className="text-slate-400 hover:text-slate-600 p-2"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg text-sm font-medium transition-all"
                                 title="로그아웃"
                             >
-                                <Lock className="w-5 h-5" />
+                                <Lock className="w-4 h-4" />
+                                <span className="hidden sm:inline">로그아웃</span>
                             </button>
 
                             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-gray-500">
@@ -1454,7 +1443,7 @@ function App() {
                                                         setEditingFeedbackId(fb.id); setFeedbackInputDate(fb.date);
                                                         setFeedbackInputData({
                                                             finance: fb.finance, finance_plan: fb.finance_plan, hr: fb.hr,
-                                                            global: fb.global, legal: fb.legal, logistics: fb.logistics, it: fb.it
+                                                            legal: fb.legal, it: fb.it
                                                         });
                                                         setIsFeedbackModalOpen(true);
                                                     }} className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded text-xs hover:bg-indigo-50">수정</button>
