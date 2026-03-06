@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
     Newspaper, ExternalLink, Search, Coffee, TrendingUp,
-    Scale, BarChart3, Hash, X, Cloud, Loader2, ArrowUpRight,
-    Globe, BookOpen, Zap
+    Scale, ArrowUpRight, Globe, BookOpen
 } from 'lucide-react';
 
 // ─── 뉴스 카테고리 설정 ───────────────────────────────────────
@@ -133,58 +132,15 @@ const COLORS = {
 const toGoogleNewsUrl = (query) =>
     `https://news.google.com/search?q=${encodeURIComponent(query)}&hl=ko&gl=KR&ceid=KR:ko`;
 
-// Market Radar 더미 데이터
-const DUMMY_POOLS = [
-    [
-        { text: '가격 인상', value: 50 }, { text: '저가 커피', value: 30 }, { text: '신메뉴', value: 25 },
-        { text: '폐점률', value: 15 }, { text: '배달비', value: 10 }, { text: 'MZ세대', value: 20 },
-        { text: '친환경 빨대', value: 12 }, { text: '매장 확대', value: 35 }, { text: '로스팅', value: 8 },
-        { text: '여름 시즌', value: 22 },
-    ],
-    [
-        { text: '글로벌 진출', value: 45 }, { text: '원두 수입', value: 28 }, { text: '키오스크', value: 32 },
-        { text: '인건비', value: 40 }, { text: '디카페인', value: 25 }, { text: '콜드브루', value: 18 },
-        { text: '멤버십', value: 15 }, { text: '팝업 스토어', value: 20 }, { text: '경쟁 심화', value: 38 },
-        { text: '스페셜티', value: 12 },
-    ],
-];
-const getWordStyle = (v) => {
-    if (v >= 40) return 'text-3xl font-bold text-red-600';
-    if (v >= 30) return 'text-2xl font-bold text-orange-500';
-    if (v >= 20) return 'text-xl font-semibold text-blue-600';
-    if (v >= 15) return 'text-lg font-medium text-slate-600';
-    return 'text-sm text-slate-400';
-};
+
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
 const NewsDashboard = () => {
     const [activeTab, setActiveTab] = useState('compose');
     const [customQuery, setCustomQuery] = useState('');
 
-    // Market Radar
-    const [targetKeywords, setTargetKeywords] = useState(['메가커피', '컴포즈커피', '스타벅스', '이디야', '원두 가격']);
-    const [newKeyword, setNewKeyword] = useState('');
-    const [trendWords, setTrendWords] = useState(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-
     const activeCat = NEWS_CATEGORIES.find(c => c.id === activeTab);
     const C = COLORS[activeCat?.color || 'blue'];
-
-    const handleAnalyze = () => {
-        setIsAnalyzing(true); setTrendWords(null);
-        setTimeout(() => {
-            setTrendWords(DUMMY_POOLS[Math.floor(Math.random() * DUMMY_POOLS.length)]);
-            setIsAnalyzing(false);
-        }, 1500);
-    };
-
-    const handleAddKeyword = () => {
-        const kw = newKeyword.trim();
-        if (kw && !targetKeywords.includes(kw)) {
-            setTargetKeywords([...targetKeywords, kw]);
-            setNewKeyword('');
-        }
-    };
 
     return (
         <div className="bg-gray-50 min-h-screen p-4 rounded-xl">
@@ -219,79 +175,6 @@ const NewsDashboard = () => {
                 </div>
             </div>
 
-            {/* ── Market Radar ── */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Market Radar (경쟁사 키워드 분석)
-                </h3>
-                <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="lg:w-1/3">
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 h-full flex flex-col">
-                            <label className="text-sm font-semibold text-slate-700 mb-2 block">관심 키워드 관리</label>
-                            <div className="flex gap-2 mb-3">
-                                <input
-                                    type="text" value={newKeyword}
-                                    onChange={e => setNewKeyword(e.target.value)}
-                                    onKeyPress={e => e.key === 'Enter' && handleAddKeyword()}
-                                    placeholder="키워드 입력"
-                                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
-                                />
-                                <button onClick={handleAddKeyword}
-                                    className="px-3 py-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors">
-                                    추가
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {targetKeywords.map(kw => (
-                                    <span key={kw} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 shadow-sm">
-                                        <Hash className="w-3 h-3 text-slate-400" />{kw}
-                                        <button onClick={() => setTargetKeywords(targetKeywords.filter(k => k !== kw))}
-                                            className="text-slate-400 hover:text-red-500 transition-colors">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                            <div className="mt-auto">
-                                <button onClick={handleAnalyze} disabled={isAnalyzing}
-                                    className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm">
-                                    {isAnalyzing
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" />분석 중...</>
-                                        : <><Zap className="w-4 h-4" />AI 트렌드 분석 시작</>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="lg:w-2/3">
-                        <div className="bg-slate-50 rounded-xl border border-slate-100 h-64 lg:h-full min-h-[250px] flex items-center justify-center p-6">
-                            {!trendWords && !isAnalyzing && (
-                                <div className="text-center text-slate-400">
-                                    <Cloud className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                                    <p className="text-sm">분석 시작 버튼을 눌러 주요 이슈를 확인하세요.</p>
-                                </div>
-                            )}
-                            {isAnalyzing && (
-                                <div className="flex flex-col items-center">
-                                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
-                                    <p className="text-sm font-medium text-indigo-800 animate-pulse">트렌드를 분석 중입니다...</p>
-                                </div>
-                            )}
-                            {trendWords && !isAnalyzing && (
-                                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 w-full content-center">
-                                    {trendWords.map((w, i) => (
-                                        <span key={i}
-                                            onClick={() => window.open(toGoogleNewsUrl(w.text + ' 커피'), '_blank')}
-                                            className={`${getWordStyle(w.value)} cursor-pointer transition-all duration-300 hover:scale-110 hover:opacity-80`}
-                                            title={`"${w.text}" 뉴스 검색`}>
-                                            {w.text}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* ── Tabs ── */}
             <div className="flex overflow-x-auto pb-3 gap-2 mb-6">
