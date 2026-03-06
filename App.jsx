@@ -15,6 +15,7 @@ import NewsDashboard from './NewsDashboard';
 import TodoDashboard from './TodoDashboard';
 import OrganizationDashboard from './OrganizationDashboard';
 import CalendarDashboard from './CalendarDashboard';
+import LandingPage from './LandingPage';
 
 // --- Firebase 라이브러리 ---
 import { initializeApp } from "firebase/app";
@@ -810,6 +811,8 @@ const TeamManagerModal = ({ onClose }) => (
 function App() {
     const [user, setUser] = useState(null);
     const [appMode, setAppMode] = useState('news');
+    // 랜딩 페이지 표시 여부 (첫 접속 시 항상 true → 버튼 클릭 시 false)
+    const [showLanding, setShowLanding] = useState(true);
 
     // --- Meeting States ---
     const [minutes, setMinutes] = useState([]);
@@ -1177,7 +1180,12 @@ function App() {
         </div>
     );
 
-    // 1. 비로그인 상태 -> 로그인 화면
+    // 1. 첫 접속 → 항상 랜딩 페이지 (로그인 여부 무관)
+    if (showLanding) {
+        return <LandingPage onEnter={() => setShowLanding(false)} />;
+    }
+
+    // 2. 비로그인 상태 → 로그인 화면
     if (!user) {
         return <LoginView onLogin={handleLogin} onSignup={handleSignup} />;
     }
@@ -1214,8 +1222,8 @@ function App() {
                                             onClick={() => setAppMode(item.id)}
                                             title={item.label}
                                             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${appMode === item.id
-                                                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
-                                                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                                                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+                                                : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                                                 }`}
                                         >
                                             <IconComponent className="w-3.5 h-3.5 shrink-0" />
