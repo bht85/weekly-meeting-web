@@ -117,7 +117,7 @@ const ALLOWED_EMAILS = [
     "sophia@composecoffee.co.kr",     // 해외사업팀
     "smin@composecoffee.co.kr",       // 재무기획팀
     "donghee.han@composecoffee.co.kr",// 법무팀
-    "IT@composecoffee.co.kr",         // IT지원팀
+    "it@composecoffee.co.kr",         // IT지원팀
     "sclee@composecoffee.co.kr",      // 구매물류팀
 ];
 
@@ -128,7 +128,7 @@ const USER_DEPT_MAP = {
     "sophia@composecoffee.co.kr": "해외사업팀",
     "smin@composecoffee.co.kr": "재무기획팀",
     "donghee.han@composecoffee.co.kr": "법무팀",
-    "IT@composecoffee.co.kr": "IT지원팀",
+    "it@composecoffee.co.kr": "IT지원팀",
     "sclee@composecoffee.co.kr": "구매물류팀",
 };
 
