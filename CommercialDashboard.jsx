@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCircle2, FileText, X } from 'lucide-react';
+import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCircle2, FileText, X, Bike } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -58,6 +58,7 @@ const CommercialDashboard = () => {
     const [storeStatusData, setStoreStatusData] = useState([]);
     const [storeAgeData, setStoreAgeData] = useState([]);
     const [detailData, setDetailData] = useState(null);
+    const [deliveryData, setDeliveryData] = useState(null);
     const [showDetailPopup, setShowDetailPopup] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -154,6 +155,19 @@ const CommercialDashboard = () => {
                     summary: "주말 및 점심시간대(11~14시) 유동인구 비율이 압도적으로 높으며, 반경 200m 내 저가형 커피 프랜차이즈가 다수 밀집해 있는 '경쟁 치열/고수요' 입지입니다."
                 };
                 setDetailData(mockDetail);
+
+                // 배달 현황 (Delivery Status)
+                const mockDelivery = {
+                    ratio: Math.floor(rand() * 25 + 35), // 35~60% 배달 비중
+                    platforms: [
+                        { name: '배달의민족', value: Math.floor(rand() * 20 + 55) }, // 55~75%
+                        { name: '쿠팡이츠', value: Math.floor(rand() * 15 + 20) }, // 20~35%
+                        { name: '요기요', value: Math.floor(rand() * 10 + 5) } // 5~15%
+                    ],
+                    avgOrderTime: Math.floor(rand() * 3 + 1), // 1: 점심, 2: 오후, 3: 저녁, 4: 야간
+                    avgDeliveryFee: Math.floor(rand() * 1000 + 2000) // 2000~3000원
+                };
+                setDeliveryData(mockDelivery);
 
                 // 창업기상도 데이터 (Mock)
                 const charSum = selectedRegion.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -387,6 +401,85 @@ const CommercialDashboard = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* 배달 상권 현황 (새로 추가) */}
+                    {deliveryData && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
+                            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                        <Bike className="w-6 h-6 text-sky-500" /> 배달 수요 및 플랫폼 점유율 현황
+                                    </h3>
+                                    <p className="text-sm text-slate-500 mt-1">해당 상권 내 카페 업종의 배달 매출 비중 및 주 이용 배달 플랫폼 분석입니다.</p>
+                                </div>
+                                <div className="px-4 py-2 rounded-lg font-bold text-sm bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-2">
+                                    <span className="relative flex h-3 w-3">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+                                    </span>
+                                    배달 매출 비중: 약 {deliveryData.ratio}%
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                                {/* 배달 플랫폼 점유율 파이 차트 */}
+                                <div className="md:col-span-1 h-[250px] w-full bg-slate-50 rounded-xl border border-slate-100 p-4 flex flex-col justify-center items-center">
+                                    <h4 className="flex-shrink-0 text-sm font-bold text-slate-700 mb-2">플랫폼별 일평균 주문 점유율</h4>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={deliveryData.platforms}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={45}
+                                                outerRadius={75}
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                            >
+                                                {deliveryData.platforms.map((entry, index) => {
+                                                    const platformColors = {
+                                                        '배달의민족': '#2dd4bf', // 민트
+                                                        '쿠팡이츠': '#3b82f6', // 블루
+                                                        '요기요': '#ef4444'  // 레드
+                                                    };
+                                                    return <Cell key={`cell-${index}`} fill={platformColors[entry.name] || '#94a3b8'} />;
+                                                })}
+                                            </Pie>
+                                            <RechartsTooltip 
+                                                formatter={(value) => [value + '%', '점유율']}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+
+                                {/* 배달 분석 요약 */}
+                                <div className="md:col-span-2 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-sky-50 rounded-xl p-5 border border-sky-100">
+                                            <h4 className="text-sm font-bold text-slate-500 mb-1">고객 평균 배달팁(추정)</h4>
+                                            <div className="text-2xl font-black text-sky-700">{deliveryData.avgDeliveryFee.toLocaleString()}원</div>
+                                        </div>
+                                        <div className="bg-indigo-50 rounded-xl p-5 border border-indigo-100">
+                                            <h4 className="text-sm font-bold text-slate-500 mb-1">배달 피크 타임</h4>
+                                            <div className="text-2xl font-black text-indigo-700">
+                                                {deliveryData.avgOrderTime === 1 ? '점심 (11시~13시)' : 
+                                                 deliveryData.avgOrderTime === 2 ? '오후 (14시~17시)' :
+                                                 deliveryData.avgOrderTime === 3 ? '저녁 (18시~20시)' : '야간 (21시 이후)'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-white rounded-xl text-sm text-slate-600 border border-slate-200">
+                                        <strong>💡 배달 상권 공략 팁: </strong> 
+                                        현재 상권은 배달 매출 비중이 <strong>{deliveryData.ratio}%</strong>로 {deliveryData.ratio > 45 ? '상당히 높은 편' : '안정적인 수준'}입니다. 
+                                        특히 <strong>{deliveryData.platforms[0].name}</strong> 플랫폼 집중도가 높으므로 해당 플랫폼 앱 내 광고 노출도와 깃발 꽂기 전략이 매출에 큰 영향을 미칩니다. 
+                                        {deliveryData.avgOrderTime === 2 && ' 직장인/학생들의 오후 디저트, 음료 주문 수요가 높은 편입니다.'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 4. 커피 프랜차이즈 업소 현황 (경쟁 분석) */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
