@@ -3,7 +3,7 @@ import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCi
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ComposedChart, Area
+  ComposedChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { Store, TrendingDown } from 'lucide-react';
 
@@ -56,6 +56,7 @@ const CommercialDashboard = () => {
     const [weatherData, setWeatherData] = useState(null);
     const [storeSumData, setStoreSumData] = useState({ total: 0, open: 0, close: 0 });
     const [storeStatusData, setStoreStatusData] = useState([]);
+    const [storeAgeData, setStoreAgeData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -113,6 +114,16 @@ const CommercialDashboard = () => {
                 }
                 setStoreStatusData(mockStoreStatus);
                 setStoreSumData({ total: baseTotal, open: totalOpen, close: totalClose });
+
+                // 업력 현황 (Business Age)
+                const mockAgeData = [
+                    { name: '1년 미만', value: Math.floor(rand() * 20 + 5) },
+                    { name: '1~2년', value: Math.floor(rand() * 25 + 10) },
+                    { name: '2~3년', value: Math.floor(rand() * 20 + 10) },
+                    { name: '3~5년', value: Math.floor(rand() * 30 + 15) },
+                    { name: '5년 이상', value: Math.floor(rand() * 40 + 20) }
+                ];
+                setStoreAgeData(mockAgeData);
 
                 // 창업기상도 데이터 (Mock)
                 const charSum = selectedRegion.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -351,14 +362,14 @@ const CommercialDashboard = () => {
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
-                            {/* 요약 카드 */}
-                            <div className="md:col-span-1 space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                            {/* 요약 카드 (복구됨) */}
+                            <div className="lg:col-span-1 space-y-4">
                                 <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
                                     <h4 className="text-xs font-bold text-slate-500 mb-1">현재 상권 내 카페 총 점포 수</h4>
                                     <div className="text-3xl font-black text-indigo-700">{storeSumData.total}개</div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
                                     <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
                                         <h4 className="text-[11px] font-bold text-slate-500 mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500"/> 6개월 누적 개업</h4>
                                         <div className="text-xl font-bold text-emerald-600">+{storeSumData.open}건</div>
@@ -370,12 +381,42 @@ const CommercialDashboard = () => {
                                 </div>
                                 <div className="mt-4 p-4 bg-slate-50 rounded-xl text-sm text-slate-600 border border-slate-200">
                                     <strong>💡 전략 시사점: </strong> 
-                                    6개월간 {storeSumData.open >= storeSumData.close ? '개업이 폐업보다 많아 카페 업종의 유입이 활발' : '폐업이 우세하여 생존 경쟁이 치열하거나 상권이 위축'}되는 상황입니다. 컴포즈커피의 차별화된 가성비 전략 및 배달 권역 확보가 핵심입니다.
+                                    6개월간 {storeSumData.open >= storeSumData.close ? '개업이 폐업보다 많아 카페 시장 유입 확대' : '폐업 우세로 생존 경쟁 치열'}
+                                </div>
+                            </div>
+
+                            {/* 업력 현황 파이 차트 */}
+                            <div className="lg:col-span-1 h-[300px] w-full bg-slate-50 rounded-xl border border-slate-100 p-2 flex flex-col items-center">
+                                <h4 className="text-sm font-bold text-slate-700 mb-2 mt-2 px-2 text-center flex-shrink-0">점포 업력 분포</h4>
+                                <div className="flex-1 w-full min-h-0 relative -mt-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={storeAgeData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={0}
+                                                outerRadius={55}
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                            >
+                                                {storeAgeData.map((entry, index) => {
+                                                    const colors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#818cf8'];
+                                                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                })}
+                                            </Pie>
+                                            <RechartsTooltip 
+                                                formatter={(value) => [value + '개', '점포 수']}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ fontSize: '10px', bottom: 5, width: '100%' }} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
 
                             {/* 추이 차트 */}
-                            <div className="md:col-span-3 h-[300px] w-full">
+                            <div className="lg:col-span-3 h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ComposedChart data={storeStatusData} margin={{ top: 20, right: 20, bottom: 0, left: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
