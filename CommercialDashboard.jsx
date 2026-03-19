@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCircle2, FileText, X } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -57,6 +57,8 @@ const CommercialDashboard = () => {
     const [storeSumData, setStoreSumData] = useState({ total: 0, open: 0, close: 0 });
     const [storeStatusData, setStoreStatusData] = useState([]);
     const [storeAgeData, setStoreAgeData] = useState([]);
+    const [detailData, setDetailData] = useState(null);
+    const [showDetailPopup, setShowDetailPopup] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -124,6 +126,34 @@ const CommercialDashboard = () => {
                     { name: '5년 이상', value: Math.floor(rand() * 40 + 20) }
                 ];
                 setStoreAgeData(mockAgeData);
+
+                // 상세 분석 (Detail Analysis Popup Data)
+                const mockDetail = {
+                    hourlyPop: [
+                        { time: '06-11시', value: Math.floor(rand() * 20 + 5) },
+                        { time: '11-14시', value: Math.floor(rand() * 40 + 30) }, // 점심 피크
+                        { time: '14-17시', value: Math.floor(rand() * 25 + 15) },
+                        { time: '17-21시', value: Math.floor(rand() * 30 + 20) }, // 퇴근 피크
+                        { time: '21-24시', value: Math.floor(rand() * 10 + 2) }
+                    ],
+                    weeklySales: [
+                        { day: '월', value: Math.floor(rand() * 15 + 10) },
+                        { day: '화', value: Math.floor(rand() * 15 + 10) },
+                        { day: '수', value: Math.floor(rand() * 15 + 10) },
+                        { day: '목', value: Math.floor(rand() * 15 + 10) },
+                        { day: '금', value: Math.floor(rand() * 20 + 15) },
+                        { day: '토', value: Math.floor(rand() * 25 + 20) },
+                        { day: '일', value: Math.floor(rand() * 25 + 20) }
+                    ],
+                    competitors: [
+                        { name: '메가MGC커피', dist: '50m', type: '저가형' },
+                        { name: '빽다방', dist: '120m', type: '저가형' },
+                        { name: '스타벅스', dist: '200m', type: '대형/복합' },
+                        { name: '이디야커피', dist: '250m', type: '중저가' }
+                    ],
+                    summary: "주말 및 점심시간대(11~14시) 유동인구 비율이 압도적으로 높으며, 반경 200m 내 저가형 커피 프랜차이즈가 다수 밀집해 있는 '경쟁 치열/고수요' 입지입니다."
+                };
+                setDetailData(mockDetail);
 
                 // 창업기상도 데이터 (Mock)
                 const charSum = selectedRegion.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -200,7 +230,14 @@ const CommercialDashboard = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+                    <button 
+                        onClick={() => setShowDetailPopup(true)}
+                        className="w-full md:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-indigo-200"
+                    >
+                        <FileText className="w-5 h-5" />
+                        상세 분석 보고서 보기
+                    </button>
                     <div className="relative w-full md:w-64">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <MapPin className="h-5 w-5 text-gray-400" />
@@ -496,8 +533,109 @@ const CommercialDashboard = () => {
                     )}
                 </div>
             )}
-            
 
+            {/* 상세 분석 (팝업/모달) */}
+            {showDetailPopup && detailData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white/95 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* 팝업 헤더 */}
+                        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white relative z-10 shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                    <FileText className="w-6 h-6 text-indigo-600" />
+                                    [{selectedRegion}] 상권 상세 분석 리포트
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-1">소상공인365 '상세분석' API 데이터를 기반으로 한 심층 분석 자료입니다.</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowDetailPopup(false)}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        
+                        {/* 팝업 본문 스크롤 영역 */}
+                        <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+                            <div className="space-y-6">
+                                {/* AI 종합 분석 의견 */}
+                                <div className="bg-indigo-600 text-white rounded-xl p-6 shadow-md border border-indigo-700">
+                                    <h3 className="font-bold flex items-center gap-2 mb-2 text-indigo-100">
+                                        💡 AI 입지 상세 평판
+                                    </h3>
+                                    <p className="text-lg font-medium leading-relaxed">"{detailData.summary}"</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* 시간대별 유동인구 */}
+                                    <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                                        <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4 text-emerald-500" /> 시간대별 유동인구 집중도
+                                        </h3>
+                                        <div className="h-[250px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={detailData.hourlyPop} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                                    <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none'}} />
+                                                    <Bar dataKey="value" name="비율(%)" fill="#38bdf8" radius={[4,4,0,0]} barSize={30} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    {/* 요일별 매출 비중 */}
+                                    <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                                        <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                            <BarChart3 className="w-4 h-4 text-indigo-500" /> 요일별 매출 비중
+                                        </h3>
+                                        <div className="h-[250px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={detailData.weeklySales} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                                    <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none'}} />
+                                                    <Bar dataKey="value" name="비중(%)" fill="#a78bfa" radius={[4,4,0,0]} barSize={30} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 주요 반경 내 경쟁점 현황 (리스트) */}
+                                <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                                    <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Store className="w-4 h-4 text-rose-500" /> 500m 반경 내 주요 프랜차이즈 경쟁점
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        {detailData.competitors.map((comp, idx) => (
+                                            <div key={idx} className="bg-slate-50 rounded-lg p-4 border border-slate-100 flex flex-col">
+                                                <span className="text-xs font-bold text-indigo-500 mb-1">{comp.type}</span>
+                                                <strong className="text-lg text-slate-800">{comp.name}</strong>
+                                                <span className="text-sm text-slate-500 mt-1 flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3" /> 반경 {comp.dist}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* 팝업 하단 여백 및 닫기 힌트 */}
+                        <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-end shrink-0">
+                            <button 
+                                onClick={() => setShowDetailPopup(false)}
+                                className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-colors shadow-sm"
+                            >
+                                리포트 닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
         </div>
     );
 };
