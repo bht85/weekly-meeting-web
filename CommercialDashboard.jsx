@@ -388,7 +388,7 @@ const CommercialDashboard = () => {
                                 </h3>
                             </div>
                             <div className="flex-1 min-h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="99%" height="100%">
                                     <LineChart data={salesData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis 
