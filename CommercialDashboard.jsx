@@ -334,44 +334,46 @@ const CommercialDashboard = () => {
                             </div>
                         </div>
                         {/* Mock Map Viewport */}
-                        <div className="relative w-full h-[400px] bg-sky-50 overflow-hidden">
-                            {/* 격자 무늬 배경 (지도 도로망 흉내) */}
-                            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+                        <div className="relative w-full h-[400px] bg-slate-100 overflow-hidden">
+                            {/* 실제 구글 맵 연동 바탕 */}
+                            <div className="absolute inset-0 z-0">
+                                <iframe 
+                                    title="상권 지도"
+                                    width="100%" 
+                                    height="100%" 
+                                    style={{ border: 0 }} 
+                                    src={`https://maps.google.com/maps?q=${encodeURIComponent(selectedRegion)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                                    loading="lazy"
+                                />
+                            </div>
                             
-                            {/* 히트맵 효과 (Blur Circles) */}
-                            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-rose-500/40 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-                            <div className="absolute top-1/3 right-1/3 w-72 h-72 bg-amber-500/40 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-                            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/30 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-                            <div className="absolute bottom-1/3 left-1/3 w-48 h-48 bg-indigo-500/30 rounded-full mix-blend-multiply filter blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                            {/* 지도 위에 약간의 반투명 오버레이를 깔아서 히트맵이 더 잘 보이도록 함 (클릭 투과) */}
+                            <div className="absolute inset-0 bg-white/40 pointer-events-none z-0"></div>
+                            
+                            {/* 히트맵 효과 (Blur Circles) - 마우스 이벤트 투과(pointer-events-none) 처리 */}
+                            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-rose-500/50 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10"></div>
+                            <div className="absolute top-1/3 right-1/3 w-72 h-72 bg-amber-500/50 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '1s' }}></div>
+                            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/40 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '2s' }}></div>
+                            <div className="absolute bottom-1/3 left-1/3 w-48 h-48 bg-indigo-500/40 rounded-full mix-blend-multiply filter blur-2xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '0.5s' }}></div>
 
                             {/* 맵 마커 */}
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                                <div className="bg-indigo-600 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg mb-1 relative w-auto whitespace-nowrap z-10">
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-20">
+                                <div className="bg-indigo-600/90 backdrop-blur text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg mb-1 relative w-auto whitespace-nowrap">
                                     {selectedRegion} 중심상권
-                                    <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-indigo-600 rotate-45"></div>
+                                    <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-indigo-600/90 rotate-45"></div>
                                 </div>
-                                <div className="w-4 h-4 bg-indigo-500 border-2 border-white rounded-full shadow-md z-0"></div>
+                                <div className="w-5 h-5 bg-indigo-500 border-2 border-white rounded-full shadow-lg animate-bounce"></div>
                             </div>
                             
                             {/* 경쟁점 마커들 */}
-                            <div className="absolute top-1/4 left-1/3 w-3 h-3 bg-rose-500 border border-white rounded-full shadow-sm"></div>
-                            <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-rose-500 border border-white rounded-full shadow-sm"></div>
-                            <div className="absolute bottom-1/3 right-1/3 w-3 h-3 bg-amber-500 border border-white rounded-full shadow-sm"></div>
-                            
-                            {/* 지도 컨트롤 UI (우측 하단) */}
-                            <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-                                <div className="bg-white rounded-lg shadow-md p-1 flex items-center justify-center">
-                                    <button className="w-8 h-8 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-50">+</button>
-                                </div>
-                                <div className="bg-white rounded-lg shadow-md p-1 flex items-center justify-center">
-                                    <button className="w-8 h-8 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-50">-</button>
-                                </div>
-                            </div>
+                            <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                            <div className="absolute top-1/3 right-1/4 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                            <div className="absolute bottom-1/3 right-1/3 w-4 h-4 bg-amber-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
                             
                             {/* 안내 문구 (좌측 하단) */}
-                            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border border-slate-200">
-                                <p className="text-xs font-bold text-slate-600 flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3 text-emerald-500" />
+                            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur text-slate-700 px-4 py-2 rounded-lg shadow-sm border border-slate-200 pointer-events-none z-30">
+                                <p className="text-xs font-bold flex items-center gap-1">
+                                    <AlertCircle className="w-4 h-4 text-rose-500" />
                                     색상이 붉을수록 유동인구 및 매출 밀집도가 높은 핵심 구역입니다.
                                 </p>
                             </div>
