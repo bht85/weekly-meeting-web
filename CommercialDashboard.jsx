@@ -319,8 +319,10 @@ const CommercialDashboard = () => {
                         </div>
                     </div>
 
-                    {/* 상권 지도 (히트맵 시각화) */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-6">
+                    {/* 상단 2단 레이아웃: 상권 지도 & 매출 차트 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        {/* 상권 지도 (히트맵 시각화) */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
                         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between z-10 bg-white">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -411,10 +413,8 @@ const CommercialDashboard = () => {
                         </div>
                     </div>
 
-                    {/* 차트 영역 */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                         {/* 1. 매출 동향 라인 차트 */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <BarChart3 className="w-5 h-5 text-indigo-500" /> 최근 6개월 매출 추이
@@ -454,9 +454,12 @@ const CommercialDashboard = () => {
                                 </ResponsiveContainer>
                             </div>
                         </div>
+                    </div>
 
+                    {/* 중단 2단 레이아웃: 인구 분포 & 배달 현황 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                         {/* 2. 인구 분포 바 차트 */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <Users className="w-5 h-5 text-blue-500" /> 타겟 고객층 (연령/성별)
@@ -493,11 +496,10 @@ const CommercialDashboard = () => {
                                 </ResponsiveContainer>
                             </div>
                         </div>
-                    </div>
 
-                    {/* 배달 상권 현황 (새로 추가) */}
-                    {deliveryData && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
+                        {/* 배달 상권 현황 (새로 추가) */}
+                        {deliveryData && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
                             <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -514,9 +516,9 @@ const CommercialDashboard = () => {
                                 </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-center flex-1 mt-4">
                                 {/* 배달 플랫폼 점유율 파이 차트 */}
-                                <div className="md:col-span-1 h-[250px] w-full bg-slate-50 rounded-xl border border-slate-100 p-4 flex flex-col justify-center items-center">
+                                <div className="xl:col-span-1 h-[250px] w-full bg-slate-50 rounded-xl border border-slate-100 p-4 flex flex-col justify-center items-center">
                                     <h4 className="flex-shrink-0 text-sm font-bold text-slate-700 mb-2">플랫폼별 일평균 주문 점유율</h4>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
@@ -548,8 +550,8 @@ const CommercialDashboard = () => {
                                 </div>
 
                                 {/* 배달 분석 요약 */}
-                                <div className="md:col-span-2 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                <div className="xl:col-span-1 space-y-4 flex flex-col justify-center">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
                                         <div className="bg-sky-50 rounded-xl p-5 border border-sky-100">
                                             <h4 className="text-sm font-bold text-slate-500 mb-1">고객 평균 배달팁(추정)</h4>
                                             <div className="text-2xl font-black text-sky-700">{deliveryData.avgDeliveryFee.toLocaleString()}원</div>
@@ -571,8 +573,9 @@ const CommercialDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </div>
 
                     {/* 4. 커피 프랜차이즈 업소 현황 (경쟁 분석) */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
