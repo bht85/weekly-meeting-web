@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     collection, addDoc, query, where, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy, getDocs
@@ -32,7 +32,7 @@ const USER_DEFINED_RANKS = {
 
 const getRank = (position) => USER_DEFINED_RANKS[position] || 99;
 
-const OrganizationDashboard = ({ db, departments, user }) => {
+const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual'
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -44,17 +44,23 @@ const OrganizationDashboard = ({ db, departments, user }) => {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
     // Filter departments for display (exclude '선택' and '전체')
-    const displayDepartments = departments.filter(d => d !== '선택' && d !== '전체');
+    const displayDepartments = useMemo(() => {
+        const depts = departments.filter(d => d !== '선택' && d !== '전체');
+        if (isAdmin) return depts;
+        return depts.filter(d => d === user?.department);
+    }, [isAdmin, user, departments]);
 
     useEffect(() => {
         if (!db) return;
         setLoading(true);
+        // If not admin, we could restrict the query here, but as per current implementation 
+        // we'll filter client-side to maintain consistency with TeamOverview logic.
         const q = query(collection(db, 'employees'), orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const docs = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            }));
+            })).filter(emp => isAdmin || emp.department === user?.department); // Restricted fetch
 
             // Sort by Rank
             docs.sort((a, b) => {

@@ -2,21 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, where } from 'firebase/firestore';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Filter, Briefcase, Share2, X, Clock, CheckCircle2 } from 'lucide-react';
 
-const CalendarDashboard = ({ db, departments }) => {
+const CalendarDashboard = ({ db, departments, user, isAdmin }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [todos, setTodos] = useState([]);
     const [collabs, setCollabs] = useState([]);
-    const [filterDept, setFilterDept] = useState('전체');
+    const [filterDept, setFilterDept] = useState(isAdmin ? '전체' : (user?.department || '전체'));
+    const [filterStatus, setFilterStatus] = useState('progress'); // 'all', 'progress', 'completed'
     const [events, setEvents] = useState([]);
     const [selectedEvent, setSelectedEvent] = useState(null);
 
+    // Update filterDept when user or isAdmin changes (e.g. on login)
+    useEffect(() => {
+        setFilterDept(isAdmin ? '전체' : (user?.department || '전체'));
+    }, [isAdmin, user]);
+
     // --- Data Fetching ---
     useEffect(() => {
-        // 1. Fetch Todos
-        const todoQuery = query(
-            collection(db, 'dept_todos'),
-            where('isCompleted', '==', false)
-        );
+        // 1. Fetch Todos (Fetch all to support status filtering)
+        const todoQuery = query(collection(db, 'dept_todos'));
         const unsubTodo = onSnapshot(todoQuery, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Filter ones with dueDate
@@ -44,16 +47,23 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Todos -> Events
         todos.forEach(todo => {
-            if (filterDept === '전체' || todo.department === filterDept) {
+            const isCompleted = todo.isCompleted || todo.status === '완료' || todo.status === 'Done';
+            const matchesStatus = 
+                filterStatus === 'all' || 
+                (filterStatus === 'progress' && !isCompleted) || 
+                (filterStatus === 'completed' && isCompleted);
+
+            if (matchesStatus && (filterDept === '전체' || todo.department === filterDept)) {
                 merged.push({
                     id: `todo-${todo.id}`,
                     type: 'task',
                     title: todo.task || '(제목 없음)',
                     desc: todo.task,
                     date: todo.dueDate,
-                    from: todo.department || '미지정', // for backward compatibility in list view
-                    department: todo.department || '미지정', // Explicit mapping
-                    status: todo.status || (todo.isCompleted ? '완료' : '진행'),
+                    from: todo.department || '미지정',
+                    department: todo.department || '미지정',
+                    status: todo.status || (isCompleted ? '완료' : '진행'),
+                    isCompleted: isCompleted,
                     manager: todo.manager || '미지정'
                 });
             }
@@ -61,12 +71,16 @@ const CalendarDashboard = ({ db, departments }) => {
 
         // Map Collabs -> Events
         collabs.forEach(collab => {
-            // ★ 핵심 수정: 가능한 모든 필드명을 다 검사해서 값이 있는 것을 가져옴 ★
-            // CollaborationDashboard.jsx 확인 결과: requesterTeam, targetTeam이 정확한 키값임.
             const sender = collab.requesterTeam || collab.department || collab.fromTeam || collab.from || collab.team || collab.fromDept || '발신팀 미상';
             const receiver = collab.targetTeam || collab.targetDepartment || collab.toTeam || collab.to || collab.target || collab.toDept || '수신팀 미상';
+            
+            const isCompleted = collab.status === '완료' || collab.status === '승인' || collab.status === 'Done' || collab.status === 'Approved';
+            const matchesStatus = 
+                filterStatus === 'all' || 
+                (filterStatus === 'progress' && !isCompleted) || 
+                (filterStatus === 'completed' && isCompleted);
 
-            if (filterDept === '전체' || sender === filterDept || receiver === filterDept) {
+            if (matchesStatus && (filterDept === '전체' || sender === filterDept || receiver === filterDept)) {
                 merged.push({
                     id: `collab-${collab.id}`,
                     type: 'collab',
@@ -76,20 +90,57 @@ const CalendarDashboard = ({ db, departments }) => {
                     from: sender,
                     to: receiver,
                     dept: `${sender} → ${receiver}`,
-                    status: collab.status || '요청'
+                    status: collab.status || '요청',
+                    isCompleted: isCompleted
                 });
             }
         });
 
         setEvents(merged);
-    }, [todos, collabs, filterDept]);
+    }, [todos, collabs, filterDept, filterStatus]);
 
     // --- Calendar Logic ---
-    const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-    const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
-
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+
+    // get counts for status filter (filtered by department & month)
+    const getStatusCounts = () => {
+        let allItems = [];
+        const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+        todos.forEach(todo => {
+            const matchesDept = filterDept === '전체' || todo.department === filterDept;
+            const matchesMonth = todo.dueDate && todo.dueDate.startsWith(monthPrefix);
+            if (matchesDept && matchesMonth) {
+                allItems.push({ isCompleted: todo.isCompleted || todo.status === '완료' || todo.status === 'Done' });
+            }
+        });
+        collabs.forEach(collab => {
+            const sender = collab.requesterTeam || collab.department || collab.fromTeam || collab.from || collab.team || collab.fromDept || '발신팀 미상';
+            const receiver = collab.targetTeam || collab.targetDepartment || collab.toTeam || collab.to || collab.target || collab.toDept || '수신팀 미상';
+            const matchesDept = filterDept === '전체' || sender === filterDept || receiver === filterDept;
+            const matchesMonth = collab.dueDate && collab.dueDate.startsWith(monthPrefix);
+            
+            if (matchesDept && matchesMonth) {
+                allItems.push({ isCompleted: collab.status === '완료' || collab.status === '승인' || collab.status === 'Done' || collab.status === 'Approved' });
+            }
+        });
+
+        const progress = allItems.filter(item => !item.isCompleted).length;
+        const completed = allItems.filter(item => item.isCompleted).length;
+        return {
+            all: allItems.length,
+            progress,
+            completed
+        };
+    };
+
+    const counts = getStatusCounts();
+
+    // --- Helper Functions ---
+    const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+    const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
+
     const daysInMonth = getDaysInMonth(year, month);
     const firstDay = getFirstDayOfMonth(year, month);
 
@@ -118,15 +169,18 @@ const CalendarDashboard = ({ db, departments }) => {
                             <div
                                 key={event.id}
                                 onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
-                                className={`text-xs px-1.5 py-1 rounded border shadow-sm truncate cursor-pointer transition-all hover:scale-[1.02] hover:opacity-80 active:scale-95 ${event.type === 'task'
-                                    ? 'bg-blue-50 border-blue-100 text-blue-700'
-                                    : 'bg-purple-50 border-purple-100 text-purple-700'
+                                className={`text-xs px-1.5 py-1 rounded border shadow-sm truncate cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
+                                    event.isCompleted 
+                                        ? 'bg-slate-50 border-slate-200 text-slate-400 grayscale opacity-70' 
+                                        : event.type === 'task'
+                                            ? 'bg-blue-50 border-blue-100 text-blue-700'
+                                            : 'bg-indigo-50 border-indigo-100 text-indigo-700'
                                     }`}
                                 title={`[${event.status}] ${event.title}`}
                             >
                                 <div className="flex items-center gap-1">
-                                    {event.type === 'task' ? <Briefcase className="w-3 h-3 flex-shrink-0" /> : <Share2 className="w-3 h-3 flex-shrink-0" />}
-                                    <span className="truncate flex-1 font-medium">{event.title}</span>
+                                    {event.isCompleted ? <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> : event.type === 'task' ? <Briefcase className="w-3 h-3 flex-shrink-0" /> : <Share2 className="w-3 h-3 flex-shrink-0" />}
+                                    <span className={`truncate flex-1 font-medium ${event.isCompleted ? 'line-through' : ''}`}>{event.title}</span>
                                 </div>
                                 <div className="text-[10px] opacity-75 truncate mt-0.5">
                                     {event.type === 'task' ? event.from : `${event.from}→${event.to}`}
@@ -180,17 +234,62 @@ const CalendarDashboard = ({ db, departments }) => {
                         <div className="w-3 h-3 rounded-full bg-purple-500 ml-2"></div><span className="text-xs text-slate-600">협업</span>
                     </div>
                     <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                    <Filter className="w-4 h-4 text-slate-400" />
-                    <select
-                        value={filterDept}
-                        onChange={(e) => setFilterDept(e.target.value)}
-                        className="text-sm border-none bg-transparent font-medium text-slate-600 focus:ring-0 cursor-pointer"
-                    >
-                        <option value="전체">전체 부서 일정</option>
-                        {departments.filter(d => d !== '선택').map(d => (
-                            <option key={d} value={d}>{d}</option>
-                        ))}
-                    </select>
+                    
+                    <div className="flex bg-slate-100 p-1 rounded-xl items-center border border-slate-200">
+                        <button
+                            onClick={() => setFilterStatus('all')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                                filterStatus === 'all' 
+                                    ? 'bg-white text-indigo-600 shadow-sm' 
+                                    : 'text-slate-500 hover:bg-slate-200/50'
+                            }`}
+                        >
+                            전체 <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterStatus === 'all' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>{counts.all}</span>
+                        </button>
+                        <button
+                            onClick={() => setFilterStatus('progress')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                                filterStatus === 'progress' 
+                                    ? 'bg-white text-blue-600 shadow-sm' 
+                                    : 'text-slate-500 hover:bg-slate-200/50'
+                            }`}
+                        >
+                            진행 중 <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterStatus === 'progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>{counts.progress}</span>
+                        </button>
+                        <button
+                            onClick={() => setFilterStatus('completed')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                                filterStatus === 'completed' 
+                                    ? 'bg-white text-emerald-600 shadow-sm' 
+                                    : 'text-slate-500 hover:bg-slate-200/50'
+                            }`}
+                        >
+                            완료됨 <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterStatus === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>{counts.completed}</span>
+                        </button>
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
+                    {isAdmin ? (
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-slate-400" />
+                            <select
+                                value={filterDept}
+                                onChange={(e) => setFilterDept(e.target.value)}
+                                className="text-sm border-none bg-transparent font-bold text-slate-700 focus:ring-0 cursor-pointer"
+                            >
+                                <option value="전체">전체 부서</option>
+                                {departments.filter(d => d !== '선택').map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg">
+                            <Filter className="w-4 h-4 text-slate-400" />
+                            {filterDept}
+                        </div>
+                    )}
                 </div>
             </div>
 

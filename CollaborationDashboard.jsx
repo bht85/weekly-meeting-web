@@ -38,13 +38,18 @@ const PRIORITY_COLORS = {
 
 const TEAMS_WEBHOOK_URL = "https://composecoffee1.webhook.office.com/webhookb2/a63469e1-bb54-40b2-ac45-f2f8a8ec8405@0b88805d-c23f-4f56-bf41-c2da18c634f5/IncomingWebhook/58a6ded044d7405e9711d6c400c0f820/88f90d52-1a14-4668-a2c8-fa7e466d804f/V20V2K9s1MtIPt5XcTG1H70fuG59j_xkk1jBouNwSTvEs1";
 
-const CollaborationDashboard = ({ db, user, departments }) => {
+const CollaborationDashboard = ({ db, user, departments, isAdmin }) => {
     const [activeTab, setActiveTab] = useState('received'); // 'received' | 'sent'
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
-    const [myTeam, setMyTeam] = useState('전체'); // Default to 'All'
+    const [myTeam, setMyTeam] = useState(isAdmin ? '전체' : (user?.department || '전체'));
+
+    // Update myTeam when user or isAdmin changes
+    useEffect(() => {
+        setMyTeam(isAdmin ? '전체' : (user?.department || '전체'));
+    }, [isAdmin, user]);
 
     // Filter states
     // Filter states
@@ -225,16 +230,20 @@ const CollaborationDashboard = ({ db, user, departments }) => {
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
                         <span className="text-xs font-bold text-slate-400 uppercase">My Team</span>
-                        <select
-                            className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer hover:text-indigo-600"
-                            value={myTeam}
-                            onChange={(e) => setMyTeam(e.target.value)}
-                        >
-                            <option value="전체">전체 보기</option>
-                            {departments.filter(d => d !== '선택').map(d => (
-                                <option key={d} value={d}>{d}</option>
-                            ))}
-                        </select>
+                        {isAdmin ? (
+                            <select
+                                className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer hover:text-indigo-600"
+                                value={myTeam}
+                                onChange={(e) => setMyTeam(e.target.value)}
+                            >
+                                <option value="전체">전체 보기</option>
+                                {departments.filter(d => d !== '선택').map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <span className="text-sm font-bold text-slate-700 px-1">{myTeam}</span>
+                        )}
                     </div>
 
                     <button
@@ -445,7 +454,7 @@ const CollaborationDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
-const RequestFormModal = ({ onClose, onSubmit, departments, userDept }) => {
+const RequestFormModal = ({ onClose, onSubmit, departments, userDept, isAdmin }) => {
     const [formData, setFormData] = useState({
         requesterTeam: userDept || '',
         targetTeam: '',
@@ -482,14 +491,20 @@ const RequestFormModal = ({ onClose, onSubmit, departments, userDept }) => {
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">요청 팀 (From)</label>
                             <div className="relative">
-                                <select
-                                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                                    value={formData.requesterTeam}
-                                    onChange={e => setFormData({ ...formData, requesterTeam: e.target.value })}
-                                >
-                                    <option value="">선택</option>
-                                    {validDepartments.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
+                                {isAdmin ? (
+                                    <select
+                                        className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                        value={formData.requesterTeam}
+                                        onChange={e => setFormData({ ...formData, requesterTeam: e.target.value })}
+                                    >
+                                        <option value="">선택</option>
+                                        {validDepartments.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                ) : (
+                                    <div className="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700">
+                                        {formData.requesterTeam}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div>

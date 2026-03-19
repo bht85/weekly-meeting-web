@@ -23,9 +23,9 @@ const getMonthOptions = () => {
 
 const MONTH_OPTIONS = getMonthOptions();
 
-const TodoDashboard = ({ db, user, departments }) => {
+const TodoDashboard = ({ db, user, departments, isAdmin }) => {
     // State
-    const [selectedDept, setSelectedDept] = useState(departments[0] || '전체');
+    const [selectedDept, setSelectedDept] = useState(isAdmin ? '전체' : (user?.department || departments[0] || '전체'));
     const [selectedMonth, setSelectedMonth] = useState(MONTH_OPTIONS[0].value); // 당월 기본
     const [todos, setTodos] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -33,6 +33,13 @@ const TodoDashboard = ({ db, user, departments }) => {
     const [error, setError] = useState(null);
     const [editingTodo, setEditingTodo] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
+
+    // Update selectedDept when user or isAdmin changes (e.g. on login)
+    useEffect(() => {
+        if (!isAdmin && user?.department) {
+            setSelectedDept(user.department);
+        }
+    }, [isAdmin, user]);
 
     // 월 필터링된 할 일 목록
     const filteredTodos = todos.filter(todo => {
@@ -194,17 +201,26 @@ const TodoDashboard = ({ db, user, departments }) => {
 
                         {/* 부서 선택 */}
                         <div className="relative">
-                            <select
-                                value={selectedDept}
-                                onChange={(e) => setSelectedDept(e.target.value)}
-                                className="appearance-none bg-slate-50 border border-slate-300 text-slate-700 py-2.5 pl-4 pr-10 rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-sm text-sm"
-                            >
-                                <option value="전체">전체 부서 보기</option>
-                                {departments.filter(d => d !== '선택').map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
-                            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            {isAdmin ? (
+                                <>
+                                    <select
+                                        value={selectedDept}
+                                        onChange={(e) => setSelectedDept(e.target.value)}
+                                        className="appearance-none bg-slate-50 border border-slate-300 text-slate-700 py-2.5 pl-4 pr-10 rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-sm text-sm"
+                                    >
+                                        <option value="전체">전체 부서 보기</option>
+                                        {departments.filter(d => d !== '선택').map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                    </select>
+                                    <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </>
+                            ) : (
+                                <div className="bg-slate-50 border border-slate-300 text-slate-700 py-2.5 px-4 rounded-lg font-bold shadow-sm text-sm flex items-center gap-2">
+                                    <Filter className="w-4 h-4 text-slate-400" />
+                                    {selectedDept}
+                                </div>
+                            )}
                         </div>
 
                         {/* New Task Button */}
@@ -357,6 +373,7 @@ const TodoDashboard = ({ db, user, departments }) => {
                     departments={departments}
                     employees={employees}
                     initialDept={user?.department || (selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept)}
+                    isAdmin={isAdmin}
                 />
             )}
 
@@ -378,7 +395,7 @@ const TodoDashboard = ({ db, user, departments }) => {
 
 // --- Sub Components ---
 
-const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept }) => {
+const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept, isAdmin }) => {
     const [formData, setFormData] = useState({
         task: '',
         description: '',
@@ -461,15 +478,21 @@ const TodoFormModal = ({ onClose, onSubmit, departments, employees, initialDept 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">담당 부서</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={formData.department}
-                                onChange={e => setFormData({ ...formData, department: e.target.value })}
-                            >
-                                {departments.filter(d => d !== '선택' && d !== '전체').map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
+                            {isAdmin ? (
+                                <select
+                                    className="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    value={formData.department}
+                                    onChange={e => setFormData({ ...formData, department: e.target.value })}
+                                >
+                                    {departments.filter(d => d !== '선택' && d !== '전체').map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div className="w-full bg-slate-100 border border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                                    {formData.department}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">중요도</label>

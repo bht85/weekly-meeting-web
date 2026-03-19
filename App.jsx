@@ -7,7 +7,7 @@ import {
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
     ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor,
-    CheckSquare, Utensils
+    CheckSquare, Utensils, StickyNote
 } from 'lucide-react';
 import LunchDashboard from './LunchDashboard';
 import CollaborationDashboard from './CollaborationDashboard';
@@ -16,6 +16,7 @@ import TodoDashboard from './TodoDashboard';
 import OrganizationDashboard from './OrganizationDashboard';
 import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
+import CommercialDashboard from './CommercialDashboard'; // 새 항목 추가
 
 // --- Firebase 라이브러리 ---
 import { initializeApp } from "firebase/app";
@@ -101,6 +102,7 @@ const FEEDBACK_TEAMS = [
 // --- 부서 메타데이터 (순서 및 아이콘 정의) ---
 const NAV_ITEMS = [
     { id: 'news', label: '업계 동향', icon: Monitor },
+    { id: 'commercial', label: '상권', icon: TrendingUp },
     { id: 'calendar', label: '캘린더', icon: Calendar },
     { id: 'meeting', label: '주간회의록', icon: FileText },
     { id: 'collaboration', label: '협업 요청', icon: Share2 },
@@ -110,27 +112,10 @@ const NAV_ITEMS = [
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
 ];
 
-const ALLOWED_EMAILS = [
-    "daisy@composecoffee.co.kr",      // 경영지원본부장
-    "choihy@composecoffee.co.kr",     // 재무팀
-    "esc913@composecoffee.co.kr",     // 인사총무팀
-    "sophia@composecoffee.co.kr",     // 해외사업팀
-    "smin@composecoffee.co.kr",       // 재무기획팀
-    "donghee.han@composecoffee.co.kr",// 법무팀
-    "it@composecoffee.co.kr",         // IT지원팀
-    "sclee@composecoffee.co.kr",      // 구매물류팀
-];
+// --- [수정] 하드코딩된 이메일 목록 제거 (Firestore employees 컬렉션 참조) ---
+// const ALLOWED_EMAILS = [ ... ];
+// const USER_DEPT_MAP = { ... };
 
-const USER_DEPT_MAP = {
-    "daisy@composecoffee.co.kr": "경영지원본부", // (관리자급)
-    "choihy@composecoffee.co.kr": "재무팀",
-    "esc913@composecoffee.co.kr": "인사총무팀",
-    "sophia@composecoffee.co.kr": "해외사업팀",
-    "smin@composecoffee.co.kr": "재무기획팀",
-    "donghee.han@composecoffee.co.kr": "법무팀",
-    "it@composecoffee.co.kr": "IT지원팀",
-    "sclee@composecoffee.co.kr": "구매물류팀",
-};
 
 const LoginView = ({ onLogin, onSignup }) => {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -256,7 +241,7 @@ const getIconComponent = (iconName) => {
     }
 };
 
-const KPIDashboard = () => {
+const KPIDashboard = ({ user, isAdmin }) => {
     const [selectedDeptId, setSelectedDeptId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -271,6 +256,12 @@ const KPIDashboard = () => {
     const [deptDataMap, setDeptDataMap] = useState({});
     const [commonKpis, setCommonKpis] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Filter departments for display
+    const visibleDepts = useMemo(() => {
+        if (isAdmin) return DEPARTMENTS_META;
+        return DEPARTMENTS_META.filter(d => d.name === user?.department);
+    }, [isAdmin, user]);
 
     // 1. 데이터 구독
     useEffect(() => {
@@ -466,18 +457,20 @@ const KPIDashboard = () => {
                         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                     <div className="w-px h-6 bg-slate-300 mx-1 hidden md:block"></div>
-                    <button
-                        onClick={() => setIsCommonKpiModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 shadow-sm transition-colors"
-                    >
-                        <Building2 className="w-4 h-4" /> 전사 지표 관리
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => setIsCommonKpiModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 shadow-sm transition-colors"
+                        >
+                            <Building2 className="w-4 h-4" /> 전사 지표 관리
+                        </button>
+                    )}
                 </div>
             </div>
 
             {selectedDeptId === null ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {DEPARTMENTS_META.map((dept) => {
+                    {visibleDepts.map((dept) => {
                         const deptRecord = deptDataMap?.[dept.id] || { kpis: [] };
                         const score = getDeptScore(deptRecord.kpis);
                         return (
@@ -735,6 +728,8 @@ const KPIDashboard = () => {
                     />
                 )
             }
+
+
         </div >
     );
 };
@@ -810,6 +805,10 @@ const TeamManagerModal = ({ onClose }) => (
 // --- 메인 앱 컴포넌트 ---
 function App() {
     const [user, setUser] = useState(null);
+    const isAdmin = useMemo(() =>
+        user?.email === "daisy@composecoffee.co.kr" ||
+        user?.email === "choihy@composecoffee.co.kr",
+    [user]);
     const [appMode, setAppMode] = useState('news');
     // 랜딩 페이지 표시 여부 (첫 접속 시 항상 true → 버튼 클릭 시 false)
     const [showLanding, setShowLanding] = useState(true);
@@ -835,19 +834,45 @@ function App() {
     const [editingId, setEditingId] = useState(null);
     const [editingFeedbackId, setEditingFeedbackId] = useState(null);
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            if (currentUser) {
-                const dept = USER_DEPT_MAP[currentUser.email] || '기타';
-                const userWithDept = { ...currentUser, department: dept };
-                setUser(userWithDept);
+    // --- Memo States ---
+    const [isMemoModalOpen, setIsMemoModalOpen] = useState(false);
+    const [memoTargetId, setMemoTargetId] = useState(null); // Document ID of the minute
+    const [memoInput, setMemoInput] = useState('');
+    const [editingMemoId, setEditingMemoId] = useState(null);
 
-                // 로그인 시 작성 폼 부서 자동 선택
-                if (DEPARTMENTS.includes(dept)) {
-                    setInputDept(dept);
-                    // 뷰 필터는 '전체'로 시작하거나 본인 부서로 시작? (요청 : 부서 선택을 자동화)
-                    // 작성 시 자동화는 setInputDept로 해결.
-                    // 조회 시는 사용자 자유도가 중요하므로 '전체' 유지하거나 필요 시 변경.
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                // Firestore에서 사용자 정보(부서 등) 가져오기
+                try {
+                    const q = query(collection(db, 'employees'), where('email', '==', currentUser.email));
+                    const querySnapshot = await getDocs(q);
+
+                    let dept = '기타';
+                    let userData = {};
+
+                    if (!querySnapshot.empty) {
+                        const empDoc = querySnapshot.docs[0].data();
+                        dept = empDoc.department || '기타';
+                        userData = empDoc;
+                    } else if (currentUser.email === "daisy@composecoffee.co.kr" || currentUser.email === "choihy@composecoffee.co.kr") {
+                        // 관리자 예외 처리
+                        dept = "경영지원본부";
+                    }
+
+                    const userWithDept = {
+                        ...currentUser,
+                        department: dept,
+                        ...userData
+                    };
+                    setUser(userWithDept);
+
+                    if (DEPARTMENTS.includes(dept)) {
+                        setInputDept(dept);
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                    setUser(currentUser);
                 }
             } else {
                 setUser(null);
@@ -879,11 +904,18 @@ function App() {
             alert("보안을 위해 비밀번호는 6자 이상 입력해 주세요.");
             return;
         }
-        if (!ALLOWED_EMAILS.includes(email)) {
-            alert("허용되지 않은 이메일입니다. 관리자에게 문의하세요.");
-            return;
-        }
+
+        // 1. 등록된 직원인지 확인
         try {
+            const q = query(collection(db, 'employees'), where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty && email !== "daisy@composecoffee.co.kr") {
+                alert("등록된 직원이 아닙니다. 관리자에게 문의하세요.");
+                return;
+            }
+
+            // 2. 가입 진행
             await createUserWithEmailAndPassword(auth, email, password);
             alert("회원가입이 완료되었습니다.");
         } catch (error) {
@@ -1093,6 +1125,76 @@ function App() {
         setIsModalOpen(false);
     };
 
+    // --- Memo Functions ---
+    const handleOpenMemoModal = (minuteId, memoId = null, existingText = '') => {
+        setMemoTargetId(minuteId);
+        setEditingMemoId(memoId);
+        setMemoInput(existingText);
+        setIsMemoModalOpen(true);
+    };
+
+    const handleCloseMemoModal = () => {
+        setMemoTargetId(null);
+        setEditingMemoId(null);
+        setMemoInput('');
+        setIsMemoModalOpen(false);
+    };
+
+    const handleMemoSubmit = async (e) => {
+        e.preventDefault();
+        if (!memoInput.trim()) {
+            alert('메모 내용을 입력해 주세요.');
+            return;
+        }
+
+        const targetMinute = minutes.find(m => m.id === memoTargetId);
+        if (!targetMinute) return;
+
+        const currentMemos = targetMinute.memos || [];
+        let newMemos;
+
+        if (editingMemoId) {
+            newMemos = currentMemos.map(m => m.id === editingMemoId ? { ...m, text: memoInput, updatedAt: new Date().toISOString() } : m);
+        } else {
+            newMemos = [...currentMemos, {
+                id: Date.now().toString(),
+                text: memoInput,
+                author: user.email.split('@')[0],
+                createdAt: new Date().toISOString()
+            }];
+        }
+
+        try {
+            await updateDoc(doc(db, "weekly_minutes", memoTargetId), {
+                memos: newMemos,
+                hasMemo: newMemos.length > 0
+            });
+            handleCloseMemoModal();
+        } catch (error) {
+            console.error("Memo save error:", error);
+            alert('메모 저장 중 오류가 발생했습니다.');
+        }
+    };
+
+    const handleDeleteMemo = async (minuteId, memoId) => {
+        if (!window.confirm("메모를 삭제하시겠습니까?")) return;
+
+        const targetMinute = minutes.find(m => m.id === minuteId);
+        if (!targetMinute) return;
+
+        const newMemos = (targetMinute.memos || []).filter(m => m.id !== memoId);
+
+        try {
+            await updateDoc(doc(db, "weekly_minutes", minuteId), {
+                memos: newMemos,
+                hasMemo: newMemos.length > 0
+            });
+        } catch (error) {
+            console.error("Memo delete error:", error);
+            alert('메모 삭제 중 오류가 발생했습니다.');
+        }
+    };
+
     const handleCloseFeedbackModal = () => {
         setEditingFeedbackId(null);
         setFeedbackInputData({ finance: '', finance_plan: '', hr: '', legal: '', it: '' });
@@ -1190,8 +1292,12 @@ function App() {
         return <LoginView onLogin={handleLogin} onSignup={handleSignup} />;
     }
 
-    // 2. 로그인 상태지만 허용된 이메일이 아님 -> 권한 없음 화면
-    if (!ALLOWED_EMAILS.includes(user.email)) {
+    // 2. 로그인 상태지만 등록된 직원이 아님 -> 권한 없음 화면
+    // (daisy@... 또는 choihy@... 제외)
+    if (user &&
+        user.email !== "daisy@composecoffee.co.kr" &&
+        user.email !== "choihy@composecoffee.co.kr" &&
+        user.department === '기타') {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
     }
 
@@ -1282,14 +1388,17 @@ function App() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
                 {/* [MODE 1] KPI 대시보드 */}
-                {appMode === 'kpi' && <KPIDashboard />}
+                {appMode === 'kpi' && <KPIDashboard user={user} isAdmin={isAdmin} />}
 
                 {/* [MODE 2] 재무 관리 */}
                 {/* [MODE 8] 캘린더 (New) */}
-                {appMode === 'calendar' && <CalendarDashboard db={db} departments={DEPARTMENTS} />}
+                {appMode === 'calendar' && <CalendarDashboard db={db} departments={DEPARTMENTS} user={user} isAdmin={isAdmin} />}
 
                 {/* [MODE 5] 업계 동향 */}
                 {appMode === 'news' && <NewsDashboard />}
+
+                {/* [MODE 10] 상권 분석 */}
+                {appMode === 'commercial' && <CommercialDashboard />}
 
                 {/* [MODE 9] 맛집/식단 (New) */}
                 {appMode === 'lunch' && <LunchDashboard db={db} user={user} />}
@@ -1300,6 +1409,7 @@ function App() {
                         db={db}
                         user={user}
                         departments={DEPARTMENTS}
+                        isAdmin={isAdmin}
                     />
                 )}
 
@@ -1309,12 +1419,18 @@ function App() {
                         db={db}
                         user={user}
                         departments={DEPARTMENTS}
+                        isAdmin={isAdmin}
                     />
                 )}
 
                 {/* [MODE 7] 조직/인사 */}
                 {appMode === 'org' && (
-                    <OrganizationDashboard db={db} departments={DEPARTMENTS} user={user} />
+                    <OrganizationDashboard
+                        db={db}
+                        departments={DEPARTMENTS}
+                        user={user}
+                        isAdmin={isAdmin}
+                    />
                 )}
 
                 {/* [MODE 3] 회의록 시스템 */}
@@ -1362,10 +1478,16 @@ function App() {
                                             <option value="">전체 날짜</option>
                                             {allDates?.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
-                                        <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="text-sm border-gray-300 rounded-md shadow-sm p-1.5 border">
-                                            <option value="전체">전체 부서</option>
-                                            {DEPARTMENTS.filter(d => d !== '선택').map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
+                                        {isAdmin ? (
+                                            <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="text-sm border-gray-300 rounded-md shadow-sm p-1.5 border">
+                                                <option value="전체">전체 부서</option>
+                                                {DEPARTMENTS.filter(d => d !== '선택').map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        ) : (
+                                            <div className="text-sm font-bold text-slate-700 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md">
+                                                {user?.department}
+                                            </div>
+                                        )}
                                     </div>
                                     <button onClick={handleExportCSV} className="flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md shadow-sm">
                                         <Download className="w-4 h-4 mr-2" /> 엑셀 다운로드
@@ -1405,6 +1527,7 @@ function App() {
                                                                             setInputData({ report: minute.report, progress: minute.progress, discussion: minute.discussion });
                                                                             setIsModalOpen(true);
                                                                         }} className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
+                                                                            <button onClick={() => handleOpenMemoModal(minute.id)} className="p-1.5 text-gray-400 hover:text-yellow-600 bg-gray-50 hover:bg-yellow-50 rounded" title="ë©ëª¨ ì¶ê°"><StickyNote className="w-4 h-4" /></button>
                                                                         <button onClick={async () => {
                                                                             if (window.confirm("삭제하시겠습니까?")) await deleteDoc(doc(db, 'weekly_minutes', minute.id));
                                                                         }} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
@@ -1414,6 +1537,29 @@ function App() {
                                                                     <div className="bg-blue-50 p-3 rounded-lg"><div className="font-bold text-blue-800 text-xs mb-1">보고사항</div><div className="text-gray-700">{renderText(minute.report)}</div></div>
                                                                     <div className="bg-emerald-50 p-3 rounded-lg"><div className="font-bold text-emerald-800 text-xs mb-1">진행업무</div><div className="text-gray-700">{renderText(minute.progress)}</div></div>
                                                                     <div className="bg-amber-50 p-3 rounded-lg"><div className="font-bold text-amber-800 text-xs mb-1">협의업무</div><div className="text-gray-700">{renderText(minute.discussion)}</div></div>
+
+                                                                {/* Memos Display */}
+                                                                {minute.memos && minute.memos.length > 0 && (
+                                                                    <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+                                                                        <div className="flex items-center gap-1.5 mb-2 text-yellow-700 font-bold text-xs">
+                                                                            <StickyNote className="w-3.5 h-3.5" /> 의견 및 보완사항
+                                                                        </div>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {minute.memos.map(memo => (
+                                                                                <div key={memo.id} className="relative bg-yellow-100 p-3 rounded-lg shadow-sm border border-yellow-200 max-w-full min-w-[120px] group/memo">
+                                                                                    <div className="text-xs text-slate-800 leading-normal pr-4">{memo.text}</div>
+                                                                                    <div className="mt-2 text-[10px] text-yellow-700/70 flex justify-between items-center">
+                                                                                        <span>{memo.author} · {new Date(memo.createdAt).toLocaleDateString()}</span>
+                                                                                        <div className="hidden group-hover/memo:flex gap-1">
+                                                                                            <button onClick={() => handleOpenMemoModal(minute.id, memo.id, memo.text)} className="hover:text-blue-600"><Edit2 className="w-2.5 h-2.5" /></button>
+                                                                                            <button onClick={() => handleDeleteMemo(minute.id, memo.id)} className="hover:text-red-600"><X className="w-2.5 h-2.5" /></button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1503,9 +1649,15 @@ function App() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">부서</label>
-                                        <select value={inputDept} onChange={e => setInputDept(e.target.value)} className="w-full border-gray-300 rounded-md p-2 border">
-                                            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
+                                        {isAdmin ? (
+                                            <select value={inputDept} onChange={e => setInputDept(e.target.value)} className="w-full border-gray-300 rounded-md p-2 border">
+                                                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        ) : (
+                                            <div className="w-full bg-slate-100 border-gray-300 rounded-md p-2 border text-sm font-bold text-slate-700">
+                                                {inputDept}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1589,6 +1741,39 @@ function App() {
                     </div>
                 )
             }
+
+
+            {isMemoModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+                    <div className="bg-[#fff9c4] w-full max-w-md rounded-lg shadow-2xl overflow-hidden transform transition-all border-l-8 border-yellow-400">
+                        <div className="p-4 border-b border-yellow-200 flex justify-between items-center bg-[#fff59d]">
+                            <h3 className="text-lg font-bold text-yellow-900 flex items-center">
+                                <StickyNote className="w-5 h-5 mr-2" /> 
+                                {editingMemoId ? '메모 수정' : '보완 및 질문 사항 추가'}
+                            </h3>
+                            <button onClick={handleCloseMemoModal} className="text-yellow-700 hover:text-yellow-900"><X className="w-6 h-6" /></button>
+                        </div>
+                        <form onSubmit={handleMemoSubmit} className="p-6">
+                            <div className="mb-4">
+                                <label className="block text-sm font-bold text-yellow-800 mb-2">포스트잇 메모 내용</label>
+                                <textarea
+                                    value={memoInput}
+                                    onChange={e => setMemoInput(e.target.value)}
+                                    placeholder="여기에 질문이나 보완 사항을 적어주세요..."
+                                    className="w-full border-yellow-200 bg-yellow-50/50 rounded-lg text-sm p-4 h-40 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all outline-none"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={handleCloseMemoModal} className="px-4 py-2 text-yellow-800 hover:bg-yellow-200 rounded-md text-sm font-medium transition-colors">취소</button>
+                                <button type="submit" className="px-6 py-2 bg-yellow-400 text-yellow-900 rounded-md hover:bg-yellow-500 font-bold shadow-md transition-all active:scale-95">
+                                    {editingMemoId ? '수정완료' : '메모 남기기'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
         </div >
     );
