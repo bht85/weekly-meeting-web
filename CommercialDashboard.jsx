@@ -60,6 +60,7 @@ const CommercialDashboard = () => {
     const [detailData, setDetailData] = useState(null);
     const [deliveryData, setDeliveryData] = useState(null);
     const [showDetailPopup, setShowDetailPopup] = useState(false);
+    const [mapViewMode, setMapViewMode] = useState('population'); // population | sales | competitor
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -328,13 +329,28 @@ const CommercialDashboard = () => {
                                 <p className="text-sm text-slate-500 mt-1">선택하신 '{selectedRegion}' 지역의 유동인구 및 매출 밀집도를 시각화합니다.</p>
                             </div>
                             <div className="flex bg-slate-100 rounded-lg p-1">
-                                <button className="px-4 py-1.5 text-sm font-bold bg-white text-indigo-600 rounded-md shadow-sm">인구 밀집도</button>
-                                <button className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">매출 히트맵</button>
-                                <button className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">경쟁점 분포</button>
+                                <button 
+                                    onClick={() => setMapViewMode('population')} 
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${mapViewMode === 'population' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    인구 밀집도
+                                </button>
+                                <button 
+                                    onClick={() => setMapViewMode('sales')} 
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${mapViewMode === 'sales' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    매출 히트맵
+                                </button>
+                                <button 
+                                    onClick={() => setMapViewMode('competitor')} 
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${mapViewMode === 'competitor' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    경쟁점 분포
+                                </button>
                             </div>
                         </div>
-                        {/* Mock Map Viewport */}
-                        <div className="relative w-full h-[400px] bg-slate-100 overflow-hidden">
+                        {/* Mock Map Viewport (Fixed height) */}
+                        <div className="relative w-full h-[250px] bg-slate-100 overflow-hidden">
                             {/* 실제 구글 맵 연동 바탕 */}
                             <div className="absolute inset-0 z-0">
                                 <iframe 
@@ -351,12 +367,21 @@ const CommercialDashboard = () => {
                             <div className="absolute inset-0 bg-white/40 pointer-events-none z-0"></div>
                             
                             {/* 히트맵 효과 (Blur Circles) - 마우스 이벤트 투과(pointer-events-none) 처리 */}
-                            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-rose-500/50 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10"></div>
-                            <div className="absolute top-1/3 right-1/3 w-72 h-72 bg-amber-500/50 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '1s' }}></div>
-                            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/40 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '2s' }}></div>
-                            <div className="absolute bottom-1/3 left-1/3 w-48 h-48 bg-indigo-500/40 rounded-full mix-blend-multiply filter blur-2xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '0.5s' }}></div>
+                            {mapViewMode === 'sales' && (
+                                <>
+                                    <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-rose-500/60 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10"></div>
+                                    <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-amber-500/60 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '1s' }}></div>
+                                </>
+                            )}
+                            
+                            {mapViewMode === 'population' && (
+                                <>
+                                    <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-emerald-500/50 rounded-full mix-blend-multiply filter blur-3xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '1.5s' }}></div>
+                                    <div className="absolute bottom-1/3 left-1/3 w-40 h-40 bg-indigo-500/50 rounded-full mix-blend-multiply filter blur-2xl animate-pulse pointer-events-none z-10" style={{ animationDelay: '0.5s' }}></div>
+                                </>
+                            )}
 
-                            {/* 맵 마커 */}
+                            {/* 맵 마커 (항상 고정) */}
                             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-20">
                                 <div className="bg-indigo-600/90 backdrop-blur text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg mb-1 relative w-auto whitespace-nowrap">
                                     {selectedRegion} 중심상권
@@ -365,16 +390,22 @@ const CommercialDashboard = () => {
                                 <div className="w-5 h-5 bg-indigo-500 border-2 border-white rounded-full shadow-lg animate-bounce"></div>
                             </div>
                             
-                            {/* 경쟁점 마커들 */}
-                            <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
-                            <div className="absolute top-1/3 right-1/4 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
-                            <div className="absolute bottom-1/3 right-1/3 w-4 h-4 bg-amber-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                            {/* 경쟁점 마커들 (경쟁점 분포 모드일 때만 활성화) */}
+                            <div className={`transition-opacity duration-300 ${mapViewMode === 'competitor' ? 'opacity-100' : 'opacity-0'}`}>
+                                <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                                <div className="absolute top-1/3 right-1/4 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                                <div className="absolute bottom-1/3 right-1/3 w-4 h-4 bg-amber-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                                <div className="absolute top-1/2 left-1/4 w-4 h-4 bg-sky-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                                <div className="absolute bottom-1/4 left-1/2 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-md pointer-events-none z-20"></div>
+                            </div>
                             
                             {/* 안내 문구 (좌측 하단) */}
-                            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur text-slate-700 px-4 py-2 rounded-lg shadow-sm border border-slate-200 pointer-events-none z-30">
+                            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur text-slate-700 px-4 py-2 rounded-lg shadow-sm border border-slate-200 pointer-events-none z-30 transition-all">
                                 <p className="text-xs font-bold flex items-center gap-1">
-                                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                                    색상이 붉을수록 유동인구 및 매출 밀집도가 높은 핵심 구역입니다.
+                                    <AlertCircle className={`w-4 h-4 ${mapViewMode === 'competitor' ? 'text-indigo-500' : 'text-rose-500'}`} />
+                                    {mapViewMode === 'sales' && '색상이 붉을수록 매출 밀집도가 높은 핵심 구역입니다.'}
+                                    {mapViewMode === 'population' && '색상이 푸를수록 유동인구 통행량이 많은 구역입니다.'}
+                                    {mapViewMode === 'competitor' && '주요 프랜차이즈 경쟁점들의 위치가 표시됩니다.'}
                                 </p>
                             </div>
                         </div>
