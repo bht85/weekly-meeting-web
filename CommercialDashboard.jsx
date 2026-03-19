@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, MapPin, Users, AlertCircle, BarChart3, ChevronDown, CheckCircle2 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+  BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ComposedChart, Area
 } from 'recharts';
+import { Store, TrendingDown } from 'lucide-react';
 
 const REGIONS = [
     // 서울 (25개 자치구)
@@ -52,6 +54,8 @@ const CommercialDashboard = () => {
     const [salesData, setSalesData] = useState([]);
     const [demoData, setDemoData] = useState([]);
     const [weatherData, setWeatherData] = useState(null);
+    const [storeSumData, setStoreSumData] = useState({ total: 0, open: 0, close: 0 });
+    const [storeStatusData, setStoreStatusData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -87,6 +91,28 @@ const CommercialDashboard = () => {
                     female: Math.floor(rand() * 4000 + 1000)
                 }));
                 setDemoData(mockDemo);
+
+                // 업소 현황 (커피 프랜차이즈 기준)
+                const mockStoreStatus = [];
+                let baseTotal = Math.floor(rand() * 150 + 50); // 기본 점포 수 50~200개
+                let totalOpen = 0, totalClose = 0;
+                
+                for(let i=5; i>=0; i--) {
+                    const openCount = Math.floor(rand() * 8); // 월별 0~7개 오픈
+                    const closeCount = Math.floor(rand() * 5); // 월별 0~4개 폐업
+                    totalOpen += openCount;
+                    totalClose += closeCount;
+                    baseTotal = baseTotal + openCount - closeCount;
+                    
+                    mockStoreStatus.push({
+                        month: getRelativeMonth(i),
+                        total: baseTotal,
+                        openCount,
+                        closeCount
+                    });
+                }
+                setStoreStatusData(mockStoreStatus);
+                setStoreSumData({ total: baseTotal, open: totalOpen, close: totalClose });
 
                 // 창업기상도 데이터 (Mock)
                 const charSum = selectedRegion.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -309,6 +335,62 @@ const CommercialDashboard = () => {
                                         <Bar dataKey="male" name="남성" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="female" name="여성" fill="#ec4899" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                     </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4. 커피 프랜차이즈 업소 현황 (경쟁 분석) */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
+                        <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Store className="w-5 h-5 text-indigo-500" /> 카페 업종 현황 및 변동 추이 (경쟁 밀집도)
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1">최근 6개월간 해당 상권 내 커피전문점(프랜차이즈/개인)의 개업 및 폐업, 총 점포 수 추이입니다.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+                            {/* 요약 카드 */}
+                            <div className="md:col-span-1 space-y-4">
+                                <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                                    <h4 className="text-xs font-bold text-slate-500 mb-1">현재 상권 내 카페 총 점포 수</h4>
+                                    <div className="text-3xl font-black text-indigo-700">{storeSumData.total}개</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
+                                        <h4 className="text-[11px] font-bold text-slate-500 mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500"/> 6개월 누적 개업</h4>
+                                        <div className="text-xl font-bold text-emerald-600">+{storeSumData.open}건</div>
+                                    </div>
+                                    <div className="bg-rose-50/50 rounded-xl p-4 border border-rose-100">
+                                        <h4 className="text-[11px] font-bold text-slate-500 mb-1 flex items-center gap-1"><TrendingDown className="w-3 h-3 text-rose-500"/> 6개월 누적 폐업</h4>
+                                        <div className="text-xl font-bold text-rose-600">-{storeSumData.close}건</div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-4 bg-slate-50 rounded-xl text-sm text-slate-600 border border-slate-200">
+                                    <strong>💡 전략 시사점: </strong> 
+                                    6개월간 {storeSumData.open >= storeSumData.close ? '개업이 폐업보다 많아 카페 업종의 유입이 활발' : '폐업이 우세하여 생존 경쟁이 치열하거나 상권이 위축'}되는 상황입니다. 컴포즈커피의 차별화된 가성비 전략 및 배달 권역 확보가 핵심입니다.
+                                </div>
+                            </div>
+
+                            {/* 추이 차트 */}
+                            <div className="md:col-span-3 h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={storeStatusData} margin={{ top: 20, right: 20, bottom: 0, left: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                        <RechartsTooltip 
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '15px' }} />
+                                        <Bar yAxisId="left" dataKey="openCount" name="월별 개업 수" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                                        <Bar yAxisId="left" dataKey="closeCount" name="월별 폐업 수" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
+                                        <Line yAxisId="right" type="monotone" dataKey="total" name="총 카페 점포 수" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} />
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
