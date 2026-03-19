@@ -5,7 +5,7 @@ import {
   BarChart, Bar, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ComposedChart, Area, PieChart, Pie, Cell
 } from 'recharts';
-import { Store, TrendingDown } from 'lucide-react';
+import { Store, TrendingDown, Tent, CalendarDays, ExternalLink, Ticket } from 'lucide-react';
 
 const REGIONS = [
     // 서울 (25개 자치구)
@@ -60,6 +60,8 @@ const CommercialDashboard = () => {
     const [detailData, setDetailData] = useState(null);
     const [deliveryData, setDeliveryData] = useState(null);
     const [showDetailPopup, setShowDetailPopup] = useState(false);
+    const [showFestivalPopup, setShowFestivalPopup] = useState(false);
+    const [festivalData, setFestivalData] = useState([]);
     const [mapViewMode, setMapViewMode] = useState('population'); // population | sales | competitor
     const [loading, setLoading] = useState(true);
 
@@ -170,6 +172,35 @@ const CommercialDashboard = () => {
                 };
                 setDeliveryData(mockDelivery);
 
+                // 관광 축제 정보 (Mock - 소상공인365 오픈API 형태)
+                const mockFestivals = [
+                    {
+                        name: `${selectedRegion.split(' ')[1] || selectedRegion} 지역 문화 축제`,
+                        period: '2026-04-15 ~ 2026-04-20',
+                        location: `${selectedRegion} 중심 상권 일대`,
+                        type: '문화/예술',
+                        visitors: Math.floor(rand() * 50000 + 10000),
+                        status: '예정'
+                    },
+                    {
+                        name: `${selectedRegion.split(' ')[0]} 먹거리 야시장`,
+                        period: '2026-05-01 ~ 2026-05-05',
+                        location: `${selectedRegion} 푸드 스트리트`,
+                        type: '음식/지역특산물',
+                        visitors: Math.floor(rand() * 80000 + 30000),
+                        status: '준비중'
+                    },
+                    {
+                        name: `로컬 크리에이터 플리마켓`,
+                        period: '매주 주말 (상시)',
+                        location: `${selectedRegion} 문화 공원`,
+                        type: '쇼핑/체험',
+                        visitors: Math.floor(rand() * 5000 + 2000),
+                        status: '진행중'
+                    }
+                ];
+                setFestivalData(mockFestivals);
+
                 // 창업기상도 데이터 (Mock)
                 const charSum = selectedRegion.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
                 const weatherOptions = [
@@ -246,6 +277,13 @@ const CommercialDashboard = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+                    <button 
+                        onClick={() => setShowFestivalPopup(true)}
+                        className="w-full md:w-auto px-5 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-rose-200"
+                    >
+                        <Tent className="w-5 h-5" />
+                        주변 관광·축제 정보
+                    </button>
                     <button 
                         onClick={() => setShowDetailPopup(true)}
                         className="w-full md:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-indigo-200"
@@ -819,6 +857,83 @@ const CommercialDashboard = () => {
                                 className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-colors shadow-sm"
                             >
                                 리포트 닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 관광·축제 정보 팝업 모달 */}
+            {showFestivalPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                    {/* Dim Overlay */}
+                    <div 
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={() => setShowFestivalPopup(false)}
+                    ></div>
+                    
+                    {/* Modal Content */}
+                    <div className="relative bg-slate-50 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 duration-300 border border-slate-200/50">
+                        {/* 팝업 헤더 */}
+                        <div className="px-6 py-5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <Tent className="w-6 h-6 text-rose-500" />
+                                    {selectedRegion} 관광·축제 정보 (소상공인365 Open API)
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    해당 상권 인근에서 개최되는 주요 축제 및 행사 일정입니다. 유동인구 증가 요인으로 작용할 수 있습니다.
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setShowFestivalPopup(false)}
+                                className="w-10 h-10 rounded-full bg-slate-100 hover:bg-rose-100 hover:text-rose-600 flex items-center justify-center transition-colors shadow-sm"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        {/* 팝업 바디 */}
+                        <div className="p-6 overflow-y-auto w-full custom-scrollbar space-y-4">
+                            {festivalData.map((fest, idx) => (
+                                <div key={idx} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-rose-300 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 sm:items-center">
+                                    <div className="w-16 h-16 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                                        <CalendarDays className="w-8 h-8 text-rose-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="px-2 py-0.5 rounded text-[11px] font-black bg-rose-100 text-rose-700">{fest.type}</span>
+                                            <span className={`px-2 py-0.5 rounded text-[11px] font-black border ${fest.status === '진행중' ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-slate-300 text-slate-500'}`}>{fest.status}</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800">{fest.name}</h3>
+                                        <div className="text-sm text-slate-500 mt-2 flex flex-col sm:flex-row sm:gap-4 space-y-1 sm:space-y-0">
+                                            <div className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4 text-slate-400" /> {fest.period}</div>
+                                            <div className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400" /> {fest.location}</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-50 rounded-lg p-3 sm:w-32 flex flex-col items-center justify-center border border-slate-100 shrink-0">
+                                        <span className="text-[10px] font-bold text-slate-400 mb-1">예상/누적 방문객</span>
+                                        <strong className="text-indigo-600 text-lg">{fest.visitors.toLocaleString()}명</strong>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            <div className="mt-4 p-4 bg-sky-50 rounded-xl text-sm text-sky-700 border border-sky-100 flex items-start gap-3">
+                                <ExternalLink className="w-5 h-5 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong>💡 API 데이터 출처:</strong> 소상공인365 오픈API (관광 축제 정보)<br/>
+                                    임시 승인 인증키 (certKey)를 기반으로 호출된 실시간 모의 데이터입니다. 실제 서비스 적용 시 상권 유동인구 폭발 시점(피크 데이)과 연계하여 특수 마케팅 전략 수립에 활용할 수 있습니다.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 팝업 하단 여백 및 닫기 힌트 */}
+                        <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-end shrink-0">
+                            <button 
+                                onClick={() => setShowFestivalPopup(false)}
+                                className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-colors shadow-sm"
+                            >
+                                창 닫기
                             </button>
                         </div>
                     </div>
