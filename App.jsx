@@ -1125,28 +1125,80 @@ function App() {
         return true;
     };
 
-    const processText = (text) => text ? text.trim() || '     - 특이사항 없음' : '     - 특이사항 없음';
+    const processText = (text) => text ? text.replace(/\s+$/, '') || '     - 특이사항 없음' : '     - 특이사항 없음';
 
     const autoFormat = (val, setFunc, field, e) => {
         if (e.nativeEvent.isComposing) return;
+        const { selectionStart, selectionEnd } = e.target;
 
+        // --- 엔터 키: 이전 줄의 들여쓰기를 상속함 ---
         if (e.key === 'Enter') {
             e.preventDefault();
-            const { selectionStart, selectionEnd } = e.target;
-            const newVal = val.substring(0, selectionStart) + '\n     - ' + val.substring(selectionEnd);
+            const lines = val.substring(0, selectionStart).split('\n');
+            const currentLine = lines[lines.length - 1];
+            const leadingSpaces = currentLine.match(/^\s*/)[0];
+            const hasBullet = currentLine.trim().startsWith('-');
+            
+            const insertText = '\n' + leadingSpaces + (hasBullet ? '- ' : '');
+            const newVal = val.substring(0, selectionStart) + insertText + val.substring(selectionEnd);
+            
             setFunc(prev => ({ ...prev, [field]: newVal }));
             setTimeout(() => {
-                if (e.target) {
-                    e.target.selectionStart = selectionStart + 8;
-                    e.target.selectionEnd = selectionStart + 8;
-                }
+                const newPos = selectionStart + insertText.length;
+                e.target.setSelectionRange(newPos, newPos);
+            }, 0);
+        }
+
+        // --- 탭 키: 들여쓰기 (4칸 추가) ---
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const startOfLine = val.lastIndexOf('\n', selectionStart - 1) + 1;
+            const newVal = val.substring(0, startOfLine) + '    ' + val.substring(startOfLine);
+            
+            setFunc(prev => ({ ...prev, [field]: newVal }));
+            setTimeout(() => {
+                e.target.setSelectionRange(selectionStart + 4, selectionStart + 4);
+            }, 0);
+        }
+
+        // --- 쉬프트+탭 키: 내어쓰기 (4칸 제거) ---
+        if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            // 쉬프트 탭 로직은 위에서 override 되므로 한 번에 처리
+        }
+    };
+
+    // 탭 키 핸들러 별도 분리 (Tab/Shift+Tab)
+    const handleTabKey = (val, setFunc, field, e) => {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        const { selectionStart } = e.target;
+        const startOfLine = val.lastIndexOf('\n', selectionStart - 1) + 1;
+        const lineContent = val.substring(startOfLine);
+
+        if (e.shiftKey) {
+            // 내어쓰기 (앞에 공백 4칸이 있으면 제거)
+            if (lineContent.startsWith('    ')) {
+                const newVal = val.substring(0, startOfLine) + val.substring(startOfLine + 4);
+                setFunc(prev => ({ ...prev, [field]: newVal }));
+                setTimeout(() => {
+                    const nextPos = Math.max(startOfLine, selectionStart - 4);
+                    e.target.setSelectionRange(nextPos, nextPos);
+                }, 0);
+            }
+        } else {
+            // 들여쓰기 (앞에 공백 4칸 추가)
+            const newVal = val.substring(0, startOfLine) + '    ' + val.substring(startOfLine);
+            setFunc(prev => ({ ...prev, [field]: newVal }));
+            setTimeout(() => {
+                e.target.setSelectionRange(selectionStart + 4, selectionStart + 4);
             }, 0);
         }
     };
 
     const autoFocus = (val, setFunc, field) => {
         if (!val || val.trim() === '') {
-            setFunc(prev => ({ ...prev, [field]: '     - ' }));
+            setFunc(prev => ({ ...prev, [field]: '- ' }));
         }
     };
 
@@ -1949,10 +2001,14 @@ function App() {
                                                     value={inputData[s.id]}
                                                     onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
                                                     onFocus={() => autoFocus(inputData[s.id], setInputData, s.id)}
-                                                    onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
+                                                    onKeyDown={(e) => {
+                                                        autoFormat(inputData[s.id], setInputData, s.id, e);
+                                                        handleTabKey(inputData[s.id], setInputData, s.id, e);
+                                                    }}
                                                     onPaste={(e) => handlePaste(s.id, e)}
                                                     placeholder={s.placeholder}
-                                                    className="w-full border-gray-300 rounded-md text-sm p-3 border h-48 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    className="w-full border-gray-300 rounded-md text-sm p-3 border h-64 focus:ring-2 focus:ring-blue-500 outline-none font-mono leading-relaxed"
+                                                    style={{ tabSize: 4 }}
                                                 />
                                                 
                                                 {/* 이미지 첨부 영역 */}
