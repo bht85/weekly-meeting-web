@@ -8,7 +8,7 @@ import {
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
     ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor,
-    CheckSquare, Utensils, StickyNote
+    CheckSquare, Utensils, StickyNote, HelpCircle
 } from 'lucide-react';
 import LunchDashboard from './LunchDashboard';
 import CollaborationDashboard from './CollaborationDashboard';
