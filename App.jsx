@@ -914,6 +914,7 @@ function App() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editingFeedbackId, setEditingFeedbackId] = useState(null);
+    const [showImageGuideModal, setShowImageGuideModal] = useState(false);
     // --- 이미지 첨부 전용 상태 ---
     const [reportImages, setReportImages] = useState([]);
     const [progressImages, setProgressImages] = useState([]);
@@ -2016,6 +2017,13 @@ function App() {
                                                     <div className="flex items-center justify-between mb-2">
                                                         <span className="text-[11px] text-gray-500 font-medium">
                                                             * 본문에 <span className="text-blue-600 font-bold">[표1], [표2]</span> 문구를 넣으면 해당 위치에 표시됩니다. (이미지 <span className="text-indigo-600 font-bold">붙여넣기(Ctrl+V)</span> 지원)
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => setShowImageGuideModal(true)}
+                                                                className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded hover:bg-indigo-100 transition-colors border border-indigo-100 font-bold"
+                                                            >
+                                                                사용법 가이드
+                                                            </button>
                                                         </span>
                                                         <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold border transition-colors cursor-pointer ${isUploading ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}>
                                                             {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
@@ -2161,6 +2169,56 @@ function App() {
                 </div>
             )}
 
+
+            {/* --- 이미지 사용 가이드 모달 --- */}
+            {showImageGuideModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setShowImageGuideModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="bg-indigo-600 p-4 text-white flex justify-between items-center">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <HelpCircle className="w-5 h-5 text-indigo-100" />
+                                표/이미지 사용 가이드
+                            </h3>
+                            <button onClick={() => setShowImageGuideModal(false)} className="hover:bg-indigo-500 p-1 rounded transition-colors text-white/80">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="space-y-2">
+                                <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
+                                    <div className="w-1 h-3.5 bg-indigo-500 rounded-full"></div>
+                                    1. 캡처해서 붙여넣기
+                                </h4>
+                                <p className="text-[11px] text-slate-600 leading-relaxed pl-2.5">
+                                    엑셀 표나 문서 일부를 <span className="font-bold text-indigo-600 underline decoration-indigo-200">Win + Shift + S</span>로 캡처한 뒤, 
+                                    글을 쓰는 칸에 바로 <span className="font-bold text-indigo-600">Ctrl + V</span> 하세요.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
+                                    <div className="w-1 h-3.5 bg-indigo-500 rounded-full"></div>
+                                    2. 이미지 배치 원리
+                                </h4>
+                                <p className="text-[11px] text-slate-600 leading-relaxed pl-2.5">
+                                    업로드된 이미지는 자동으로 <span className="font-bold text-blue-600">[표1]</span> 태그가 붙습니다. <br/>
+                                    이 문구를 원하는 문단 사이에 옮겨주면 그 위치에 <span className="font-bold">📊 표 버튼</span>이 생깁니다.
+                                </p>
+                            </div>
+                            <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100 mt-2">
+                                <p className="text-[10px] text-slate-500 leading-relaxed italic">
+                                    💡 팁: 파일을 직접 선택해서 올리고 싶다면 [+ 표 이미지 첨부] 버튼을 누르세요.
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setShowImageGuideModal(false)}
+                                className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-shadow shadow-md active:scale-[0.98] transition-transform"
+                            >
+                                알겠습니다
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
