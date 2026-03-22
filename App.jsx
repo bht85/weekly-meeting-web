@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getCollectionName } from './utils';
 import ReactDOM from 'react-dom/client';
 import {
     Calendar, FileText, PlusCircle, Save, Users, Clock, Briefcase,
@@ -41,6 +42,12 @@ import {
     getDocs,
     where
 } from 'firebase/firestore';
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from 'firebase/storage';
 
 // --- [설정] 사용자분의 Firebase 키값 적용 ---
 const firebaseConfig = {
@@ -64,24 +71,27 @@ try {
 }
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // --- 상수 데이터 (회의록용) ---
-const DEPARTMENTS = [
+const COMPOSE_DEPARTMENTS = [
     "선택",
     "재무팀",
     "재무기획팀",
     "인사총무팀",
     "법무팀",
-    "IT지원팀"
+    "IT지원팀",
+    "조직혁신팀"
 ];
 
 // 정렬 순서 정의
-const TEAM_ORDER = [
+const COMPOSE_TEAM_ORDER = [
     "재무팀",
     "재무기획팀",
     "인사총무팀",
     "법무팀",
-    "IT지원팀"
+    "IT지원팀",
+    "조직혁신팀"
 ];
 
 const SECTIONS = [
@@ -91,12 +101,13 @@ const SECTIONS = [
 ];
 
 // 경영본부 회의 의견 작성용 팀 리스트 (순서 반영)
-const FEEDBACK_TEAMS = [
+const COMPOSE_FEEDBACK_TEAMS = [
     { id: 'finance', label: '재무팀' },
     { id: 'finance_plan', label: '재무기획팀' },
     { id: 'hr', label: '인사총무팀' },
     { id: 'legal', label: '법무팀' },
-    { id: 'it', label: 'IT지원팀' }
+    { id: 'it', label: 'IT지원팀' },
+    { id: 'org_innovation', label: '조직혁신팀' }
 ];
 
 // --- 부서 메타데이터 (순서 및 아이콘 정의) ---
@@ -139,14 +150,14 @@ const LoginView = ({ onLogin, onSignup }) => {
                 <div className="bg-indigo-600 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-indigo-200 shadow-lg">
                     <Layout className="w-8 h-8 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 mb-2">Compose Coffee</h1>
-                <p className="text-slate-500 mb-8">{isSignUp ? '새 계정 만들기' : '주간회의 시스템 로그인'}</p>
+                <h1 className="text-2xl font-bold text-slate-900 mb-2">주간회의 시스템</h1>
+                <p className="text-slate-500 mb-8">{isSignUp ? '새 계정 만들기' : '로그인하여 시작하세요'}</p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <input
                             type="email"
-                            placeholder="이메일 (example@composecoffee.co.kr)"
+                            placeholder="이메일 주소"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
@@ -206,13 +217,53 @@ const UnauthorizedView = ({ email, onLogout }) => (
         </div>
     </div>
 );
-const DEPARTMENTS_META = [
+const COMPOSE_DEPARTMENTS_META = [
     { id: 'finance_team', name: '재무팀', icon: 'dollar' },
     { id: 'finance_plan', name: '재무기획팀', icon: 'dollar' },
     { id: 'hr_ga', name: '인사총무팀', icon: 'users' },
     { id: 'legal_team', name: '법무팀', icon: 'legal' },
-    { id: 'it_support', name: 'IT지원팀', icon: 'monitor' }
+    { id: 'it_support', name: 'IT지원팀', icon: 'monitor' },
+    { id: 'org_innovation', name: '조직혁신팀', icon: 'target' }
 ];
+
+const CG_DEPARTMENTS = [
+    "선택",
+    "경영지원팀",
+    "예약실",
+    "연회부",
+    "조리부",
+    "진행팀",
+    "시설관리팀"
+];
+
+const CG_TEAM_ORDER = [
+    "경영지원팀",
+    "예약실",
+    "연회부",
+    "조리부",
+    "진행팀",
+    "시설관리팀"
+];
+
+const CG_FEEDBACK_TEAMS = [
+    { id: 'management', label: '경영지원팀' },
+    { id: 'reservation', label: '예약실' },
+    { id: 'banquet', label: '연회부' },
+    { id: 'kitchen', label: '조리부' },
+    { id: 'operation', label: '진행팀' },
+    { id: 'facility', label: '시설관리팀' }
+];
+
+const CG_DEPARTMENTS_META = [
+    { id: 'management', name: '경영지원팀', icon: 'monitor' },
+    { id: 'reservation', name: '예약실', icon: 'users' },
+    { id: 'banquet', name: '연회부', icon: 'bag' },
+    { id: 'kitchen', name: '조리부', icon: 'dollar' },
+    { id: 'operation', name: '진행팀', icon: 'target' },
+    { id: 'facility', name: '시설관리팀', icon: 'legal' }
+];
+
+
 
 // --- 재무제표 항목 정의 ---
 const YEARS = ['2024', '2025', '2026', '2027'];
@@ -242,6 +293,9 @@ const getIconComponent = (iconName) => {
 };
 
 const KPIDashboard = ({ user, isAdmin }) => {
+    const isCg = user?.email?.endsWith('@casagrande.co.kr');
+    const DEPARTMENTS_META = isCg ? CG_DEPARTMENTS_META : COMPOSE_DEPARTMENTS_META;
+
     const [selectedDeptId, setSelectedDeptId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -268,7 +322,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
         setLoading(true);
 
         const q = query(
-            collection(db, 'kpi_records'),
+            collection(db, getCollectionName('kpi_records', user)),
             where('year', '==', currentYear),
             where('period', '==', currentPeriod)
         );
@@ -284,7 +338,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
         });
 
         const commonDocId = `${currentYear}_${currentPeriod}`;
-        const unsubCommon = onSnapshot(doc(db, 'kpi_commons', commonDocId), (docSnap) => {
+        const unsubCommon = onSnapshot(doc(db, getCollectionName('kpi_commons', user), commonDocId), (docSnap) => {
             if (docSnap.exists()) {
                 setCommonKpis(docSnap.data().kpis || []);
             } else {
@@ -307,7 +361,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
         const currentData = deptDataMap[deptId];
         if (!currentData) return;
         const newKpis = currentData.kpis.map(k => k.id === kpiId ? { ...k, current: Number(newValue) } : k);
-        await updateDoc(doc(db, 'kpi_records', docId), { kpis: newKpis });
+        await updateDoc(doc(db, getCollectionName('kpi_records', user), docId), { kpis: newKpis });
     };
 
     const handleDeleteKPI = async (deptId, kpiId) => {
@@ -316,7 +370,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
         const currentData = deptDataMap[deptId];
         if (!currentData) return;
         const newKpis = currentData.kpis.filter(k => k.id !== kpiId);
-        await updateDoc(doc(db, 'kpi_records', docId), { kpis: newKpis });
+        await updateDoc(doc(db, getCollectionName('kpi_records', user), docId), { kpis: newKpis });
     };
 
     const handleSaveKPI = async (deptId, kpiData) => {
@@ -341,7 +395,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
             });
         }
 
-        await setDoc(doc(db, 'kpi_records', docId), {
+        await setDoc(doc(db, getCollectionName('kpi_records', user), docId), {
             deptId: deptId,
             year: currentYear,
             period: currentPeriod,
@@ -372,7 +426,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
                 isCommon: true
             });
         }
-        await setDoc(doc(db, 'kpi_commons', docId), {
+        await setDoc(doc(db, getCollectionName('kpi_commons', user), docId), {
             year: currentYear,
             period: currentPeriod,
             kpis: newCommonKpis
@@ -384,7 +438,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
         if (!window.confirm('전사 공통 KPI를 삭제하시겠습니까?')) return;
         const docId = getCommonDocId();
         const newCommonKpis = commonKpis.filter(k => k.id !== kpiId);
-        await updateDoc(doc(db, 'kpi_commons', docId), { kpis: newCommonKpis });
+        await updateDoc(doc(db, getCollectionName('kpi_commons', user), docId), { kpis: newCommonKpis });
     };
 
     // --- 계산 로직 ---
@@ -805,13 +859,40 @@ const TeamManagerModal = ({ onClose }) => (
 // --- 메인 앱 컴포넌트 ---
 function App() {
     const [user, setUser] = useState(null);
+
+    const isCg = user?.email?.endsWith('@casagrande.co.kr') || user?.email === 'wedding_life@naver.com' || user?.forcedDomain === 'casagrande.co.kr';
+    const [customDepartments, setCustomDepartments] = useState([]);
+
+    useEffect(() => {
+        if (!user) {
+            setCustomDepartments([]);
+            return;
+        }
+        const unsub = onSnapshot(collection(db, getCollectionName('departments', user)), (snapshot) => {
+            const depts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            depts.sort((a, b) => (a.order || 99) - (b.order || 99));
+            setCustomDepartments(depts);
+        });
+        return () => unsub();
+    }, [user]);
+
+    const baseDepts = isCg ? CG_DEPARTMENTS : COMPOSE_DEPARTMENTS;
+    const DEPARTMENTS = useMemo(() => {
+        const customNames = customDepartments.map(d => d.name).filter(Boolean);
+        return Array.from(new Set([...baseDepts, ...customNames]));
+    }, [baseDepts, customDepartments]);
+    const TEAM_ORDER = isCg ? CG_TEAM_ORDER : COMPOSE_TEAM_ORDER;
+    const FEEDBACK_TEAMS = isCg ? CG_FEEDBACK_TEAMS : COMPOSE_FEEDBACK_TEAMS;
+
     const isAdmin = useMemo(() =>
         user?.email === "daisy@composecoffee.co.kr" ||
-        user?.email === "choihy@composecoffee.co.kr",
+        user?.email === "choihy@composecoffee.co.kr" ||
+        user?.email === "admin@casagrande.co.kr" ||
+        user?.email === "wedding_life@naver.com",
     [user]);
     const [appMode, setAppMode] = useState('news');
-    // 랜딩 페이지 표시 여부 (첫 접속 시 항상 true → 버튼 클릭 시 false)
-    const [showLanding, setShowLanding] = useState(true);
+    // 랜딩 페이지 표시 여부 (로그인 후 회사별 랜딩 표시 → 버튼 클릭 시 false)
+    const [showLanding, setShowLanding] = useState(false);
 
     // --- Meeting States ---
     const [minutes, setMinutes] = useState([]);
@@ -833,6 +914,15 @@ function App() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editingFeedbackId, setEditingFeedbackId] = useState(null);
+    // --- 이미지 첨부 전용 상태 ---
+    const [reportImages, setReportImages] = useState([]);
+    const [progressImages, setProgressImages] = useState([]);
+    const [discussionImages, setDiscussionImages] = useState([]);
+    const [isUploading, setIsUploading] = useState(false);
+
+    // --- Image Viewer States ---
+    const [imageViewerUrl, setImageViewerUrl] = useState(null);
+    const [imageViewerTitle, setImageViewerTitle] = useState('');
 
     // --- Memo States ---
     const [isMemoModalOpen, setIsMemoModalOpen] = useState(false);
@@ -845,7 +935,19 @@ function App() {
             if (currentUser) {
                 // Firestore에서 사용자 정보(부서 등) 가져오기
                 try {
-                    const q = query(collection(db, 'employees'), where('email', '==', currentUser.email));
+                    // [기업 매핑 조회] 외부 메일 사용 시 어느 회사 소속인지 확인
+                    let effectiveDomain = currentUser.email.split('@')[1];
+                    const mappingRef = doc(db, 'company_registry', currentUser.email);
+                    const mappingSnap = await getDocs(query(collection(db, 'company_registry'), where('email', '==', currentUser.email)));
+                    
+                    if (!mappingSnap.empty) {
+                        effectiveDomain = mappingSnap.docs[0].data().domain;
+                    } else if (currentUser.email === 'wedding_life@naver.com') {
+                        effectiveDomain = 'casagrande.co.kr';
+                    }
+
+                    const contextUser = { ...currentUser, forcedDomain: effectiveDomain };
+                    const q = query(collection(db, getCollectionName('employees', contextUser)), where('email', '==', currentUser.email));
                     const querySnapshot = await getDocs(q);
 
                     let dept = '기타';
@@ -855,17 +957,27 @@ function App() {
                         const empDoc = querySnapshot.docs[0].data();
                         dept = empDoc.department || '기타';
                         userData = empDoc;
-                    } else if (currentUser.email === "daisy@composecoffee.co.kr" || currentUser.email === "choihy@composecoffee.co.kr") {
-                        // 관리자 예외 처리
+                    } else if (
+                        currentUser.email === "daisy@composecoffee.co.kr" ||
+                        currentUser.email === "choihy@composecoffee.co.kr" ||
+                        currentUser.email.endsWith("@casagrande.co.kr")
+                    ) {
+                        // 관리자 및 까사그랑데 예외 처리
                         dept = "경영지원본부";
+                    } else if (currentUser.email === "it@composecoffee.co.kr") {
+                        // IT 팀장 예외 처리 (접속 허용 + 부서 지정)
+                        dept = "IT지원팀";
                     }
 
                     const userWithDept = {
                         ...currentUser,
                         department: dept,
+                        forcedDomain: effectiveDomain,
                         ...userData
                     };
                     setUser(userWithDept);
+                    // 로그인 성공 시 랜딩 페이지 표시
+                    setShowLanding(true);
 
                     if (DEPARTMENTS.includes(dept)) {
                         setInputDept(dept);
@@ -873,9 +985,11 @@ function App() {
                 } catch (error) {
                     console.error("Error fetching user data:", error);
                     setUser(currentUser);
+                    setShowLanding(true);
                 }
             } else {
                 setUser(null);
+                setShowLanding(false);
             }
             setLoading(false);
         });
@@ -891,7 +1005,8 @@ function App() {
             switch (error.code) {
                 case 'auth/invalid-email': msg = "이메일 형식이 올바르지 않습니다."; break;
                 case 'auth/user-not-found': msg = "가입되지 않은 이메일입니다."; break;
-                case 'auth/wrong-password': msg = "비밀번호가 틀렸습니다."; break;
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential': msg = "이메일 또는 비밀번호가 틀렸습니다. 다시 확인해 주세요."; break;
                 case 'auth/too-many-requests': msg = "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."; break;
                 default: msg = `로그인 오류: ${error.code}`;
             }
@@ -907,10 +1022,15 @@ function App() {
 
         // 1. 등록된 직원인지 확인
         try {
-            const q = query(collection(db, 'employees'), where('email', '==', email));
+            const q = query(collection(db, getCollectionName('employees', email)), where('email', '==', email));
             const querySnapshot = await getDocs(q);
 
-            if (querySnapshot.empty && email !== "daisy@composecoffee.co.kr") {
+            if (
+                querySnapshot.empty &&
+                email !== "daisy@composecoffee.co.kr" &&
+                email !== "it@composecoffee.co.kr" &&
+                !email.endsWith("@casagrande.co.kr")
+            ) {
                 alert("등록된 직원이 아닙니다. 관리자에게 문의하세요.");
                 return;
             }
@@ -974,7 +1094,7 @@ function App() {
     }, [user]);
 
     useEffect(() => {
-        const q1 = query(collection(db, 'weekly_minutes'));
+        const q1 = query(collection(db, getCollectionName('weekly_minutes', user)));
         const unsub1 = onSnapshot(q1, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             loaded.sort((a, b) => {
@@ -984,7 +1104,7 @@ function App() {
             setMinutes(loaded);
         });
 
-        const q2 = query(collection(db, 'management_feedbacks'));
+        const q2 = query(collection(db, getCollectionName('management_feedbacks', user)));
         const unsub2 = onSnapshot(q2, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             loaded.sort((a, b) => b.date.localeCompare(a.date));
@@ -1057,22 +1177,26 @@ function App() {
         if (!user) { alert("서버 연결 중입니다."); return; }
 
         setIsSubmitting(true);
+
         const payload = {
             date: inputDate,
             department: inputDept,
             report: processText(inputData.report),
             progress: processText(inputData.progress),
             discussion: processText(inputData.discussion),
+            reportImages: reportImages,
+            progressImages: progressImages,
+            discussionImages: discussionImages,
             authorId: user.uid,
             createdAt: serverTimestamp()
         };
 
         try {
             if (editingId) {
-                await updateDoc(doc(db, "weekly_minutes", editingId), { ...payload, updatedAt: serverTimestamp() });
+                await updateDoc(doc(db, getCollectionName('weekly_minutes', user), editingId), { ...payload, updatedAt: serverTimestamp() });
                 alert('수정되었습니다.');
             } else {
-                await addDoc(collection(db, 'weekly_minutes'), payload);
+                await addDoc(collection(db, getCollectionName('weekly_minutes', user)), payload);
                 alert('등록되었습니다.');
             }
             handleCloseModal();
@@ -1103,10 +1227,10 @@ function App() {
 
         try {
             if (editingFeedbackId) {
-                await updateDoc(doc(db, "management_feedbacks", editingFeedbackId), { ...payload, updatedAt: serverTimestamp() });
+                await updateDoc(doc(db, getCollectionName('management_feedbacks', user), editingFeedbackId), { ...payload, updatedAt: serverTimestamp() });
                 alert('수정되었습니다.');
             } else {
-                await addDoc(collection(db, "management_feedbacks"), payload);
+                await addDoc(collection(db, getCollectionName('management_feedbacks', user)), payload);
                 alert('등록되었습니다.');
             }
             handleCloseFeedbackModal();
@@ -1121,8 +1245,19 @@ function App() {
     const handleCloseModal = () => {
         setEditingId(null);
         setInputData({ report: '', progress: '', discussion: '' });
+        setReportImages([]);
+        setProgressImages([]);
+        setDiscussionImages([]);
         setInputDate(''); setInputDept(DEPARTMENTS[0]);
         setIsModalOpen(false);
+    };
+
+    // 기존 데이터를 items 배열로 변환 (편집 시)
+    const textToItems = (text) => {
+        if (!text) return [{ id: Date.now().toString(), text: '     - ', imageUrl: null, uploading: false }];
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length === 0) return [{ id: Date.now().toString(), text: '     - ', imageUrl: null, uploading: false }];
+        return lines.map((l, i) => ({ id: `${Date.now()}_${i}`, text: l, imageUrl: null, uploading: false }));
     };
 
     // --- Memo Functions ---
@@ -1165,7 +1300,7 @@ function App() {
         }
 
         try {
-            await updateDoc(doc(db, "weekly_minutes", memoTargetId), {
+            await updateDoc(doc(db, getCollectionName('weekly_minutes', user), memoTargetId), {
                 memos: newMemos,
                 hasMemo: newMemos.length > 0
             });
@@ -1185,7 +1320,7 @@ function App() {
         const newMemos = (targetMinute.memos || []).filter(m => m.id !== memoId);
 
         try {
-            await updateDoc(doc(db, "weekly_minutes", minuteId), {
+            await updateDoc(doc(db, getCollectionName('weekly_minutes', user), minuteId), {
                 memos: newMemos,
                 hasMemo: newMemos.length > 0
             });
@@ -1238,7 +1373,7 @@ function App() {
         document.body.removeChild(link);
     };
 
-    const renderText = (text) => {
+    const renderText = (text, images = []) => {
         if (!text) return <span className="text-gray-400">-</span>;
 
         return text.split('\n').map((line, i) => {
@@ -1247,13 +1382,12 @@ function App() {
 
             // Analyze indentation based on leading spaces (heuristic)
             const leadingSpaces = line.search(/\S|$/);
-            const indentLevel = Math.floor(leadingSpaces / 4); // Assuming 4 spaces per indent roughly
+            const indentLevel = Math.floor(leadingSpaces / 4);
 
             // Check if it's a bullet point
             const isBullet = trimmedLine.startsWith('-') || trimmedLine.startsWith('•');
             const content = isBullet ? trimmedLine.substring(1).trim() : trimmedLine;
 
-            // Styles based on hierarchy
             const isMainItem = indentLevel === 0;
             const containerStyle = isMainItem
                 ? "flex items-start gap-2.5 py-1 text-slate-800"
@@ -1261,18 +1395,152 @@ function App() {
 
             const paddingLeft = indentLevel === 0 ? 0 : (indentLevel * 1.5) + 'rem';
 
+            // [표1], [표2] 등을 실제 버튼으로 변환
+            const renderContentWithImages = (txt) => {
+                const parts = txt.split(/(\[표\d+\])/g);
+                return parts.map((part, pidx) => {
+                    const match = part.match(/\[표(\d+)\]/);
+                    if (match) {
+                        const imgIdx = parseInt(match[1]) - 1;
+                        const url = images[imgIdx];
+                        if (url) {
+                            return (
+                                <button
+                                    key={pidx}
+                                    onClick={(e) => { e.stopPropagation(); setImageViewerUrl(url); setImageViewerTitle(`표 ${imgIdx + 1}`); }}
+                                    className="inline-flex items-center gap-0.5 mx-1 px-1.5 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-200 transition-colors"
+                                >
+                                    📊 표{imgIdx + 1}
+                                </button>
+                            );
+                        }
+                    }
+                    return part;
+                });
+            };
+
             return (
                 <div key={i} className={containerStyle} style={{ paddingLeft }}>
                     <div className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-slate-300">
-                        {/* Custom bullet dot */}
                         <div className={`w-full h-full rounded-full ${isMainItem ? 'bg-indigo-500' : 'bg-slate-400'}`}></div>
                     </div>
                     <div className="leading-relaxed break-words flex-1">
-                        {isMainItem ? <strong className="font-semibold text-slate-900">{content}</strong> : content}
+                        {isMainItem ? <strong className="font-semibold text-slate-900">{renderContentWithImages(content)}</strong> : renderContentWithImages(content)}
                     </div>
                 </div>
             );
         });
+    };
+
+    const handlePaste = async (sectionId, e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        console.log('Paste detected:', items.length, 'items');
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                // 이미지가 포함된 경우
+                const blob = items[i].getAsFile();
+                if (!blob) continue;
+
+                console.log('Image found in paste! Size:', blob.size);
+
+                // 현재 섹션의 이미지 개수 파악하여 [표N] 태그 생성
+                const currentImages = sectionId === 'report' ? reportImages : (sectionId === 'progress' ? progressImages : discussionImages);
+                const tag = `[표${currentImages.length + 1}]`;
+
+                // 커서 위치에 태그 삽입
+                const { selectionStart, selectionEnd } = e.target;
+                const text = inputData[sectionId] || '';
+                const newText = text.substring(0, selectionStart) + tag + text.substring(selectionEnd);
+                
+                setInputData(prev => ({ ...prev, [sectionId]: newText }));
+                
+                // 업로드 시작
+                handleImageUpload(sectionId, blob);
+            }
+        }
+    };
+
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby2-RDoKVedpp5Lljv41sKaU656rIRavEDlyIXSHpjl0L8-i3MpdWlp1HpnaXtp62kA/exec";
+    const GAS_TOKEN = "WAGE_DIGNITY_SECURE_TOKEN_2026";
+
+    const handleImageUpload = async (sectionId, file) => {
+        if (!file || !file.type.startsWith('image/')) return;
+        setIsUploading(true);
+        console.log('GAS Upload Start for section:', sectionId, 'File:', file.name || 'PastedImage');
+
+        try {
+            // --- 이미지 압축 및 리사이징 (브라우저 내 처리) ---
+            const resizeImage = (file) => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const MAX_SIZE = 1600;
+
+                            if (width > height) {
+                                if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                            } else {
+                                if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                            }
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            // quality 0.85로 균형 있게 압축
+                            resolve(canvas.toDataURL('image/jpeg', 0.85));
+                        };
+                    };
+                });
+            };
+
+            const base64WithPrefix = await resizeImage(file);
+            const base64Content = base64WithPrefix.split(',')[1];
+
+            // --- GAS(Google Apps Script) 전송 ---
+            // 구글 앱스 스크립트로 POST 요청
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    token: GAS_TOKEN,
+                    base64Content: base64Content,
+                    mimeType: 'image/jpeg',
+                    fileName: `meeting_${Date.now()}.jpg`
+                })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const result = await response.json();
+
+            if (result.success) {
+                console.log('GAS Upload Success! FileId:', result.fileId);
+                // 구글 드라이브 최고 직접 보기 링크 (가로 세로 렌더링에 가장 안정적)
+                const directUrl = `https://lh3.googleusercontent.com/d/${result.fileId}`;
+                
+                if (sectionId === 'report') setReportImages(prev => [...prev, directUrl]);
+                else if (sectionId === 'progress') setProgressImages(prev => [...prev, directUrl]);
+                else if (sectionId === 'discussion') setDiscussionImages(prev => [...prev, directUrl]);
+            } else {
+                throw new Error(result.error || 'GAS 내부 처리 실패');
+            }
+
+        } catch (err) {
+            console.error('GAS 업로드 에러 상세:', err);
+            alert(`이미지 업로드에 실패했습니다.\n사유: ${err.message}\n(GAS가 최신으로 배포되었는지, CORS 권한이 있는지 확인해 주세요.)`);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemoveImage = (sectionId, index) => {
+        if (sectionId === 'report') setReportImages(prev => prev.filter((_, i) => i !== index));
+        else if (sectionId === 'progress') setProgressImages(prev => prev.filter((_, i) => i !== index));
+        else if (sectionId === 'discussion') setDiscussionImages(prev => prev.filter((_, i) => i !== index));
     };
 
     if (loading) return (
@@ -1282,23 +1550,25 @@ function App() {
         </div>
     );
 
-    // 1. 첫 접속 → 항상 랜딩 페이지 (로그인 여부 무관)
-    if (showLanding) {
-        return <LandingPage onEnter={() => setShowLanding(false)} />;
-    }
-
-    // 2. 비로그인 상태 → 로그인 화면
+    // 1. 비로그인 상태 → 로그인 화면
     if (!user) {
         return <LoginView onLogin={handleLogin} onSignup={handleSignup} />;
     }
 
-    // 2. 로그인 상태지만 등록된 직원이 아님 -> 권한 없음 화면
+    // 2. 로그인 상태지만 등록된 직원이 아님 → 권한 없음 화면
     // (daisy@... 또는 choihy@... 제외)
     if (user &&
         user.email !== "daisy@composecoffee.co.kr" &&
         user.email !== "choihy@composecoffee.co.kr" &&
+        user.email !== "it@composecoffee.co.kr" &&
+        !user.email.endsWith("@casagrande.co.kr") &&
         user.department === '기타') {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
+    }
+
+    // 3. 로그인 성공 → 회사별 랜딩 페이지 (입장 버튼 누르면 메인으로)
+    if (showLanding) {
+        return <LandingPage user={user} onEnter={() => setShowLanding(false)} />;
     }
 
     // --- [복구] 날짜 데이터 계산 로직 ---
@@ -1316,11 +1586,11 @@ function App() {
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="flex items-center text-slate-800 font-bold text-base cursor-pointer shrink-0" onClick={() => setAppMode('news')}>
                                 <Layout className="w-5 h-5 mr-1.5 text-indigo-600" />
-                                <span className="hidden lg:inline">컴포즈커피</span>
+                                <span className="hidden lg:inline">{isCg ? "까사그랑데 센트로" : "컴포즈커피"}</span>
                             </div>
 
                             <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
-                                {NAV_ITEMS.map(item => {
+                                {NAV_ITEMS.filter(item => !['commercial', 'kpi'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1364,7 +1634,7 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
-                                {NAV_ITEMS.map(item => {
+                                {NAV_ITEMS.filter(item => !['commercial', 'kpi'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1394,8 +1664,7 @@ function App() {
                 {/* [MODE 8] 캘린더 (New) */}
                 {appMode === 'calendar' && <CalendarDashboard db={db} departments={DEPARTMENTS} user={user} isAdmin={isAdmin} />}
 
-                {/* [MODE 5] 업계 동향 */}
-                {appMode === 'news' && <NewsDashboard />}
+                {appMode === 'news' && <NewsDashboard user={user} />}
 
                 {/* [MODE 10] 상권 분석 */}
                 {appMode === 'commercial' && <CommercialDashboard />}
@@ -1444,20 +1713,14 @@ function App() {
                                 >
                                     <Users className="w-4 h-4 mr-2" />부서 회의록
                                 </button>
-                                <button
+                                {/* <button
                                     onClick={() => setCurrentView('management')}
                                     className={`pb-3 text-sm font-medium transition-colors flex items-center border-b-2 ${currentView === 'management' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                                 >
                                     <Megaphone className="w-4 h-4 mr-2" />경영본부 회의
-                                </button>
+                                </button> */}
                             </div>
                             <div className="flex items-center space-x-2 pb-2">
-                                <a href="https://composecoffee1-my.sharepoint.com/:x:/g/personal/choihy_composecoffee_co_kr/IQBRHgvwRo3ZT5ytCTKVpBlRAcE4zXsMEqjohnr8xTI-RJ0?rtime=CQM385lC3kg"
-                                    target="_blank" rel="noreferrer"
-                                    className="px-3 py-2 text-sm text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm transition-colors flex items-center"
-                                >
-                                    <Archive className="w-4 h-4 mr-2 text-slate-500" /> 기존 자료
-                                </a>
                                 <button
                                     onClick={() => currentView === 'minutes' ? setIsModalOpen(true) : setIsFeedbackModalOpen(true)}
                                     className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md transition-colors flex items-center"
@@ -1525,18 +1788,21 @@ function App() {
                                                                         <button onClick={() => {
                                                                             setEditingId(minute.id); setInputDate(minute.date); setInputDept(minute.department);
                                                                             setInputData({ report: minute.report, progress: minute.progress, discussion: minute.discussion });
+                                                                            setReportImages(minute.reportImages || []);
+                                                                            setProgressImages(minute.progressImages || []);
+                                                                            setDiscussionImages(minute.discussionImages || []);
                                                                             setIsModalOpen(true);
                                                                         }} className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
                                                                             <button onClick={() => handleOpenMemoModal(minute.id)} className="p-1.5 text-gray-400 hover:text-yellow-600 bg-gray-50 hover:bg-yellow-50 rounded" title="ë©ëª¨ ì¶ê°"><StickyNote className="w-4 h-4" /></button>
                                                                         <button onClick={async () => {
-                                                                            if (window.confirm("삭제하시겠습니까?")) await deleteDoc(doc(db, 'weekly_minutes', minute.id));
+                                                                            if (window.confirm("삭제하시겠습니까?")) await deleteDoc(doc(db, getCollectionName('weekly_minutes', user), minute.id));
                                                                         }} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-3 text-sm">
-                                                                    <div className="bg-blue-50 p-3 rounded-lg"><div className="font-bold text-blue-800 text-xs mb-1">보고사항</div><div className="text-gray-700">{renderText(minute.report)}</div></div>
-                                                                    <div className="bg-emerald-50 p-3 rounded-lg"><div className="font-bold text-emerald-800 text-xs mb-1">진행업무</div><div className="text-gray-700">{renderText(minute.progress)}</div></div>
-                                                                    <div className="bg-amber-50 p-3 rounded-lg"><div className="font-bold text-amber-800 text-xs mb-1">협의업무</div><div className="text-gray-700">{renderText(minute.discussion)}</div></div>
+                                                                    <div className="bg-blue-50 p-3 rounded-lg"><div className="font-bold text-blue-800 text-xs mb-1">가. 보고사항</div><div className="text-gray-700">{renderText(minute.report, minute.reportImages)}</div></div>
+                                                                    <div className="bg-emerald-50 p-3 rounded-lg"><div className="font-bold text-emerald-800 text-xs mb-1">나. 진행업무</div><div className="text-gray-700">{renderText(minute.progress, minute.progressImages)}</div></div>
+                                                                    <div className="bg-amber-50 p-3 rounded-lg"><div className="font-bold text-amber-800 text-xs mb-1">다. 협의업무</div><div className="text-gray-700">{renderText(minute.discussion, minute.discussionImages)}</div></div>
 
                                                                 {/* Memos Display */}
                                                                 {minute.memos && minute.memos.length > 0 && (
@@ -1607,7 +1873,7 @@ function App() {
                                                         setIsFeedbackModalOpen(true);
                                                     }} className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded text-xs hover:bg-indigo-50">수정</button>
                                                     <button onClick={async () => {
-                                                        if (window.confirm("삭제하시겠습니까?")) await deleteDoc(doc(db, 'management_feedbacks', fb.id));
+                                                        if (window.confirm("삭제하시겠습니까?")) await deleteDoc(doc(db, getCollectionName('management_feedbacks', user), fb.id));
                                                     }} className="px-3 py-1 bg-white border border-red-200 text-red-600 rounded text-xs hover:bg-red-50">삭제</button>
                                                 </div>
                                             </div>
@@ -1671,20 +1937,67 @@ function App() {
                                     </button>
                                 </div>
 
-                                <div className="space-y-4">
-                                    {SECTIONS.map(s => (
-                                        <div key={s.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <label className="flex items-center text-sm font-bold text-gray-800 mb-2"><s.icon className="w-4 h-4 mr-2 text-blue-600" />{s.label}</label>
-                                            <textarea
-                                                value={inputData[s.id]}
-                                                onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
-                                                onFocus={() => autoFocus(inputData[s.id], setInputData, s.id)}
-                                                onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
-                                                placeholder={s.placeholder}
-                                                className="w-full border-gray-300 rounded-md text-sm p-3 border h-60"
-                                            />
-                                        </div>
-                                    ))}
+                                <div className="space-y-6">
+                                    {SECTIONS.map(s => {
+                                        const currentImages = s.id === 'report' ? reportImages : (s.id === 'progress' ? progressImages : discussionImages);
+                                        return (
+                                            <div key={s.id} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                                                <label className="flex items-center text-sm font-bold text-gray-800 mb-2">
+                                                    <s.icon className="w-4 h-4 mr-2 text-blue-600" />{s.label}
+                                                </label>
+                                                <textarea
+                                                    value={inputData[s.id]}
+                                                    onChange={e => setInputData({ ...inputData, [s.id]: e.target.value })}
+                                                    onFocus={() => autoFocus(inputData[s.id], setInputData, s.id)}
+                                                    onKeyDown={(e) => autoFormat(inputData[s.id], setInputData, s.id, e)}
+                                                    onPaste={(e) => handlePaste(s.id, e)}
+                                                    placeholder={s.placeholder}
+                                                    className="w-full border-gray-300 rounded-md text-sm p-3 border h-48 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                />
+                                                
+                                                {/* 이미지 첨부 영역 */}
+                                                <div className="mt-3">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-[11px] text-gray-500 font-medium">
+                                                            * 본문에 <span className="text-blue-600 font-bold">[표1], [표2]</span> 문구를 넣으면 해당 위치에 표시됩니다. (이미지 <span className="text-indigo-600 font-bold">붙여넣기(Ctrl+V)</span> 지원)
+                                                        </span>
+                                                        <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold border transition-colors cursor-pointer ${isUploading ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}>
+                                                            {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                                            표 이미지 첨부
+                                                            <input 
+                                                                type="file" 
+                                                                className="hidden" 
+                                                                accept="image/*" 
+                                                                disabled={isUploading}
+                                                                onChange={(e) => {
+                                                                    if (e.target.files && e.target.files[0]) handleImageUpload(s.id, e.target.files[0]);
+                                                                    e.target.value = '';
+                                                                }} 
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    {currentImages.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2 p-2 bg-white rounded border border-gray-100">
+                                                            {currentImages.map((url, idx) => (
+                                                                <div key={idx} className="group relative w-16 h-16 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                                                                    <img src={url} alt={`표 ${idx+1}`} className="w-full h-full object-cover" />
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                        <button type="button" onClick={() => handleRemoveImage(s.id, idx)} className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                                            <X className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-[9px] text-white text-center font-bold">
+                                                                        표{idx + 1}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div className="flex justify-end pt-4 border-t border-gray-100">
                                     <button type="button" onClick={handleCloseModal} className="px-4 py-2 text-gray-600 mr-2 hover:bg-gray-100 rounded-md">취소</button>
@@ -1771,6 +2084,23 @@ function App() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 이미지 뷰어 팝업 */}
+            {imageViewerUrl && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setImageViewerUrl(null)}>
+                    <div className="relative max-w-5xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-2 px-2">
+                            <h3 className="text-white font-bold text-lg">{imageViewerTitle}</h3>
+                            <button onClick={() => setImageViewerUrl(null)} className="text-white/70 hover:text-white bg-black/50 p-2 rounded-full backdrop-blur-md">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-lg overflow-auto shadow-2xl relative border border-white/20">
+                            <img src={imageViewerUrl} alt="표 이미지" className="max-w-full h-auto object-contain mx-auto" />
+                        </div>
                     </div>
                 </div>
             )}

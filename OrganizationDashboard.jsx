@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getCollectionName } from './utils';
 import {
     collection, addDoc, query, where, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy, getDocs
 } from 'firebase/firestore';
 import {
     Users, Plus, Mail, Briefcase, Calendar, ChevronRight,
-    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2, Edit2
+    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2, Edit2, Settings
 } from 'lucide-react';
 
 const JOB_RANKS = {
@@ -37,6 +38,7 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
     const [selectedDeptForAdd, setSelectedDeptForAdd] = useState('');
     const [editingEmployee, setEditingEmployee] = useState(null);
 
@@ -55,7 +57,7 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
         setLoading(true);
         // If not admin, we could restrict the query here, but as per current implementation 
         // we'll filter client-side to maintain consistency with TeamOverview logic.
-        const q = query(collection(db, 'employees'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, getCollectionName('employees', user)), orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const docs = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -86,17 +88,28 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
         try {
             if (editingEmployee) {
                 // Update existing
-                const empRef = doc(db, 'employees', editingEmployee.id);
+                const empRef = doc(db, getCollectionName('employees', user), editingEmployee.id);
                 await updateDoc(empRef, {
                     ...data,
                 });
                 alert('직원 정보가 수정되었습니다.');
             } else {
                 // Create new
-                await addDoc(collection(db, 'employees'), {
+                await addDoc(collection(db, getCollectionName('employees', user)), {
                     ...data,
                     createdAt: serverTimestamp()
                 });
+                
+                // [기업 매핑 추가] 외부 메일 사용 시 로그인을 위해 매핑 콜렉션에 등록
+                const currentDomain = user?.forcedDomain || user?.email?.split('@')[1];
+                if (data.email && (!data.email.endsWith(`@${currentDomain}`)) && currentDomain) {
+                    await setDoc(doc(db, 'company_registry', data.email), {
+                        email: data.email,
+                        domain: currentDomain,
+                        registeredAt: serverTimestamp()
+                    });
+                }
+
                 alert('직원이 등록되었습니다.');
             }
             setIsAddModalOpen(false);
@@ -110,7 +123,7 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
     const handleDeleteEmployee = async (id) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
-            await deleteDoc(doc(db, 'employees', id));
+            await deleteDoc(doc(db, getCollectionName('employees', user), id));
             if (selectedEmployee && selectedEmployee.id === id) {
                 setSelectedEmployee(null);
             }
@@ -145,25 +158,35 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                     </p>
                 </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setActiveTab('overview')}
-                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'overview'
-                            ? 'bg-white text-indigo-700 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        <LayoutGrid className="w-4 h-4" /> 조직도 현황
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('individual')}
-                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'individual'
-                            ? 'bg-white text-indigo-700 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        <List className="w-4 h-4" /> 인원별 업무
-                    </button>
+                <div className="flex items-center gap-3">
+                    {isAdmin && (
+                        <button
+                            onClick={() => setIsDeptModalOpen(true)}
+                            className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-sm font-bold flex items-center gap-2 transition-colors border border-indigo-200 shadow-sm"
+                        >
+                            <Settings className="w-4 h-4" /> 부서 관리
+                        </button>
+                    )}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'overview'
+                                ? 'bg-white text-indigo-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <LayoutGrid className="w-4 h-4" /> 조직도 현황
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('individual')}
+                            className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'individual'
+                                ? 'bg-white text-indigo-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <List className="w-4 h-4" /> 인원별 업무
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -196,6 +219,15 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                     departments={displayDepartments}
                     defaultDept={selectedDeptForAdd}
                     employeeToEdit={editingEmployee}
+                />
+            )}
+
+            {/* Department Manager Modal */}
+            {isDeptModalOpen && (
+                <DeptManagerModal
+                    db={db}
+                    user={user}
+                    onClose={() => setIsDeptModalOpen(false)}
                 />
             )}
         </div>
@@ -326,7 +358,7 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
         const fetchAllTasks = async () => {
             setInitialLoading(true);
             try {
-                const tasksRef = collection(db, 'dept_todos');
+                const tasksRef = collection(db, getCollectionName('dept_todos', user));
                 const snapshot = await getDocs(tasksRef); // Fetching EVERYTHING
                 const loadedTasks = snapshot.docs.map(doc => ({
                     id: doc.id,
@@ -707,6 +739,103 @@ const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept, employe
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+};
+
+const DeptManagerModal = ({ db, user, onClose }) => {
+    const [customDepts, setCustomDepts] = useState([]);
+    const [newDeptName, setNewDeptName] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const q = query(collection(db, getCollectionName('departments', user)));
+        const unsub = onSnapshot(q, (snapshot) => {
+            const depts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            depts.sort((a, b) => (a.order || 99) - (b.order || 99));
+            setCustomDepts(depts);
+            setLoading(false);
+        });
+        return () => unsub();
+    }, [db, user]);
+
+    const handleAdd = async (e) => {
+        e.preventDefault();
+        if (!newDeptName.trim()) return;
+        try {
+            await addDoc(collection(db, getCollectionName('departments', user)), {
+                name: newDeptName.trim(),
+                order: customDepts.length > 0 ? (customDepts[customDepts.length - 1].order || 0) + 1 : 1,
+                createdAt: serverTimestamp()
+            });
+            setNewDeptName('');
+        } catch (error) {
+            console.error(error);
+            alert("부서 추가 실패");
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("부서를 삭제하시겠습니까? (이미 등록된 직원 정보는 자동으로 변경되지 않습니다.)")) return;
+        try {
+            await deleteDoc(doc(db, getCollectionName('departments', user), id));
+        } catch (error) {
+            console.error(error);
+            alert("부서 삭제 실패");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-indigo-600" />
+                        새로운 부서 관리
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-6 flex-1 overflow-y-auto">
+                    <form onSubmit={handleAdd} className="flex gap-2 mb-6">
+                        <input
+                            type="text"
+                            placeholder="추가할 부서명을 입력하세요"
+                            className="flex-1 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                            value={newDeptName}
+                            onChange={(e) => setNewDeptName(e.target.value)}
+                        />
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors flex items-center gap-1 shadow-sm">
+                            <Plus className="w-4 h-4" /> 추가
+                        </button>
+                    </form>
+
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 px-1 border-b border-slate-100 pb-2">사용자 추가 부서 목록</h4>
+                        {loading ? (
+                            <p className="text-sm text-slate-400 p-4 text-center">데이터를 불러오는 중입니다...</p>
+                        ) : customDepts.length > 0 ? (
+                            <div className="space-y-2">
+                                {customDepts.map(d => (
+                                    <div key={d.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-lg hover:border-slate-300 bg-white transition-colors group">
+                                        <span className="text-sm font-bold text-slate-700">{d.name}</span>
+                                        <button onClick={() => handleDelete(d.id)} className="p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-slate-400 text-sm border border-dashed border-slate-200 rounded-lg bg-slate-50 flex flex-col items-center">
+                                <Briefcase className="w-8 h-8 mb-2 opacity-30" />
+                                <div>추가로 등록된 부서가 없습니다.</div>
+                                <div className="text-xs mt-1">기본 부서는 관리자 상수값에서 불러옵니다.</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

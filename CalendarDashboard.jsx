@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCollectionName } from './utils';
 import { collection, query, onSnapshot, where } from 'firebase/firestore';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Filter, Briefcase, Share2, X, Clock, CheckCircle2 } from 'lucide-react';
 
@@ -19,7 +20,7 @@ const CalendarDashboard = ({ db, departments, user, isAdmin }) => {
     // --- Data Fetching ---
     useEffect(() => {
         // 1. Fetch Todos (Fetch all to support status filtering)
-        const todoQuery = query(collection(db, 'dept_todos'));
+        const todoQuery = query(collection(db, getCollectionName('dept_todos', user)));
         const unsubTodo = onSnapshot(todoQuery, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Filter ones with dueDate
@@ -27,7 +28,7 @@ const CalendarDashboard = ({ db, departments, user, isAdmin }) => {
         });
 
         // 2. Fetch Collaboration Requests (all)
-        const collabQuery = query(collection(db, 'collaboration_requests'));
+        const collabQuery = query(collection(db, getCollectionName('collaboration_requests', user)));
         const unsubCollab = onSnapshot(collabQuery, (snapshot) => {
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Filter out '반려' or 'Rejected' and ensure dueDate exists

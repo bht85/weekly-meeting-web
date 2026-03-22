@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     Newspaper, ExternalLink, Search, Coffee, TrendingUp,
-    Scale, ArrowUpRight, Globe, BookOpen
+    Scale, ArrowUpRight, Globe, BookOpen, Building2
 } from 'lucide-react';
 
 // ─── 뉴스 카테고리 설정 ───────────────────────────────────────
@@ -63,6 +63,67 @@ const NEWS_CATEGORIES = [
         ],
     },
 ];
+
+
+const WEDDING_CATEGORIES = [
+    {
+        id: 'casagrande',
+        label: '까사그랑데 센트로',
+        icon: Building2,
+        color: 'amber',
+        query: '까사그랑데 센트로 웨딩',
+        description: '까사그랑데 센트로 최신 소식 및 웨딩 특화 정보',
+        keywords: ['건대 웨딩홀', '프리미엄 웨딩', '하우스웨딩', '호텔웨딩'],
+        quickLinks: [
+            { label: '최신 리뷰', query: '까사그랑데 센트로 후기' },
+            { label: '웨딩 박람회', query: '서울 웨딩 박람회 일정' },
+            { label: '예식 트렌드', query: '프리미엄 하우스 웨딩 트렌드' },
+        ],
+    },
+    {
+        id: 'wedding_hall',
+        label: '웨딩홀 동향',
+        icon: TrendingUp,
+        color: 'violet',
+        query: '웨딩홀 산업 동향 현황',
+        description: '국내 웨딩홀 및 예식장 산업 동향',
+        keywords: ['웨딩홀', '예식장', '결혼식장', '스몰웨딩'],
+        quickLinks: [
+            { label: '호텔 웨딩', query: '특급 호텔 웨딩 트렌드' },
+            { label: '하우스 웨딩', query: '하우스 웨딩 공간 추천' },
+            { label: '야외 예식', query: '야외 웨딩 공간 연출' },
+        ],
+    },
+    {
+        id: 'wedding_catering',
+        label: '연회/뷔페 트렌드',
+        icon: Search,
+        color: 'emerald',
+        query: '웨딩홀 뷔페 연회장 트렌드',
+        description: '웨딩 연회장 및 파인다이닝 식품 동향',
+        keywords: ['웨딩 뷔페', '코스 요리', '파인다이닝', '연회장'],
+        quickLinks: [
+            { label: '호텔 뷔페', query: '특급호텔 웨딩 뷔페 신메뉴' },
+            { label: '케이터링', query: '프리미엄 웨딩 케이터링' },
+            { label: '식자재', query: '최고급 식자재 유통 트렌드' },
+        ],
+    },
+    {
+        id: 'wedding_market',
+        label: '결혼 시장 동향',
+        icon: Scale, 
+        color: 'blue',
+        query: '결혼 통계 정책 신혼부부',
+        description: '혼인율, 웨딩산업 인구구조 변화 및 정책',
+        keywords: ['혼인 통계', '신혼부부', '웨딩 산업', '결혼 정책'],
+        quickLinks: [
+            { label: '혼인율 통계', query: '통계청 혼인 건수 동향' },
+            { label: '신혼 정책', query: '신혼부부 주거 지원 특공' },
+            { label: '웨딩 지원', query: '지자체 결혼 친화 정책' },
+        ],
+    },
+];
+
 
 // ─── 색상 설정 ────────────────────────────────────────────────
 const COLORS = {
@@ -135,11 +196,23 @@ const toGoogleNewsUrl = (query) =>
 
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
-const NewsDashboard = () => {
-    const [activeTab, setActiveTab] = useState('compose');
+const NewsDashboard = ({ user }) => {
+    
+    const isCasagrande = user?.email?.endsWith('@casagrande.co.kr');
+    const displayCategories = isCasagrande ? WEDDING_CATEGORIES : NEWS_CATEGORIES;
+    const initialTab = isCasagrande ? 'casagrande' : 'compose';
+    
+    const [activeTab, setActiveTab] = useState(initialTab);
+    
+    React.useEffect(() => {
+        if (!displayCategories.find(c => c.id === activeTab)) {
+            setActiveTab(initialTab);
+        }
+    }, [isCasagrande, activeTab, initialTab, displayCategories]);
+    
     const [customQuery, setCustomQuery] = useState('');
 
-    const activeCat = NEWS_CATEGORIES.find(c => c.id === activeTab);
+    const activeCat = displayCategories.find(c => c.id === activeTab);
     const C = COLORS[activeCat?.color || 'blue'];
 
     return (
@@ -178,7 +251,7 @@ const NewsDashboard = () => {
 
             {/* ── Tabs ── */}
             <div className="flex overflow-x-auto pb-3 gap-2 mb-6">
-                {NEWS_CATEGORIES.map(cat => {
+                {displayCategories.map(cat => {
                     const Icon = cat.icon;
                     const isActive = activeTab === cat.id;
                     const c = COLORS[cat.color];
@@ -262,7 +335,7 @@ const NewsDashboard = () => {
                             <Newspaper className="w-4 h-4" /> 다른 카테고리 바로 검색
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {NEWS_CATEGORIES.filter(c => c.id !== activeTab).map(cat => {
+                            {displayCategories.filter(c => c.id !== activeTab).map(cat => {
                                 const Icon = cat.icon;
                                 const cc = COLORS[cat.color];
                                 return (

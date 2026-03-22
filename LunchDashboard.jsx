@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCollectionName } from './utils';
 import {
     Utensils, MapPin, Star, Coffee, Plus, Search, Dices, X, ExternalLink,
     ThumbsUp, MessageCircle, Zap, Trash2
@@ -17,6 +18,7 @@ const CATEGORIES = [
 const RATINGS = [5, 4.5, 4, 3.5, 3, 2, 1];
 
 const LunchDashboard = ({ db, user }) => {
+    const isCg = user?.email?.endsWith("@casagrande.co.kr");
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -37,7 +39,7 @@ const LunchDashboard = ({ db, user }) => {
     });
 
     useEffect(() => {
-        const q = query(collection(db, 'office_restaurants'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, getCollectionName('office_restaurants', user)), orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -57,7 +59,7 @@ const LunchDashboard = ({ db, user }) => {
         }
 
         try {
-            await addDoc(collection(db, 'office_restaurants'), {
+            await addDoc(collection(db, getCollectionName('office_restaurants', user)), {
                 ...newRestaurant,
                 rating: Number(newRestaurant.rating),
                 createdAt: serverTimestamp()
@@ -105,53 +107,44 @@ const LunchDashboard = ({ db, user }) => {
     };
 
     const handleAutoFill = async () => {
+
+    const isCg = user?.email?.endsWith('@casagrande.co.kr');
+    
+    const COMPOSE_SAMPLES = [
+        { name: '소문난성수감자탕', category: 'korean', rating: '4.6', comment: '백종원 3대천왕 맛집, 웨이팅 필수', url: 'https://map.naver.com/p/search/성수%20소문난감자탕' },
+        { name: '할머니의 레시피', category: 'korean', rating: '4.3', comment: '속 편한 가정식 백반, 쌈밥 정식 추천', url: 'https://map.naver.com/p/search/성수%20할머니의레시피' },
+        { name: '성수다락', category: 'western', rating: '4.5', comment: '오므라이스랑 파스타가 예쁜 곳', url: 'https://map.naver.com/p/search/성수다락' },
+        { name: '대림국수 성수점', category: 'japanese', rating: '4.4', comment: '꼬치국수 온면이 진리', url: 'https://map.naver.com/p/search/성수%20대림국수' },
+        { name: '중앙감속기', category: 'chinese', rating: '4.7', comment: '최현석 셰프의 퓨전 중식, 발사믹 꿔바로우', url: 'https://map.naver.com/p/search/성수%20중앙감속기' },
+        { name: '다로베', category: 'western', rating: '4.4', comment: '화덕피자 대회 1등, 비스마르크 피자 추천', url: 'https://map.naver.com/p/search/성수%20다로베' },
+        { name: '탐광', category: 'japanese', rating: '4.3', comment: '에비카츠동(새우튀김) 비주얼 끝판왕', url: 'https://map.naver.com/p/search/성수%20탐광' },
+        { name: '칙피스', category: 'western', rating: '4.6', comment: '비건/다이어트 샐러드 맛집', url: 'https://map.naver.com/p/search/성수%20칙피스' },
+        { name: '어니언 성수', category: 'cafe', rating: '4.6', comment: '공장 개조 카페, 팡도르 필수', url: 'https://map.naver.com/p/search/성수%20어니언' },
+        { name: '대림창고', category: 'cafe', rating: '4.5', comment: '성수동 랜드마크, 갤러리 같은 분위기', url: 'https://map.naver.com/p/search/성수%20대림창고' }
+    ];
+
+    const CG_SAMPLES = [
+        { name: '송화산시도삭면', category: 'korean', rating: '4.7', comment: '줄 서서 먹는 도삭면과 딤섬 맛집', url: 'https://map.naver.com/p/search/건대%20송화산시도삭면' },
+        { name: '매화반점', category: 'chinese', rating: '4.5', comment: '건대 양꼬치 거리의 원조격 맛집', url: 'https://map.naver.com/p/search/건대%20매화반점' },
+        { name: '호야초밥', category: 'japanese', rating: '4.6', comment: '가성비와 퀄리티 다 잡은 건대 대표 초밥', url: 'https://map.naver.com/p/search/건대%20호야초밥' },
+        { name: '해룡마라소룡포', category: 'chinese', rating: '4.6', comment: '마라룽샤와 꿔바로우가 예술인 곳', url: 'https://map.naver.com/p/search/건대%20해룡마라소룡포' },
+        { name: '벨피아또', category: 'western', rating: '4.4', comment: '분위기 좋은 건대 스타시티 이탈리안', url: 'https://map.naver.com/p/search/건대%20벨피아또' },
+        { name: '시게오', category: 'japanese', rating: '4.5', comment: '조용하고 정갈한 일본식 덮밥 전문점', url: 'https://map.naver.com/p/search/건대%20시게오' },
+        { name: '최가커피', category: 'cafe', rating: '4.7', comment: '핸드드립과 비엔나 커피가 맛있는 전통의 카페', url: 'https://map.naver.com/p/search/건대%20최가커피' },
+        { name: '개미집', category: 'korean', rating: '4.3', comment: '매콤한 불낙볶음이 맛있는 건대 노포', url: 'https://map.naver.com/p/search/건대%20개미집' },
+        { name: '마초쉐프 건대점', category: 'western', rating: '4.5', comment: '불쇼 보며 즐기는 스테이크와 화덕피자', url: 'https://map.naver.com/p/search/건대%20마초쉐프' },
+        { name: '카페 기글', category: 'cafe', rating: '4.6', comment: '성수동 감성 담은 예쁜 디저트 카페', url: 'https://map.naver.com/p/search/건대%20카페기글' }
+    ];
+
+    const sampleData = isCg ? CG_SAMPLES : COMPOSE_SAMPLES;
+
         if (!window.confirm('가상의 맛집 데이터 10개를 자동으로 추가하시겠습니까?')) return;
 
-        const sampleData = [
-            // [한식]
-            { name: '소문난성수감자탕', category: 'korean', rating: '4.6', comment: '백종원 3대천왕 맛집, 웨이팅 필수', url: 'https://map.naver.com/p/search/성수%20소문난감자탕' },
-            { name: '할머니의 레시피', category: 'korean', rating: '4.3', comment: '속 편한 가정식 백반, 쌈밥 정식 추천', url: 'https://map.naver.com/p/search/성수%20할머니의레시피' },
-            { name: '전주 콩나물국밥', category: 'korean', rating: '4.2', comment: '가성비 최고, 밥 무한리필 가능', url: 'https://map.naver.com/p/search/성수%20전주콩나물국밥' },
-            { name: '성수다락', category: 'western', rating: '4.5', comment: '오므라이스랑 파스타가 예쁜 곳', url: 'https://map.naver.com/p/search/성수다락' },
-            { name: '대림국수 성수점', category: 'japanese', rating: '4.4', comment: '꼬치국수 온면이 진리', url: 'https://map.naver.com/p/search/성수%20대림국수' },
-            { name: '중앙감속기', category: 'chinese', rating: '4.7', comment: '최현석 셰프의 퓨전 중식, 발사믹 꿔바로우', url: 'https://map.naver.com/p/search/성수%20중앙감속기' },
-            { name: '다로베', category: 'western', rating: '4.4', comment: '화덕피자 대회 1등, 비스마르크 피자 추천', url: 'https://map.naver.com/p/search/성수%20다로베' },
-            { name: '탐광', category: 'japanese', rating: '4.3', comment: '에비카츠동(새우튀김) 비주얼 끝판왕', url: 'https://map.naver.com/p/search/성수%20탐광' },
-            { name: '칙피스', category: 'western', rating: '4.6', comment: '비건/다이어트 샐러드 맛집', url: 'https://map.naver.com/p/search/성수%20칙피스' },
-            { name: '전자방', category: 'chinese', rating: '4.4', comment: '깔끔한 퓨전 중식, 마라 감바스', url: 'https://map.naver.com/p/search/성수%20전자방' },
-
-            // [일식/돈까스/우동]
-            { name: '오레노카츠', category: 'japanese', rating: '4.5', comment: '체다치즈 돈까스가 유명한 곳', url: 'https://map.naver.com/p/search/성수%20오레노카츠' },
-            { name: '가조쿠', category: 'japanese', rating: '4.2', comment: '생활의 달인에 나온 소바/우동 맛집', url: 'https://map.naver.com/p/search/성수%20가조쿠' },
-            { name: '쿄와텐동', category: 'japanese', rating: '4.3', comment: '바삭한 튀김 덮밥이 생각날 때', url: 'https://map.naver.com/p/search/성수%20쿄와텐동' },
-            { name: '우동가조쿠', category: 'japanese', rating: '4.4', comment: '면발이 쫄깃한 사누끼 우동', url: 'https://map.naver.com/p/search/성수%20우동가조쿠' },
-            { name: '호호식당', category: 'japanese', rating: '4.6', comment: '일본 가정식, 분위기 좋아서 손님 접대용', url: 'https://map.naver.com/p/search/성수%20호호식당' },
-
-            // [양식/버거]
-            { name: '르프리크', category: 'western', rating: '4.8', comment: '성수동 1티어 내쉬빌 핫치킨 버거', url: 'https://map.naver.com/p/search/성수%20르프리크' },
-            { name: '제스티살룬', category: 'western', rating: '4.7', comment: '이영자 맛집, 새우버거가 두툼함', url: 'https://map.naver.com/p/search/성수%20제스티살룬' },
-            { name: '팩피', category: 'western', rating: '4.5', comment: '고수 파스타가 유명한 미슐랭 맛집', url: 'https://map.naver.com/p/search/성수%20팩피' },
-            { name: 'HDD 피자', category: 'western', rating: '4.3', comment: '힙한 분위기의 조각 피자집', url: 'https://map.naver.com/p/search/성수%20HDD' },
-            { name: '온량', category: 'western', rating: '4.6', comment: '특급호텔 출신 셰프, 토마호크 커틀릿', url: 'https://map.naver.com/p/search/성수%20온량' },
-
-            // [중식/아시안]
-            { name: '시옹마오', category: 'chinese', rating: '4.4', comment: '우육면이랑 만두가 맛있는 집', url: 'https://map.naver.com/p/search/성수%20시옹마오' },
-            { name: '플레이버타운', category: 'chinese', rating: '4.5', comment: '트렌디한 홍콩식 중식당', url: 'https://map.naver.com/p/search/성수%20플레이버타운' },
-            { name: '냐항', category: 'western', rating: '4.3', comment: '성수동 골목 안 숨은 쌀국수 맛집', url: 'https://map.naver.com/p/search/성수%20냐항' },
-            { name: '보이어', category: 'western', rating: '4.5', comment: '은대구 파스타가 유명한 와인바 겸 식당', url: 'https://map.naver.com/p/search/성수%20보이어' },
-
-            // [카페/디저트]
-            { name: '어니언 성수', category: 'cafe', rating: '4.6', comment: '공장 개조 카페, 팡도르 필수', url: 'https://map.naver.com/p/search/성수%20어니언' },
-            { name: '대림창고', category: 'cafe', rating: '4.5', comment: '성수동 랜드마크, 갤러리 같은 분위기', url: 'https://map.naver.com/p/search/성수%20대림창고' },
-            { name: '블루보틀 성수', category: 'cafe', rating: '4.4', comment: '라떼가 맛있는 그곳', url: 'https://map.naver.com/p/search/성수%20블루보틀' },
-            { name: '로우키', category: 'cafe', rating: '4.7', comment: '커피 매니아들이 인정하는 로스터리', url: 'https://map.naver.com/p/search/성수%20로우키' },
-            { name: '하루노유키', category: 'cafe', rating: '4.3', comment: '일본식 바움쿠헨 케이크 전문점', url: 'https://map.naver.com/p/search/성수%20하루노유키' },
-            { name: '마일스톤 커피', category: 'cafe', rating: '4.6', comment: '비엔나 커피와 티라미수 맛집', url: 'https://map.naver.com/p/search/성수%20마일스톤' }
-        ];
+        
 
         try {
             for (const data of sampleData) {
-                await addDoc(collection(db, 'office_restaurants'), {
+                await addDoc(collection(db, getCollectionName('office_restaurants', user)), {
                     ...data,
                     rating: Number(data.rating),
                     createdAt: serverTimestamp()
@@ -168,9 +161,9 @@ const LunchDashboard = ({ db, user }) => {
         if (!window.confirm('모든 맛집 데이터를 삭제하시겠습니까? \n이 작업은 되돌릴 수 없습니다.')) return;
 
         try {
-            const querySnapshot = await getDocs(collection(db, 'office_restaurants'));
+            const querySnapshot = await getDocs(collection(db, getCollectionName('office_restaurants', user)));
             const deletePromises = querySnapshot.docs.map(document =>
-                deleteDoc(doc(db, 'office_restaurants', document.id))
+                deleteDoc(doc(db, getCollectionName('office_restaurants', user), document.id))
             );
             await Promise.all(deletePromises);
             alert('초기화 완료! 다시 자동 채우기를 해주세요.');
@@ -192,8 +185,7 @@ const LunchDashboard = ({ db, user }) => {
             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-slate-200 gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Utensils className="w-8 h-8 text-orange-500" />
-                        컴포즈 미식회
+                        <Utensils className="w-8 h-8 text-orange-500" /> {isCg ? "까사 미식회" : "컴포즈 미식회"}
                     </h2>
                     <p className="text-slate-500 mt-1">오늘 점심 뭐 먹지? 직원들이 직접 추천하는 찐맛집 컬렉션</p>
                 </div>

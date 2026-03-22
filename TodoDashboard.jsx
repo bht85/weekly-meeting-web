@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCollectionName } from './utils';
 import {
     CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Users,
     CheckSquare, Square, Filter, TrendingUp, Edit, X
@@ -63,7 +64,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
     // Fetch Employees
     useEffect(() => {
         if (!db) return;
-        const q = query(collection(db, 'employees'));
+        const q = query(collection(db, getCollectionName('employees', user)));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const emps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setEmployees(emps);
@@ -76,7 +77,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
         setLoading(true);
         setError(null);
         let q;
-        const collectionRef = collection(db, 'dept_todos');
+        const collectionRef = collection(db, getCollectionName('dept_todos', user));
 
         if (selectedDept === '전체' || selectedDept === '선택') {
             q = query(collectionRef, orderBy('createdAt', 'desc'));
@@ -102,7 +103,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
 
     const handleCreateTodo = async (todoData) => {
         try {
-            await addDoc(collection(db, 'dept_todos'), {
+            await addDoc(collection(db, getCollectionName('dept_todos', user)), {
                 department: todoData.department,
                 task: todoData.task,
                 description: todoData.description,
@@ -128,7 +129,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
 
     const handleUpdateTodo = async (id, updates) => {
         try {
-            const todoRef = doc(db, 'dept_todos', id);
+            const todoRef = doc(db, getCollectionName('dept_todos', user), id);
             await updateDoc(todoRef, updates);
             setEditingTodo(null);
         } catch (error) {
@@ -139,7 +140,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
 
     const handleToggleComplete = async (todo) => {
         try {
-            const todoRef = doc(db, 'dept_todos', todo.id);
+            const todoRef = doc(db, getCollectionName('dept_todos', user), todo.id);
             await updateDoc(todoRef, {
                 isCompleted: !todo.isCompleted
             });
@@ -151,7 +152,7 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
     const handleDeleteTodo = async (id) => {
         if (!window.confirm('이 업무를 삭제하시겠습니까?')) return;
         try {
-            await deleteDoc(doc(db, 'dept_todos', id));
+            await deleteDoc(doc(db, getCollectionName('dept_todos', user), id));
         } catch (error) {
             console.error("Error deleting todo: ", error);
         }
@@ -372,7 +373,11 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
                     onSubmit={handleCreateTodo}
                     departments={departments}
                     employees={employees}
-                    initialDept={user?.department || (selectedDept === '전체' ? departments.find(d => d !== '전체' && d !== '선택') : selectedDept)}
+                    initialDept={
+                        (user?.department && departments.includes(user.department) && user.department !== '선택')
+                            ? user.department
+                            : (selectedDept && selectedDept !== '전체' && selectedDept !== '선택' ? selectedDept : departments.find(d => d !== '전체' && d !== '선택'))
+                    }
                     isAdmin={isAdmin}
                 />
             )}

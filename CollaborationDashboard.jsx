@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCollectionName } from './utils';
 import {
     collection, addDoc, query, where, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy
@@ -61,7 +62,7 @@ const CollaborationDashboard = ({ db, user, departments, isAdmin }) => {
 
         setLoading(true);
         let q;
-        const collectionRef = collection(db, 'collaboration_requests');
+        const collectionRef = collection(db, getCollectionName('collaboration_requests', user));
 
         if (activeTab === 'sent') {
             q = query(collectionRef, orderBy('updatedAt', 'desc'));
@@ -121,7 +122,7 @@ const CollaborationDashboard = ({ db, user, departments, isAdmin }) => {
 
     const handleCreate = async (data) => {
         try {
-            await addDoc(collection(db, 'collaboration_requests'), {
+            await addDoc(collection(db, getCollectionName('collaboration_requests', user)), {
                 ...data, // includes requesterTeam now
                 requesterId: user.uid,
                 status: 'Pending',
@@ -143,7 +144,7 @@ const CollaborationDashboard = ({ db, user, departments, isAdmin }) => {
 
     const handleStatusUpdate = async (reqId, newStatus) => {
         try {
-            await updateDoc(doc(db, 'collaboration_requests', reqId), {
+            await updateDoc(doc(db, getCollectionName('collaboration_requests', user), reqId), {
                 status: newStatus,
                 updatedAt: serverTimestamp()
             });
@@ -167,7 +168,7 @@ const CollaborationDashboard = ({ db, user, departments, isAdmin }) => {
                 createdAt: new Date().toISOString()
             };
             const updatedComments = [...(selectedRequest.comments || []), newComment];
-            await updateDoc(doc(db, 'collaboration_requests', reqId), {
+            await updateDoc(doc(db, getCollectionName('collaboration_requests', user), reqId), {
                 comments: updatedComments,
                 updatedAt: serverTimestamp()
             });
