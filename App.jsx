@@ -949,7 +949,17 @@ function App() {
 
                     const contextUser = { ...currentUser, forcedDomain: effectiveDomain };
                     const q = query(collection(db, getCollectionName('employees', contextUser)), where('email', '==', currentUser.email));
-                    const querySnapshot = await getDocs(q);
+                    let querySnapshot = await getDocs(q);
+                    
+                    // [추가] 외부 메일 사용 시 이미 등록된 직원 정보를 바탕으로 도메인 자동 보정 (Fallback)
+                    if (querySnapshot.empty && ['naver.com', 'gmail.com', 'kakao.com', 'outlook.com', 'nate.com'].includes(effectiveDomain)) {
+                        const cgQ = query(collection(db, 'employees_casagrande_co_kr'), where('email', '==', currentUser.email));
+                        const cgSnap = await getDocs(cgQ);
+                        if (!cgSnap.empty) {
+                            querySnapshot = cgSnap;
+                            effectiveDomain = 'casagrande.co.kr';
+                        }
+                    }
 
                     let dept = '기타';
                     let userData = {};
