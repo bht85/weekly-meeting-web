@@ -62,7 +62,7 @@ const GlobalStyles = () => (
 // ────────────────────────────────────────────────────────────
 const getCompanyConfig = (user) => {
     const email = user?.email || '';
-    const domain = email.split('@')[1] || '';
+    const domain = user?.forcedDomain || email.split('@')[1] || '';
 
     if (domain === 'composecoffee.co.kr') {
         return {

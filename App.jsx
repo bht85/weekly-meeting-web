@@ -293,7 +293,7 @@ const getIconComponent = (iconName) => {
 };
 
 const KPIDashboard = ({ user, isAdmin }) => {
-    const isCg = user?.email?.endsWith('@casagrande.co.kr');
+    const isCg = user?.email?.endsWith('@casagrande.co.kr') || user?.email === 'wedding_life@naver.com' || user?.forcedDomain === 'casagrande.co.kr';
     const DEPARTMENTS_META = isCg ? CG_DEPARTMENTS_META : COMPOSE_DEPARTMENTS_META;
 
     const [selectedDeptId, setSelectedDeptId] = useState(null);
