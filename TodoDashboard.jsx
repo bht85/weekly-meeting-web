@@ -82,14 +82,26 @@ const TodoDashboard = ({ db, user, departments, isAdmin }) => {
         if (selectedDept === '전체' || selectedDept === '선택') {
             q = query(collectionRef, orderBy('createdAt', 'desc'));
         } else {
-            q = query(collectionRef, where('department', '==', selectedDept), orderBy('createdAt', 'desc'));
+            // department 조건이 있을 때 createdAt 정렬을 추가하면 복합 인덱스가 필요합니다.
+            // 인덱스 생성 없이 작동하도록 orderBy를 제거하고 클라이언트 측에서 정렬을 수행합니다.
+            q = query(collectionRef, where('department', '==', selectedDept));
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedTodos = snapshot.docs.map(doc => ({
+            let fetchedTodos = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+
+            // 부서 필터링 시 query에서 orderBy를 제거했으므로 수동 정렬 수행
+            if (selectedDept !== '전체' && selectedDept !== '선택') {
+                fetchedTodos.sort((a, b) => {
+                    const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+                    const timeB = b.createdAt?.toMillis?.() || (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+                    return timeB - timeA; // 내림차순
+                });
+            }
+
             setTodos(fetchedTodos);
             setLoading(false);
         }, (err) => {

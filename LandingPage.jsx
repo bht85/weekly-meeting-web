@@ -4,6 +4,7 @@ import {
     CheckCircle2, Calendar, Zap, Shield, ChevronRight,
     Building2, Coffee, Briefcase
 } from 'lucide-react';
+import { getCompanyConfig } from './companyConfigs';
 
 const GlobalStyles = () => (
     <style>{`
@@ -57,86 +58,7 @@ const GlobalStyles = () => (
     `}</style>
 );
 
-// ────────────────────────────────────────────────────────────
-// 회사 설정 로직 - 이메일 도메인 기반으로 회사 테마/정보 결정
-// ────────────────────────────────────────────────────────────
-const getCompanyConfig = (user) => {
-    const email = user?.email || '';
-    const domain = user?.forcedDomain || email.split('@')[1] || '';
 
-    if (domain === 'composecoffee.co.kr') {
-        return {
-            name: '컴포즈커피',
-            nameEn: 'COMPOSE COFFEE',
-            greeting: '컴포즈커피 임직원 여러분, 환영합니다.',
-            description: '매주 진행되는 주간 회의를 통해 우리의 목표를 점검하고\n더 나은 서비스를 만들어갑니다.',
-            accentColor: '#FEE500',
-            accentColorRgb: '254, 229, 0',
-            bgColor: '#1A1A1A',
-            textOnAccent: '#1A1A1A',
-            icon: 'coffee',
-            teams: [
-                { name: '재무팀', emoji: '💰', desc: '예산 계획 및 회계 관리' },
-                { name: '재무기획팀', emoji: '📈', desc: '재무 전략 및 분석' },
-                { name: '인사총무팀', emoji: '👥', desc: '인재 관리 & 조직 운영' },
-                { name: '법무팀', emoji: '⚖️', desc: '법무 검토 및 계약 관리' },
-                { name: 'IT지원팀', emoji: '💻', desc: '시스템 운영 및 기술 지원' },
-                { name: '조직혁신팀', emoji: '🎯', desc: '조직 문화 혁신 및 개선' },
-            ],
-            teamsTitle: '경영지원본부',
-            teamsSubtitle: '6개 팀이 함께 만드는 더 나은 컴포즈커피',
-        };
-    }
-
-    if (domain === 'casagrande.co.kr') {
-        return {
-            name: '까사그랑데 센트로',
-            nameEn: 'CASA GRANDE CENTRO',
-            greeting: '까사그랑데 센트로 임직원 여러분, 환영합니다.',
-            description: '가장 찬란한 순간을 만드는 까사그랑데 센트로,\n우리의 정성이 고객의 평생 기억이 됩니다.',
-            accentColor: '#D4AF37', // Champagne Gold
-            accentColorRgb: '212, 175, 55',
-            bgColor: '#1A1C23', // Elegant dark/charcoal background
-            textOnAccent: '#1A1A1A',
-            icon: 'building', 
-            teams: [
-                { name: '예약실', emoji: '💝', desc: '웨딩 상담 및 계약 진행' },
-                { name: '연회부', emoji: '🍽️', desc: '최상의 다이닝 서비스 제공' },
-                { name: '조리부', emoji: '👨‍🍳', desc: '프리미엄 뷔페 메뉴 조리' },
-                { name: '진행팀', emoji: '✨', desc: '완벽한 예식 기획 및 연출' },
-                { name: '시설관리팀', emoji: '⚙️', desc: '쾌적한 환경 및 안전 관리' },
-                { name: '경영지원팀', emoji: '💼', desc: '인사/총무 및 전사 지원' },
-            ],
-            teamsTitle: '까사그랑데 부서',
-            teamsSubtitle: '완벽한 웨딩을 완성하는 최고 전문가들',
-            bgImageUrl: '/casagrande-bg.jpg', // 변경: 까사그랑데 메인 이미지 연동
-        };
-    }
-
-    // 기타 회사 (도메인별로 추가 가능)
-    const companyName = domain ? domain.split('.')[0].toUpperCase() : '우리 회사';
-    return {
-        name: companyName,
-        nameEn: companyName,
-        greeting: `${companyName} 임직원 여러분, 환영합니다.`,
-        description: '매주 진행되는 주간 회의를 통해 우리의 목표를 점검하고\n팀의 성과를 함께 만들어갑니다.',
-        accentColor: '#6366f1',
-        accentColorRgb: '99, 102, 241',
-        bgColor: '#0f172a',
-        textOnAccent: '#ffffff',
-        icon: 'building',
-        teams: [
-            { name: '영업팀', emoji: '🤝', desc: '고객 관계 및 매출 관리' },
-            { name: '마케팅팀', emoji: '📣', desc: '브랜드 전략 및 홍보' },
-            { name: '개발팀', emoji: '💻', desc: '제품 개발 및 기술 혁신' },
-            { name: '인사팀', emoji: '👥', desc: '인재 채용 및 조직 문화' },
-            { name: '재무팀', emoji: '💰', desc: '예산 관리 및 회계' },
-            { name: '운영팀', emoji: '⚙️', desc: '비즈니스 운영 및 지원' },
-        ],
-        teamsTitle: '팀 구성',
-        teamsSubtitle: '함께 성장하는 팀들',
-    };
-};
 
 // ────────────────────────────────────────────────────────────
 // 히어로 섹션 (회사별 테마 적용)

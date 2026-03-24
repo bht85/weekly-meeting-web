@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getCollectionName } from './utils';
+import { getCollectionName, isCasagrande } from './utils';
+import { getCompanyConfig, getCompanyDomain } from './companyConfigs';
 import ReactDOM from 'react-dom/client';
 import {
     Calendar, FileText, PlusCircle, Save, Users, Clock, Briefcase,
@@ -73,42 +74,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// --- 상수 데이터 (회의록용) ---
-const COMPOSE_DEPARTMENTS = [
-    "선택",
-    "재무팀",
-    "재무기획팀",
-    "인사총무팀",
-    "법무팀",
-    "IT지원팀",
-    "조직혁신팀"
-];
 
-// 정렬 순서 정의
-const COMPOSE_TEAM_ORDER = [
-    "재무팀",
-    "재무기획팀",
-    "인사총무팀",
-    "법무팀",
-    "IT지원팀",
-    "조직혁신팀"
-];
-
-const SECTIONS = [
-    { id: 'report', label: '가. 보고사항', icon: FileText, placeholder: '내용을 입력하세요...' },
-    { id: 'progress', label: '나. 진행업무', icon: Clock, placeholder: '내용을 입력하세요...' },
-    { id: 'discussion', label: '다. 협의업무', icon: MessageSquare, placeholder: '내용을 입력하세요...' }
-];
-
-// 경영본부 회의 의견 작성용 팀 리스트 (순서 반영)
-const COMPOSE_FEEDBACK_TEAMS = [
-    { id: 'finance', label: '재무팀' },
-    { id: 'finance_plan', label: '재무기획팀' },
-    { id: 'hr', label: '인사총무팀' },
-    { id: 'legal', label: '법무팀' },
-    { id: 'it', label: 'IT지원팀' },
-    { id: 'org_innovation', label: '조직혁신팀' }
-];
 
 // --- 부서 메타데이터 (순서 및 아이콘 정의) ---
 const NAV_ITEMS = [
@@ -217,51 +183,9 @@ const UnauthorizedView = ({ email, onLogout }) => (
         </div>
     </div>
 );
-const COMPOSE_DEPARTMENTS_META = [
-    { id: 'finance_team', name: '재무팀', icon: 'dollar' },
-    { id: 'finance_plan', name: '재무기획팀', icon: 'dollar' },
-    { id: 'hr_ga', name: '인사총무팀', icon: 'users' },
-    { id: 'legal_team', name: '법무팀', icon: 'legal' },
-    { id: 'it_support', name: 'IT지원팀', icon: 'monitor' },
-    { id: 'org_innovation', name: '조직혁신팀', icon: 'target' }
-];
 
-const CG_DEPARTMENTS = [
-    "선택",
-    "경영지원팀",
-    "예약실",
-    "연회부",
-    "조리부",
-    "진행팀",
-    "시설관리팀"
-];
 
-const CG_TEAM_ORDER = [
-    "경영지원팀",
-    "예약실",
-    "연회부",
-    "조리부",
-    "진행팀",
-    "시설관리팀"
-];
 
-const CG_FEEDBACK_TEAMS = [
-    { id: 'management', label: '경영지원팀' },
-    { id: 'reservation', label: '예약실' },
-    { id: 'banquet', label: '연회부' },
-    { id: 'kitchen', label: '조리부' },
-    { id: 'operation', label: '진행팀' },
-    { id: 'facility', label: '시설관리팀' }
-];
-
-const CG_DEPARTMENTS_META = [
-    { id: 'management', name: '경영지원팀', icon: 'monitor' },
-    { id: 'reservation', name: '예약실', icon: 'users' },
-    { id: 'banquet', name: '연회부', icon: 'bag' },
-    { id: 'kitchen', name: '조리부', icon: 'dollar' },
-    { id: 'operation', name: '진행팀', icon: 'target' },
-    { id: 'facility', name: '시설관리팀', icon: 'legal' }
-];
 
 
 
@@ -293,8 +217,8 @@ const getIconComponent = (iconName) => {
 };
 
 const KPIDashboard = ({ user, isAdmin }) => {
-    const isCg = user?.email?.endsWith('@casagrande.co.kr') || user?.email === 'wedding_life@naver.com' || user?.forcedDomain === 'casagrande.co.kr';
-    const DEPARTMENTS_META = isCg ? CG_DEPARTMENTS_META : COMPOSE_DEPARTMENTS_META;
+    const config = getCompanyConfig(user);
+    const DEPARTMENTS_META = config.departmentsMeta;
 
     const [selectedDeptId, setSelectedDeptId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -859,8 +783,9 @@ const TeamManagerModal = ({ onClose }) => (
 // --- 메인 앱 컴포넌트 ---
 function App() {
     const [user, setUser] = useState(null);
-
-    const isCg = user?.email?.endsWith('@casagrande.co.kr') || user?.email === 'wedding_life@naver.com' || user?.forcedDomain === 'casagrande.co.kr';
+    const config = getCompanyConfig(user);
+    const domain = getCompanyDomain(user);
+    const isCg = domain === 'casagrande.co.kr';
     const [customDepartments, setCustomDepartments] = useState([]);
 
     useEffect(() => {
@@ -876,13 +801,13 @@ function App() {
         return () => unsub();
     }, [user]);
 
-    const baseDepts = isCg ? CG_DEPARTMENTS : COMPOSE_DEPARTMENTS;
+    const baseDepts = config.baseDepts;
     const DEPARTMENTS = useMemo(() => {
         const customNames = customDepartments.map(d => d.name).filter(Boolean);
         return Array.from(new Set([...baseDepts, ...customNames]));
     }, [baseDepts, customDepartments]);
-    const TEAM_ORDER = isCg ? CG_TEAM_ORDER : COMPOSE_TEAM_ORDER;
-    const FEEDBACK_TEAMS = isCg ? CG_FEEDBACK_TEAMS : COMPOSE_FEEDBACK_TEAMS;
+    const TEAM_ORDER = config.teamOrder;
+    const FEEDBACK_TEAMS = config.feedbackTeams;
 
     const isAdmin = useMemo(() =>
         user?.email === "daisy@composecoffee.co.kr" ||
@@ -971,7 +896,7 @@ function App() {
                     } else if (
                         currentUser.email === "daisy@composecoffee.co.kr" ||
                         currentUser.email === "choihy@composecoffee.co.kr" ||
-                        currentUser.email.endsWith("@casagrande.co.kr")
+                        isCasagrande(currentUser)
                     ) {
                         // 관리자 및 까사그랑데 예외 처리
                         dept = "경영지원본부";
@@ -1040,7 +965,7 @@ function App() {
                 querySnapshot.empty &&
                 email !== "daisy@composecoffee.co.kr" &&
                 email !== "it@composecoffee.co.kr" &&
-                !email.endsWith("@casagrande.co.kr")
+                !isCasagrande(email)
             ) {
                 alert("등록된 직원이 아닙니다. 관리자에게 문의하세요.");
                 return;
@@ -1624,7 +1549,7 @@ function App() {
         user.email !== "daisy@composecoffee.co.kr" &&
         user.email !== "choihy@composecoffee.co.kr" &&
         user.email !== "it@composecoffee.co.kr" &&
-        !user.email.endsWith("@casagrande.co.kr") &&
+        !isCasagrande(user) &&
         user.department === '기타') {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
     }

@@ -3,126 +3,9 @@ import {
     Newspaper, ExternalLink, Search, Coffee, TrendingUp,
     Scale, ArrowUpRight, Globe, BookOpen, Building2
 } from 'lucide-react';
-
-// ─── 뉴스 카테고리 설정 ───────────────────────────────────────
-const NEWS_CATEGORIES = [
-    {
-        id: 'compose',
-        label: '컴포즈커피',
-        icon: Coffee,
-        color: 'blue',
-        query: '컴포즈커피',
-        description: '컴포즈커피 최신 소식 및 동향',
-        keywords: ['신메뉴', '매장 오픈', '프로모션', '브랜드'],
-        quickLinks: [
-            { label: '최신 뉴스', query: '컴포즈커피' },
-            { label: '매장 현황', query: '컴포즈커피 매장' },
-            { label: '메뉴 신제품', query: '컴포즈커피 신메뉴' },
-        ],
-    },
-    {
-        id: 'low_cost',
-        label: '저가 커피 프랜차이즈',
-        icon: TrendingUp,
-        color: 'emerald',
-        query: '저가 커피 프랜차이즈',
-        description: '메가커피·빽다방·이디야 등 경쟁사 동향',
-        keywords: ['메가커피', '빽다방', '이디야', '더벤티'],
-        quickLinks: [
-            { label: '업계 동향', query: '저가커피 프랜차이즈 동향' },
-            { label: '메가커피', query: '메가커피 최신' },
-            { label: '빽다방', query: '빽다방 최신' },
-        ],
-    },
-    {
-        id: 'bean_price',
-        label: '국제 원두 가격',
-        icon: Scale,
-        color: 'amber',
-        query: '국제 원두 가격',
-        description: '아라비카·로부스타 원두 가격 동향',
-        keywords: ['아라비카', '로부스타', '원자재', '수입'],
-        quickLinks: [
-            { label: '원두 시세', query: '커피 원두 가격 동향' },
-            { label: '아라비카', query: '아라비카 원두 가격' },
-            { label: '수입 현황', query: '커피 원두 수입' },
-        ],
-    },
-    {
-        id: 'legislation',
-        label: '프랜차이즈 법안',
-        icon: Newspaper,
-        color: 'violet',
-        query: '프랜차이즈 법안',
-        description: '가맹사업·공정거래 관련 법안 및 정책',
-        keywords: ['가맹점', '공정위', '가맹법', '정책'],
-        quickLinks: [
-            { label: '최신 법안', query: '프랜차이즈 법안 가맹' },
-            { label: '공정거래', query: '가맹 공정거래위원회' },
-            { label: '가맹점 정책', query: '가맹점 정책 2026' },
-        ],
-    },
-];
+import { getCompanyConfig } from './companyConfigs';
 
 
-const WEDDING_CATEGORIES = [
-    {
-        id: 'casagrande',
-        label: '까사그랑데 센트로',
-        icon: Building2,
-        color: 'amber',
-        query: '까사그랑데 센트로 웨딩',
-        description: '까사그랑데 센트로 최신 소식 및 웨딩 특화 정보',
-        keywords: ['건대 웨딩홀', '프리미엄 웨딩', '하우스웨딩', '호텔웨딩'],
-        quickLinks: [
-            { label: '최신 리뷰', query: '까사그랑데 센트로 후기' },
-            { label: '웨딩 박람회', query: '서울 웨딩 박람회 일정' },
-            { label: '예식 트렌드', query: '프리미엄 하우스 웨딩 트렌드' },
-        ],
-    },
-    {
-        id: 'wedding_hall',
-        label: '웨딩홀 동향',
-        icon: TrendingUp,
-        color: 'violet',
-        query: '웨딩홀 산업 동향 현황',
-        description: '국내 웨딩홀 및 예식장 산업 동향',
-        keywords: ['웨딩홀', '예식장', '결혼식장', '스몰웨딩'],
-        quickLinks: [
-            { label: '호텔 웨딩', query: '특급 호텔 웨딩 트렌드' },
-            { label: '하우스 웨딩', query: '하우스 웨딩 공간 추천' },
-            { label: '야외 예식', query: '야외 웨딩 공간 연출' },
-        ],
-    },
-    {
-        id: 'wedding_catering',
-        label: '연회/뷔페 트렌드',
-        icon: Search,
-        color: 'emerald',
-        query: '웨딩홀 뷔페 연회장 트렌드',
-        description: '웨딩 연회장 및 파인다이닝 식품 동향',
-        keywords: ['웨딩 뷔페', '코스 요리', '파인다이닝', '연회장'],
-        quickLinks: [
-            { label: '호텔 뷔페', query: '특급호텔 웨딩 뷔페 신메뉴' },
-            { label: '케이터링', query: '프리미엄 웨딩 케이터링' },
-            { label: '식자재', query: '최고급 식자재 유통 트렌드' },
-        ],
-    },
-    {
-        id: 'wedding_market',
-        label: '결혼 시장 동향',
-        icon: Scale, 
-        color: 'blue',
-        query: '결혼 통계 정책 신혼부부',
-        description: '혼인율, 웨딩산업 인구구조 변화 및 정책',
-        keywords: ['혼인 통계', '신혼부부', '웨딩 산업', '결혼 정책'],
-        quickLinks: [
-            { label: '혼인율 통계', query: '통계청 혼인 건수 동향' },
-            { label: '신혼 정책', query: '신혼부부 주거 지원 특공' },
-            { label: '웨딩 지원', query: '지자체 결혼 친화 정책' },
-        ],
-    },
-];
 
 
 // ─── 색상 설정 ────────────────────────────────────────────────
@@ -197,10 +80,9 @@ const toGoogleNewsUrl = (query) =>
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
 const NewsDashboard = ({ user }) => {
-    
-    const isCasagrande = user?.email?.endsWith('@casagrande.co.kr');
-    const displayCategories = isCasagrande ? WEDDING_CATEGORIES : NEWS_CATEGORIES;
-    const initialTab = isCasagrande ? 'casagrande' : 'compose';
+    const config = getCompanyConfig(user);
+    const displayCategories = config.newsCategories;
+    const initialTab = displayCategories.length > 0 ? displayCategories[0].id : '';
     
     const [activeTab, setActiveTab] = useState(initialTab);
     
