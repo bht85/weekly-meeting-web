@@ -90,7 +90,7 @@ const NewsDashboard = ({ user }) => {
         if (!displayCategories.find(c => c.id === activeTab)) {
             setActiveTab(initialTab);
         }
-    }, [isCasagrande, activeTab, initialTab, displayCategories]);
+    }, [activeTab, initialTab, displayCategories]);
     
     const [customQuery, setCustomQuery] = useState('');
 
