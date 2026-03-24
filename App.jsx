@@ -1578,7 +1578,7 @@ function App() {
                             </div>
 
                             <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
-                                {NAV_ITEMS.filter(item => !['commercial', 'kpi'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
+                                {NAV_ITEMS.filter(item => !['commercial'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1622,7 +1622,7 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
-                                {NAV_ITEMS.filter(item => !['commercial', 'kpi'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
+                                {NAV_ITEMS.filter(item => !['commercial'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
