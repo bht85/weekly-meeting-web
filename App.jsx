@@ -9,7 +9,8 @@ import {
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
     ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor,
-    CheckSquare, Utensils, StickyNote, HelpCircle
+    CheckSquare, Utensils, StickyNote, HelpCircle,
+    ClipboardList, Activity
 } from 'lucide-react';
 import LunchDashboard from './LunchDashboard';
 import CollaborationDashboard from './CollaborationDashboard';
@@ -87,6 +88,12 @@ const NAV_ITEMS = [
     { id: 'org', label: '조직/인사', icon: Users },
     { id: 'kpi', label: 'KPI', icon: BarChart3 },
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
+];
+
+const SECTIONS = [
+    { id: 'report', label: '가. 보고사항', icon: ClipboardList, placeholder: '회의 중 보고된 주요 내용을 입력하세요...' },
+    { id: 'progress', label: '나. 진행업무', icon: Activity, placeholder: '현재 진행 중인 업무 상태를 입력하세요...' },
+    { id: 'discussion', label: '다. 협의업무', icon: MessageSquare, placeholder: '부서 간 협의가 필요한 사항을 입력하세요...' },
 ];
 
 // --- [수정] 하드코딩된 이메일 목록 제거 (Firestore employees 컬렉션 참조) ---
