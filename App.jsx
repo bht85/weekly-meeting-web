@@ -122,8 +122,8 @@ const LoginView = ({ onLogin, onSignup }) => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <input
-                            type="email"
-                            placeholder="이메일 주소"
+                            type="text"
+                            placeholder="아이디 또는 이메일"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
@@ -900,6 +900,9 @@ function App() {
                     ) {
                         // 관리자 및 까사그랑데 예외 처리
                         dept = "경영지원본부";
+                    } else if (currentUser.email === "test@composecoffee.co.kr") {
+                        // 테스트 계정 (상권분석 전용)
+                        dept = "상권분석";
                     } else if (currentUser.email === "it@composecoffee.co.kr") {
                         // IT 팀장 예외 처리 (접속 허용 + 부서 지정)
                         dept = "IT지원팀";
@@ -912,8 +915,13 @@ function App() {
                         ...userData
                     };
                     setUser(userWithDept);
-                    // 로그인 성공 시 랜딩 페이지 표시
-                    setShowLanding(true);
+                    // 로그인 성공 시 랜딩 페이지 표시 (테스트 계정은 바로 상권분석으로)
+                    if (currentUser.email === 'test@composecoffee.co.kr') {
+                        setShowLanding(false);
+                        setAppMode('commercial');
+                    } else {
+                        setShowLanding(true);
+                    }
 
                     if (DEPARTMENTS.includes(dept)) {
                         setInputDept(dept);
@@ -933,8 +941,11 @@ function App() {
     }, []);
 
     const handleLogin = async (email, password) => {
+        let loginEmail = email;
+        if (email === 'test') loginEmail = 'test@composecoffee.co.kr';
+
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            await signInWithEmailAndPassword(auth, loginEmail, password);
         } catch (error) {
             console.error("Login Failed:", error);
             let msg = "로그인 중 오류가 발생했습니다.";
@@ -951,28 +962,31 @@ function App() {
     };
 
     const handleSignup = async (email, password) => {
-        if (password.length < 6) {
+        const signupEmail = email === 'test' ? 'test@composecoffee.co.kr' : email;
+
+        if (password.length < 6 && email !== 'test') {
             alert("보안을 위해 비밀번호는 6자 이상 입력해 주세요.");
             return;
         }
 
         // 1. 등록된 직원인지 확인
         try {
-            const q = query(collection(db, getCollectionName('employees', email)), where('email', '==', email));
+            const q = query(collection(db, getCollectionName('employees', signupEmail)), where('email', '==', signupEmail));
             const querySnapshot = await getDocs(q);
 
             if (
                 querySnapshot.empty &&
-                email !== "daisy@composecoffee.co.kr" &&
-                email !== "it@composecoffee.co.kr" &&
-                !isCasagrande(email)
+                signupEmail !== "daisy@composecoffee.co.kr" &&
+                signupEmail !== "it@composecoffee.co.kr" &&
+                signupEmail !== "test@composecoffee.co.kr" &&
+                !isCasagrande(signupEmail)
             ) {
                 alert("등록된 직원이 아닙니다. 관리자에게 문의하세요.");
                 return;
             }
 
             // 2. 가입 진행
-            await createUserWithEmailAndPassword(auth, email, password);
+            await createUserWithEmailAndPassword(auth, signupEmail, password);
             alert("회원가입이 완료되었습니다.");
         } catch (error) {
             console.error("Signup Failed:", error);
@@ -1549,6 +1563,7 @@ function App() {
         user.email !== "daisy@composecoffee.co.kr" &&
         user.email !== "choihy@composecoffee.co.kr" &&
         user.email !== "it@composecoffee.co.kr" &&
+        user.email !== "test@composecoffee.co.kr" &&
         !isCasagrande(user) &&
         user.department === '기타') {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
@@ -1578,7 +1593,12 @@ function App() {
                             </div>
 
                             <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
-                                {NAV_ITEMS.filter(item => !['commercial'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
+                                {NAV_ITEMS.filter(item => {
+                                    if (user?.email === 'test@composecoffee.co.kr') {
+                                        return item.id === 'commercial';
+                                    }
+                                    return !['commercial'].includes(item.id) || user?.email?.includes('choihy');
+                                }).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1622,7 +1642,12 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
-                                {NAV_ITEMS.filter(item => !['commercial'].includes(item.id) || user?.email?.includes('choihy')).map(item => {
+                                {NAV_ITEMS.filter(item => {
+                                    if (user?.email === 'test@composecoffee.co.kr') {
+                                        return item.id === 'commercial';
+                                    }
+                                    return !['commercial'].includes(item.id) || user?.email?.includes('choihy');
+                                }).map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
