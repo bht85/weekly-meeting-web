@@ -8,7 +8,7 @@ import {
     RotateCcw, Archive, Megaphone, Menu, CheckCircle2, Loader2,
     BarChart3, Code, ShoppingBag, AlertCircle, ArrowLeft, Target,
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
-    ChevronDown, PieChart, TrendingUp, Calculator, Share2, Database, Monitor,
+    ChevronDown, PieChart, Calculator, Share2, Database, Monitor,
     CheckSquare, Utensils, StickyNote, HelpCircle,
     ClipboardList, Activity
 } from 'lucide-react';
@@ -19,7 +19,7 @@ import TodoDashboard from './TodoDashboard';
 import OrganizationDashboard from './OrganizationDashboard';
 import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
-import CommercialDashboard from './CommercialDashboard'; // 새 항목 추가
+
 
 // --- Firebase 라이브러리 ---
 import { initializeApp } from "firebase/app";
@@ -80,7 +80,7 @@ const storage = getStorage(app);
 // --- 부서 메타데이터 (순서 및 아이콘 정의) ---
 const NAV_ITEMS = [
     { id: 'news', label: '업계 동향', icon: Monitor },
-    { id: 'commercial', label: '상권', icon: TrendingUp },
+
     { id: 'calendar', label: '캘린더', icon: Calendar },
     { id: 'meeting', label: '주간회의록', icon: FileText },
     { id: 'collaboration', label: '협업 요청', icon: Share2 },
@@ -907,9 +907,7 @@ function App() {
                     ) {
                         // 관리자 및 까사그랑데 예외 처리
                         dept = "경영지원본부";
-                    } else if (currentUser.email === "test@composecoffee.co.kr") {
-                        // 테스트 계정 (상권분석 전용)
-                        dept = "상권분석";
+
                     } else if (currentUser.email === "it@composecoffee.co.kr") {
                         // IT 팀장 예외 처리 (접속 허용 + 부서 지정)
                         dept = "IT지원팀";
@@ -922,13 +920,7 @@ function App() {
                         ...userData
                     };
                     setUser(userWithDept);
-                    // 로그인 성공 시 랜딩 페이지 표시 (테스트 계정은 바로 상권분석으로)
-                    if (currentUser.email === 'test@composecoffee.co.kr') {
-                        setShowLanding(false);
-                        setAppMode('commercial');
-                    } else {
-                        setShowLanding(true);
-                    }
+                    setShowLanding(true);
 
                     if (DEPARTMENTS.includes(dept)) {
                         setInputDept(dept);
@@ -1600,12 +1592,7 @@ function App() {
                             </div>
 
                             <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
-                                {NAV_ITEMS.filter(item => {
-                                    if (user?.email === 'test@composecoffee.co.kr') {
-                                        return item.id === 'commercial';
-                                    }
-                                    return !['commercial'].includes(item.id) || user?.email?.includes('choihy');
-                                }).map(item => {
+                                {NAV_ITEMS.map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1649,12 +1636,7 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
-                                {NAV_ITEMS.filter(item => {
-                                    if (user?.email === 'test@composecoffee.co.kr') {
-                                        return item.id === 'commercial';
-                                    }
-                                    return !['commercial'].includes(item.id) || user?.email?.includes('choihy');
-                                }).map(item => {
+                                {NAV_ITEMS.map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1686,8 +1668,7 @@ function App() {
 
                 {appMode === 'news' && <NewsDashboard user={user} />}
 
-                {/* [MODE 10] 상권 분석 */}
-                {appMode === 'commercial' && <CommercialDashboard />}
+
 
                 {/* [MODE 9] 맛집/식단 (New) */}
                 {appMode === 'lunch' && <LunchDashboard db={db} user={user} />}
