@@ -109,13 +109,13 @@ const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => 
     );
     const allMinutes = [...sortedMinutes, ...extraMinutes];
 
-    // 페이지 분배: 1페이지 4팀(2×2), 2페이지 나머지
-    const page1 = allMinutes.slice(0, 4);
-    const page2 = allMinutes.slice(4);
-
-    // 4팀 미만이면 빈 칸으로 채우기
-    const page1Padded = [...page1];
-    while (page1Padded.length < 4) page1Padded.push(null);
+    // 1페이지당 2팀씩 분할 (넓은 레이아웃 확보)
+    const pages = [];
+    for (let i = 0; i < allMinutes.length; i += 2) {
+        const chunk = allMinutes.slice(i, i + 2);
+        if (chunk.length === 1) chunk.push(null); // 한 팀만 남으면 뒷자리 빈 칸 유지
+        pages.push(chunk);
+    }
 
     const handlePrint = () => {
         window.print();
@@ -149,9 +149,7 @@ const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => 
     const reportContent = (
         <ReportContent
             date={date}
-            allMinutes={allMinutes}
-            page1Padded={page1Padded}
-            page2={page2}
+            pages={pages}
             companyName={companyName}
         />
     );
@@ -259,53 +257,37 @@ const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => 
     );
 };
 
-const ReportContent = ({ date, allMinutes, page1Padded, page2, companyName }) => {
+const ReportContent = ({ date, pages, companyName }) => {
     return (
         <div style={{ fontFamily: "'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif", background: 'white' }}>
-            {/* ======================== */}
-            {/* 1페이지: 4개 팀          */}
-            {/* ======================== */}
-            <div className="pdf-page" style={pageStyle}>
-                <PageHeader date={date} companyName={companyName} page={1} totalPages={page2.length > 0 ? 2 : 1} />
-
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gridTemplateRows: '1fr 1fr',
-                    gap: '10px',
-                    flex: 1,
-                    overflow: 'hidden'
-                }}>
-                    {page1Padded.map((minute, idx) => (
-                        <TeamCard key={idx} minute={minute} teamColor={TEAM_COLORS[idx % TEAM_COLORS.length]} />
-                    ))}
-                </div>
-
-                <PageFooter date={date} teamCount={page1Padded.filter(Boolean).length} />
-            </div>
-
-            {/* ======================== */}
-            {/* 2페이지: 나머지 팀        */}
-            {/* ======================== */}
-            {page2.length > 0 && (
-                <div className="pdf-page" style={pageStyle}>
-                    <PageHeader date={date} companyName={companyName} page={2} totalPages={2} />
+            {pages.map((pageChunk, pageIndex) => (
+                <div key={pageIndex} className="pdf-page" style={pageStyle}>
+                    <PageHeader 
+                        date={date} 
+                        companyName={companyName} 
+                        page={pageIndex + 1} 
+                        totalPages={pages.length} 
+                    />
 
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: page2.length === 1 ? '1fr' : '1fr 1fr',
-                        gap: '10px',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
                         flex: 1,
                         overflow: 'hidden'
                     }}>
-                        {page2.map((minute, idx) => (
-                            <TeamCard key={idx} minute={minute} teamColor={TEAM_COLORS[(idx + 4) % TEAM_COLORS.length]} />
+                        {pageChunk.map((minute, idx) => (
+                            <TeamCard 
+                                key={idx} 
+                                minute={minute} 
+                                teamColor={TEAM_COLORS[(pageIndex * 2 + idx) % TEAM_COLORS.length]} 
+                            />
                         ))}
                     </div>
 
-                    <PageFooter date={date} teamCount={page2.length} />
+                    <PageFooter date={date} teamCount={pageChunk.filter(Boolean).length} />
                 </div>
-            )}
+            ))}
 
             {/* 인라인 스타일 */}
             <style>{`
