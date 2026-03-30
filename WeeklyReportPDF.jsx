@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, FileText } from 'lucide-react';
 
 // 날짜 포맷 헬퍼
@@ -97,8 +98,6 @@ const TEAM_COLORS = [
 ];
 
 const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => {
-    const printRef = useRef(null);
-
     // 해당 날짜의 회의록만 필터, teamOrder 순서대로 정렬
     const sortedMinutes = teamOrder
         .map(teamName => minutes.find(m => m.date === date && m.department === teamName))
@@ -124,13 +123,17 @@ const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => 
 
     const printStyles = `
         @media print {
-            body * { visibility: hidden !important; }
-            #pdf-report-root, #pdf-report-root * { visibility: visible !important; }
-            #pdf-report-root { position: fixed; top: 0; left: 0; width: 100%; }
-            .pdf-no-print { display: none !important; }
+            #root { display: none !important; }
+            .pdf-modal-overlay { display: none !important; }
+            
+            body { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                background: white !important; 
+            }
             @page {
                 size: A4 landscape;
-                margin: 12mm 10mm;
+                margin: 10mm;
             }
             .pdf-page {
                 page-break-after: always;
@@ -143,92 +146,115 @@ const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => 
         }
     `;
 
+    const reportContent = (
+        <ReportContent
+            date={date}
+            allMinutes={allMinutes}
+            page1Padded={page1Padded}
+            page2={page2}
+            companyName={companyName}
+        />
+    );
+
     return (
         <>
             <style>{printStyles}</style>
 
-            {/* 오버레이 배경 */}
+            {/* 오버레이 배경 - 미리보기 모달 */}
             <div
-                className="pdf-no-print"
+                className="pdf-modal-overlay"
                 style={{
                     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
                     zIndex: 9998, backdropFilter: 'blur(4px)'
                 }}
                 onClick={onClose}
-            />
-
-            {/* 미리보기 모달 */}
-            <div
-                className="pdf-no-print"
-                style={{
-                    position: 'fixed', top: '50%', left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 9999, background: 'white',
-                    borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-                    padding: '20px', width: '94vw', maxWidth: '1100px',
-                    maxHeight: '90vh', overflowY: 'auto'
-                }}
-                onClick={e => e.stopPropagation()}
             >
-                {/* 모달 헤더 */}
-                <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginBottom: '16px', paddingBottom: '16px',
-                    borderBottom: '1px solid #e5e7eb'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <FileText style={{ width: 22, height: 22, color: '#4F46E5' }} />
-                        <div>
-                            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                                주간회의록 PDF 미리보기
-                            </h2>
-                            <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
-                                {formatDate(date)} · {allMinutes.length}개 팀
-                            </p>
+                {/* 모달 창 본체 */}
+                <div
+                    style={{
+                        position: 'fixed', top: '50%', left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'white',
+                        borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+                        padding: '20px', width: '94vw', maxWidth: '1100px',
+                        maxHeight: '90vh', overflowY: 'auto'
+                    }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* 모달 헤더 */}
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        marginBottom: '16px', paddingBottom: '16px',
+                        borderBottom: '1px solid #e5e7eb'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FileText style={{ width: 22, height: 22, color: '#4F46E5' }} />
+                            <div>
+                                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                                    주간회의록 PDF 미리보기
+                                </h2>
+                                <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
+                                    {formatDate(date)} · {allMinutes.length}개 팀
+                                </p>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={handlePrint}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    padding: '8px 18px', background: '#4F46E5', color: 'white',
+                                    border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                    fontSize: '14px', fontWeight: 600
+                                }}
+                            >
+                                <Printer style={{ width: 16, height: 16 }} />
+                                PDF 저장 / 인쇄
+                            </button>
+                            <button
+                                onClick={onClose}
+                                style={{
+                                    padding: '8px', background: '#f1f5f9', border: 'none',
+                                    borderRadius: '8px', cursor: 'pointer', color: '#64748b'
+                                }}
+                            >
+                                <X style={{ width: 18, height: 18 }} />
+                            </button>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            onClick={handlePrint}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '6px',
-                                padding: '8px 18px', background: '#4F46E5', color: 'white',
-                                border: 'none', borderRadius: '8px', cursor: 'pointer',
-                                fontSize: '14px', fontWeight: 600
-                            }}
-                        >
-                            <Printer style={{ width: 16, height: 16 }} />
-                            PDF 저장 / 인쇄
-                        </button>
-                        <button
-                            onClick={onClose}
-                            style={{
-                                padding: '8px', background: '#f1f5f9', border: 'none',
-                                borderRadius: '8px', cursor: 'pointer', color: '#64748b'
-                            }}
-                        >
-                            <X style={{ width: 18, height: 18 }} />
-                        </button>
-                    </div>
-                </div>
 
-                <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px', textAlign: 'center' }}>
-                    💡 인쇄 다이얼로그에서 <strong>「PDF로 저장」</strong> 선택 · 용지: <strong>A4 가로</strong> · 여백: <strong>최소</strong> 권장
-                </p>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px', textAlign: 'center' }}>
+                        💡 인쇄 다이얼로그에서 <strong>「PDF로 저장」</strong> 선택 · 용지: <strong>A4 가로</strong> · 여백: <strong>최소</strong> 권장
+                    </p>
 
-                {/* 미리보기 스케일 컨테이너 */}
-                <div style={{ overflowX: 'auto' }}>
-                    <div id="pdf-report-root" ref={printRef}>
-                        <ReportContent
-                            date={date}
-                            allMinutes={allMinutes}
-                            page1Padded={page1Padded}
-                            page2={page2}
-                            companyName={companyName}
-                        />
+                    {/* 미리보기 컨테이너 */}
+                    <div style={{ overflowX: 'auto', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ transform: 'scale(1)', transformOrigin: 'top left' }}>
+                            {reportContent}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* 실제 인쇄용 요소 - body 루트에 Portal로 마운트 */}
+            {createPortal(
+                <div className="pdf-print-root">
+                    <style>{`
+                        .pdf-print-root { display: none; }
+                        @media print {
+                            .pdf-print-root {
+                                display: block !important;
+                                position: absolute;
+                                left: 0;
+                                top: 0;
+                                width: 100%;
+                            }
+                        }
+                    `}</style>
+                    {reportContent}
+                </div>,
+                document.body
+            )}
         </>
     );
 };

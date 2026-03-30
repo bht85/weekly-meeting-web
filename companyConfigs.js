@@ -26,8 +26,8 @@ export const COMPANY_CONFIGS = {
         ],
         teamsTitle: '경영지원본부',
         teamsSubtitle: '6개 팀이 함께 만드는 더 나은 컴포즈커피',
-        baseDepts: ["선택", "재무팀", "재무기획팀", "인사총무팀", "법무팀", "IT지원팀", "조직혁신팀"],
-        teamOrder: ["재무팀", "재무기획팀", "인사총무팀", "법무팀", "IT지원팀", "조직혁신팀"],
+        baseDepts: ["선택", "재무팀", "재무기획팀", "인사총무팀", "조직혁신팀", "법무팀", "IT지원팀"],
+        teamOrder: ["재무팀", "재무기획팀", "인사총무팀", "조직혁신팀", "법무팀", "IT지원팀"],
         feedbackTeams: [
             { id: 'finance', label: '재무팀' },
             { id: 'finance_plan', label: '재무기획팀' },
