@@ -334,13 +334,11 @@ const ReportContent = ({ date, pages, companyName }) => {
                     padding: 8px 12px;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 12px;
                     flex: 1;
-                    overflow: hidden;
                 }
                 .pdf-section {
-                    flex: 1;
-                    min-height: 0;
+                    /* 고정된 1/3 비율을 해제하고 콘텐츠 길이에 맞게 차지하도록 함 */
                 }
                 .pdf-section-label {
                     display: flex;
