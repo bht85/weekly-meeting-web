@@ -19,6 +19,7 @@ import TodoDashboard from './TodoDashboard';
 import OrganizationDashboard from './OrganizationDashboard';
 import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
+import WeeklyReportPDF from './WeeklyReportPDF';
 
 
 // --- Firebase 라이브러리 ---
@@ -863,6 +864,10 @@ function App() {
     const [memoInput, setMemoInput] = useState('');
     const [editingMemoId, setEditingMemoId] = useState(null);
 
+    // --- PDF Report States ---
+    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+    const [pdfTargetDate, setPdfTargetDate] = useState(null);
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
@@ -1579,6 +1584,7 @@ function App() {
 
     // 3. 정상 접속
     return (
+        <>
         <div className="min-h-screen bg-slate-50/50 font-sans text-slate-800 pb-20">
             {/* 상단 네비게이션 (헤더) */}
             <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
@@ -1775,6 +1781,16 @@ function App() {
                                                         <Calendar className="w-3 h-3 mr-1" /> {date}
                                                     </span>
                                                     <div className="h-px bg-gray-300 flex-1"></div>
+                                                    {isAdmin && (
+                                                        <button
+                                                            onClick={() => { setPdfTargetDate(date); setIsPdfModalOpen(true); }}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-all"
+                                                            title="이 날짜 회의록을 PDF로 출력"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5" />
+                                                            PDF 출력
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                     {daysMinutes.map(minute => (
@@ -2168,6 +2184,18 @@ function App() {
                 </div>
             )}
         </div >
+
+            {/* PDF 보고서 모달 */}
+            {isPdfModalOpen && pdfTargetDate && (
+                <WeeklyReportPDF
+                    minutes={minutes}
+                    date={pdfTargetDate}
+                    teamOrder={TEAM_ORDER}
+                    companyName={config.name}
+                    onClose={() => { setIsPdfModalOpen(false); setPdfTargetDate(null); }}
+                />
+            )}
+        </>
     );
 }
 

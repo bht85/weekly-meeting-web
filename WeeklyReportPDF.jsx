@@ -1,0 +1,480 @@
+import React, { useRef } from 'react';
+import { X, Printer, FileText } from 'lucide-react';
+
+// 날짜 포맷 헬퍼
+const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayOfWeek = days[new Date(dateStr).getDay()];
+    return `${y}년 ${m}월 ${d}일 (${dayOfWeek})`;
+};
+
+// 텍스트 → 라인 배열로 변환
+const parseLines = (text) => {
+    if (!text) return [];
+    return text.split('\n').filter(l => l.trim());
+};
+
+// 섹션 내용 렌더링 (PDF용 순수 텍스트 스타일)
+const SectionContent = ({ text }) => {
+    const lines = parseLines(text);
+    if (lines.length === 0) {
+        return <p className="pdf-empty">-</p>;
+    }
+    return (
+        <ul className="pdf-list">
+            {lines.map((line, i) => {
+                const trimmed = line.trim();
+                const isBullet = trimmed.startsWith('-') || trimmed.startsWith('•');
+                const content = isBullet ? trimmed.substring(1).trim() : trimmed;
+                const leadingSpaces = line.search(/\S|$/);
+                const isSubItem = leadingSpaces >= 4;
+                return (
+                    <li key={i} className={isSubItem ? 'pdf-subitem' : 'pdf-item'}>
+                        {content}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+};
+
+// 팀 카드 컴포넌트
+const TeamCard = ({ minute, teamColor }) => {
+    if (!minute) {
+        return (
+            <div className="pdf-team-card pdf-team-card--empty">
+                <p className="pdf-empty-text">회의록 없음</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="pdf-team-card" style={{ borderTopColor: teamColor }}>
+            <div className="pdf-team-header" style={{ backgroundColor: teamColor + '15' }}>
+                <div className="pdf-team-dot" style={{ backgroundColor: teamColor }} />
+                <h3 className="pdf-team-name">{minute.department}</h3>
+            </div>
+
+            <div className="pdf-team-body">
+                <div className="pdf-section">
+                    <div className="pdf-section-label">
+                        <span className="pdf-section-badge" style={{ backgroundColor: teamColor }}>가</span>
+                        <span>보고사항</span>
+                    </div>
+                    <SectionContent text={minute.report} />
+                </div>
+
+                <div className="pdf-section">
+                    <div className="pdf-section-label">
+                        <span className="pdf-section-badge" style={{ backgroundColor: teamColor }}>나</span>
+                        <span>진행업무</span>
+                    </div>
+                    <SectionContent text={minute.progress} />
+                </div>
+
+                <div className="pdf-section">
+                    <div className="pdf-section-label">
+                        <span className="pdf-section-badge" style={{ backgroundColor: teamColor }}>다</span>
+                        <span>협의업무</span>
+                    </div>
+                    <SectionContent text={minute.discussion} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 팀별 색상 테마 (6개 팀)
+const TEAM_COLORS = [
+    '#4F46E5', // 인디고
+    '#0891B2', // 시안
+    '#059669', // 초록
+    '#D97706', // 주황
+    '#DC2626', // 빨강
+    '#7C3AED', // 보라
+];
+
+const WeeklyReportPDF = ({ minutes, date, teamOrder, companyName, onClose }) => {
+    const printRef = useRef(null);
+
+    // 해당 날짜의 회의록만 필터, teamOrder 순서대로 정렬
+    const sortedMinutes = teamOrder
+        .map(teamName => minutes.find(m => m.date === date && m.department === teamName))
+        .filter(Boolean);
+
+    // teamOrder에 없는 팀도 뒤에 추가
+    const extraMinutes = minutes.filter(
+        m => m.date === date && !teamOrder.includes(m.department)
+    );
+    const allMinutes = [...sortedMinutes, ...extraMinutes];
+
+    // 페이지 분배: 1페이지 4팀(2×2), 2페이지 나머지
+    const page1 = allMinutes.slice(0, 4);
+    const page2 = allMinutes.slice(4);
+
+    // 4팀 미만이면 빈 칸으로 채우기
+    const page1Padded = [...page1];
+    while (page1Padded.length < 4) page1Padded.push(null);
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const printStyles = `
+        @media print {
+            body * { visibility: hidden !important; }
+            #pdf-report-root, #pdf-report-root * { visibility: visible !important; }
+            #pdf-report-root { position: fixed; top: 0; left: 0; width: 100%; }
+            .pdf-no-print { display: none !important; }
+            @page {
+                size: A4 landscape;
+                margin: 12mm 10mm;
+            }
+            .pdf-page {
+                page-break-after: always;
+                break-after: page;
+            }
+            .pdf-page:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+        }
+    `;
+
+    return (
+        <>
+            <style>{printStyles}</style>
+
+            {/* 오버레이 배경 */}
+            <div
+                className="pdf-no-print"
+                style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                    zIndex: 9998, backdropFilter: 'blur(4px)'
+                }}
+                onClick={onClose}
+            />
+
+            {/* 미리보기 모달 */}
+            <div
+                className="pdf-no-print"
+                style={{
+                    position: 'fixed', top: '50%', left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 9999, background: 'white',
+                    borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+                    padding: '20px', width: '94vw', maxWidth: '1100px',
+                    maxHeight: '90vh', overflowY: 'auto'
+                }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* 모달 헤더 */}
+                <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginBottom: '16px', paddingBottom: '16px',
+                    borderBottom: '1px solid #e5e7eb'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FileText style={{ width: 22, height: 22, color: '#4F46E5' }} />
+                        <div>
+                            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                                주간회의록 PDF 미리보기
+                            </h2>
+                            <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
+                                {formatDate(date)} · {allMinutes.length}개 팀
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={handlePrint}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                padding: '8px 18px', background: '#4F46E5', color: 'white',
+                                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                fontSize: '14px', fontWeight: 600
+                            }}
+                        >
+                            <Printer style={{ width: 16, height: 16 }} />
+                            PDF 저장 / 인쇄
+                        </button>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                padding: '8px', background: '#f1f5f9', border: 'none',
+                                borderRadius: '8px', cursor: 'pointer', color: '#64748b'
+                            }}
+                        >
+                            <X style={{ width: 18, height: 18 }} />
+                        </button>
+                    </div>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px', textAlign: 'center' }}>
+                    💡 인쇄 다이얼로그에서 <strong>「PDF로 저장」</strong> 선택 · 용지: <strong>A4 가로</strong> · 여백: <strong>최소</strong> 권장
+                </p>
+
+                {/* 미리보기 스케일 컨테이너 */}
+                <div style={{ overflowX: 'auto' }}>
+                    <div id="pdf-report-root" ref={printRef}>
+                        <ReportContent
+                            date={date}
+                            allMinutes={allMinutes}
+                            page1Padded={page1Padded}
+                            page2={page2}
+                            companyName={companyName}
+                        />
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+const ReportContent = ({ date, allMinutes, page1Padded, page2, companyName }) => {
+    return (
+        <div style={{ fontFamily: "'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif", background: 'white' }}>
+            {/* ======================== */}
+            {/* 1페이지: 4개 팀          */}
+            {/* ======================== */}
+            <div className="pdf-page" style={pageStyle}>
+                <PageHeader date={date} companyName={companyName} page={1} totalPages={page2.length > 0 ? 2 : 1} />
+
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateRows: '1fr 1fr',
+                    gap: '10px',
+                    flex: 1,
+                    overflow: 'hidden'
+                }}>
+                    {page1Padded.map((minute, idx) => (
+                        <TeamCard key={idx} minute={minute} teamColor={TEAM_COLORS[idx % TEAM_COLORS.length]} />
+                    ))}
+                </div>
+
+                <PageFooter date={date} teamCount={page1Padded.filter(Boolean).length} />
+            </div>
+
+            {/* ======================== */}
+            {/* 2페이지: 나머지 팀        */}
+            {/* ======================== */}
+            {page2.length > 0 && (
+                <div className="pdf-page" style={pageStyle}>
+                    <PageHeader date={date} companyName={companyName} page={2} totalPages={2} />
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: page2.length === 1 ? '1fr' : '1fr 1fr',
+                        gap: '10px',
+                        flex: 1,
+                        overflow: 'hidden'
+                    }}>
+                        {page2.map((minute, idx) => (
+                            <TeamCard key={idx} minute={minute} teamColor={TEAM_COLORS[(idx + 4) % TEAM_COLORS.length]} />
+                        ))}
+                    </div>
+
+                    <PageFooter date={date} teamCount={page2.length} />
+                </div>
+            )}
+
+            {/* 인라인 스타일 */}
+            <style>{`
+                .pdf-team-card {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    border-top-width: 3px;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    background: white;
+                }
+                .pdf-team-card--empty {
+                    border-top-color: #cbd5e1 !important;
+                    background: #f8fafc;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .pdf-empty-text {
+                    color: #cbd5e1;
+                    font-size: 13px;
+                }
+                .pdf-team-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 7px 12px;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+                .pdf-team-dot {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                }
+                .pdf-team-name {
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    margin: 0;
+                }
+                .pdf-team-body {
+                    padding: 8px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    flex: 1;
+                    overflow: hidden;
+                }
+                .pdf-section {
+                    flex: 1;
+                    min-height: 0;
+                }
+                .pdf-section-label {
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #475569;
+                    margin-bottom: 3px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                .pdf-section-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 4px;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: 800;
+                    flex-shrink: 0;
+                }
+                .pdf-list {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .pdf-item {
+                    font-size: 11px;
+                    color: #334155;
+                    line-height: 1.5;
+                    padding-left: 10px;
+                    position: relative;
+                }
+                .pdf-item::before {
+                    content: '•';
+                    position: absolute;
+                    left: 0;
+                    color: #94a3b8;
+                    font-size: 10px;
+                }
+                .pdf-subitem {
+                    font-size: 10.5px;
+                    color: #64748b;
+                    line-height: 1.4;
+                    padding-left: 20px;
+                    position: relative;
+                }
+                .pdf-subitem::before {
+                    content: '–';
+                    position: absolute;
+                    left: 10px;
+                    color: #cbd5e1;
+                }
+                .pdf-empty {
+                    font-size: 11px;
+                    color: #cbd5e1;
+                    margin: 0;
+                    padding-left: 10px;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const pageStyle = {
+    width: '277mm',
+    minHeight: '190mm',
+    padding: '0',
+    boxSizing: 'border-box',
+    background: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+};
+
+const PageHeader = ({ date, companyName, page, totalPages }) => (
+    <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingBottom: '8px',
+        borderBottom: '2px solid #1e293b',
+        marginBottom: '4px'
+    }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+            <h1 style={{
+                fontSize: '18px',
+                fontWeight: 800,
+                color: '#1e293b',
+                margin: 0,
+                letterSpacing: '-0.02em'
+            }}>
+                주간회의록
+            </h1>
+            <span style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#4F46E5',
+            }}>
+                {formatDate(date)}
+            </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>
+                {companyName}
+            </span>
+            <span style={{
+                fontSize: '11px',
+                color: '#94a3b8',
+                background: '#f1f5f9',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontWeight: 600
+            }}>
+                {page} / {totalPages}
+            </span>
+        </div>
+    </div>
+);
+
+const PageFooter = ({ date }) => (
+    <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: '6px',
+        borderTop: '1px solid #e2e8f0',
+        marginTop: '4px'
+    }}>
+        <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
+            본 문서는 {formatDate(date)} 주간회의 내용을 요약한 것입니다.
+        </span>
+        <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
+            {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 출력
+        </span>
+    </div>
+);
+
+export default WeeklyReportPDF;
