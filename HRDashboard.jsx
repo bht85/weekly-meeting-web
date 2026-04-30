@@ -1521,10 +1521,11 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
 
 const OrganizationChartTab = ({ employees }) => {
     const [isFullScreen, setIsFullScreen] = React.useState(false);
-    const [compactMode, setCompactMode] = React.useState(false);
+    const compactMode = true; // 콤팩트 모드로 단일화
 
     const tree = React.useMemo(() => {
         const root = { name: '컴포즈커피', divisions: {}, ceos: [] };
+// ... (기존 트리 생성 로직 동일)
 
         employees.forEach(emp => {
             // 대표이사 추출 로직
@@ -1780,19 +1781,7 @@ const OrganizationChartTab = ({ employees }) => {
                             <span className="text-xs text-indigo-600 font-bold ml-1">{filteredByDate.length}명</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {/* 콤팩트 모드 토글 */}
-                            <button
-                                onClick={() => setCompactMode(prev => !prev)}
-                                className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all border shadow-sm ${
-                                    compactMode
-                                        ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
-                                        : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                }`}
-                                title="팀 카드와 글자 크기를 줄여 한 페이지에 더 많은 팀을 표시합니다"
-                            >
-                                <span className="text-base leading-none">{compactMode ? '🗜️' : '🔲'}</span>
-                                {compactMode ? '콤팩트 ON' : '콤팩트 OFF'}
-                            </button>
+                            {/* 콤팩트 모드 단일화 적용됨 */}
                             <button
                                 className={`px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-sm ${
                                     isExporting
@@ -1808,7 +1797,7 @@ const OrganizationChartTab = ({ employees }) => {
                                         PDF 생성 중...
                                     </>
                                 ) : (
-                                    `PDF 저장 (A3 가로${compactMode ? ' · 콤팩트' : ''})`
+                                    `PDF 저장 (A3 가로)`
                                 )}
                             </button>
                             <button
