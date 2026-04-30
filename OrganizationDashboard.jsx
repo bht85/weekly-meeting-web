@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getCollectionName } from './utils';
 import {
     collection, addDoc, query, where, onSnapshot,
-    serverTimestamp, doc, updateDoc, deleteDoc, orderBy, getDocs
+    serverTimestamp, doc, updateDoc, deleteDoc, orderBy, getDocs, setDoc
 } from 'firebase/firestore';
 import {
     Users, Plus, Mail, Briefcase, Calendar, ChevronRight,

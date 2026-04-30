@@ -17,6 +17,7 @@ import CollaborationDashboard from './CollaborationDashboard';
 import NewsDashboard from './NewsDashboard';
 import TodoDashboard from './TodoDashboard';
 import OrganizationDashboard from './OrganizationDashboard';
+import HRDashboard from './HRDashboard';
 import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
 import WeeklyReportPDF from './WeeklyReportPDF';
@@ -86,7 +87,8 @@ const NAV_ITEMS = [
     { id: 'meeting', label: '주간회의록', icon: FileText },
     { id: 'collaboration', label: '협업 요청', icon: Share2 },
     { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
-    { id: 'org', label: '조직/인사', icon: Users },
+    { id: 'org', label: '조직도', icon: Users },
+    { id: 'hr', label: 'HR 현황판', icon: PieChart },
     { id: 'kpi', label: 'KPI', icon: BarChart3 },
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
 ];
@@ -820,6 +822,7 @@ function App() {
     const isAdmin = useMemo(() =>
         user?.email === "daisy@composecoffee.co.kr" ||
         user?.email === "choihy@composecoffee.co.kr" ||
+        user?.email === "esc913@composecoffee.co.kr" ||
         user?.email === "admin@casagrande.co.kr" ||
         user?.email === "wedding_life@naver.com",
     [user]);
@@ -908,6 +911,7 @@ function App() {
                     } else if (
                         currentUser.email === "daisy@composecoffee.co.kr" ||
                         currentUser.email === "choihy@composecoffee.co.kr" ||
+                        currentUser.email === "esc913@composecoffee.co.kr" ||
                         isCasagrande(currentUser)
                     ) {
                         // 관리자 및 까사그랑데 예외 처리
@@ -981,6 +985,7 @@ function App() {
             if (
                 querySnapshot.empty &&
                 signupEmail !== "daisy@composecoffee.co.kr" &&
+                signupEmail !== "esc913@composecoffee.co.kr" &&
                 signupEmail !== "it@composecoffee.co.kr" &&
                 signupEmail !== "test@composecoffee.co.kr" &&
                 !isCasagrande(signupEmail)
@@ -1566,6 +1571,7 @@ function App() {
     if (user &&
         user.email !== "daisy@composecoffee.co.kr" &&
         user.email !== "choihy@composecoffee.co.kr" &&
+        user.email !== "esc913@composecoffee.co.kr" &&
         user.email !== "it@composecoffee.co.kr" &&
         user.email !== "test@composecoffee.co.kr" &&
         !isCasagrande(user) &&
@@ -1704,6 +1710,15 @@ function App() {
                     <OrganizationDashboard
                         db={db}
                         departments={DEPARTMENTS}
+                        user={user}
+                        isAdmin={isAdmin}
+                    />
+                )}
+
+                {/* [MODE 8] HR 현황판 */}
+                {appMode === 'hr' && (
+                    <HRDashboard
+                        db={db}
                         user={user}
                         isAdmin={isAdmin}
                     />
