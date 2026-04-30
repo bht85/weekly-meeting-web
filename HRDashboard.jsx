@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getCollectionName } from './utils';
 import {
-    collection, addDoc, query, onSnapshot,
+    collection, addDoc, query, getDocs,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy, writeBatch
 } from 'firebase/firestore';
 import {
@@ -45,7 +45,8 @@ const HRDashboard = ({ db, user, isAdmin }) => {
     const fileInputRef = useRef(null);
     const onboardingFileInputRef = useRef(null);
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState(null);
 
     // 날짜 문자열 정규화 헬퍼
     const cleanDateString = (dateStr) => {
@@ -72,38 +73,30 @@ const HRDashboard = ({ db, user, isAdmin }) => {
         return str;
     };
 
-    // Fetch Data
-    useEffect(() => {
+    // Fetch Data (Manual)
+    const fetchData = async () => {
         if (!db) return;
         setLoading(true);
+        try {
+            const recruitSnap = await getDocs(query(collection(db, getCollectionName('hr_recruitment', user)), orderBy('createdAt', 'desc')));
+            setRecruits(recruitSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const unsubRecruits = onSnapshot(
-            query(collection(db, getCollectionName('hr_recruitment', user)), orderBy('createdAt', 'desc')),
-            (snapshot) => {
-                setRecruits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            }
-        );
+            const onboardSnap = await getDocs(query(collection(db, getCollectionName('hr_onboarding', user)), orderBy('createdAt', 'desc')));
+            setOnboardings(onboardSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const unsubOnboarding = onSnapshot(
-            query(collection(db, getCollectionName('hr_onboarding', user)), orderBy('createdAt', 'desc')),
-            (snapshot) => {
-                setOnboardings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            }
-        );
+            const employeeSnap = await getDocs(query(collection(db, getCollectionName('employees', user))));
+            setEmployees(employeeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            
+            setLastUpdated(new Date());
+        } catch (err) {
+            console.error("Data fetch error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        const unsubEmployees = onSnapshot(
-            query(collection(db, getCollectionName('employees', user))),
-            (snapshot) => {
-                setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                setLoading(false);
-            }
-        );
-
-        return () => {
-            unsubRecruits();
-            unsubOnboarding();
-            unsubEmployees();
-        };
+    useEffect(() => {
+        fetchData();
     }, [db, user]);
 
     // Save Data Handlers
@@ -467,11 +460,26 @@ const HRDashboard = ({ db, user, isAdmin }) => {
     return (
         <div className="bg-slate-50 min-h-screen p-4 rounded-xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-200 gap-4">
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <PieChart className="w-6 h-6 text-indigo-600" /> HR 대시보드
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-1">인사 관리의 효율을 높이는 통합 HR 솔루션</p>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <PieChart className="w-6 h-6 text-indigo-600" /> HR 대시보드
+                        </h2>
+                        <p className="text-sm text-slate-500 mt-1">인사 관리의 효율을 높이는 통합 HR 솔루션</p>
+                    </div>
+                    <button 
+                        onClick={fetchData} 
+                        disabled={loading}
+                        className={`ml-4 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold transition-all hover:bg-slate-50 shadow-sm ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <Clock className={`w-3.5 h-3.5 text-indigo-500 ${loading ? 'animate-spin' : ''}`} />
+                        데이터 조회/새로고침
+                    </button>
+                    {lastUpdated && (
+                        <span className="text-[10px] text-slate-400 font-medium hidden sm:block">
+                            업데이트: {lastUpdated.toLocaleTimeString()}
+                        </span>
+                    )}
                 </div>
                 <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm overflow-x-auto">
                     <button onClick={() => setActiveTab('recruitment')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'recruitment' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -541,10 +549,11 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
 
     const activeEmployees = employees.filter(emp => emp.status !== '퇴사');
 
-    // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수 (입사일이 해당 일자보다 작거나 같으면 재직으로 간주)
+    // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수
     const isEmployedOnDate = (emp, dateStr) => {
-        if (!emp.joinDate) return true; // 입사일이 없으면 항상 재직으로 간주
-        return emp.joinDate <= dateStr;
+        if (!emp.joinDate) return true;
+        const normalize = (d) => String(d).replace(/\./g, '-').replace(/\s+/g, '');
+        return normalize(emp.joinDate) <= normalize(dateStr);
     };
 
     // 본부별(구분) 통계
@@ -1522,6 +1531,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
 const OrganizationChartTab = ({ employees }) => {
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const compactMode = true; // 콤팩트 모드로 단일화
+    const [selectedDivision, setSelectedDivision] = React.useState('전체');
 
     const tree = React.useMemo(() => {
         const root = { name: '컴포즈커피', divisions: {}, ceos: [] };
@@ -1586,7 +1596,24 @@ const OrganizationChartTab = ({ employees }) => {
             });
         });
 
+        // 본부별 필터링 적용
+        if (selectedDivision !== '전체') {
+            const filteredDivisions = {};
+            if (root.divisions[selectedDivision]) {
+                filteredDivisions[selectedDivision] = root.divisions[selectedDivision];
+            }
+            root.divisions = filteredDivisions;
+        }
+
         return root;
+    }, [employees, selectedDivision]);
+
+    const divisionsList = React.useMemo(() => {
+        const set = new Set();
+        employees.forEach(emp => {
+            if (emp.division) set.add(emp.division);
+        });
+        return Array.from(set).sort();
     }, [employees]);
 
     // --- 기준일자 필터 ---
@@ -1743,6 +1770,23 @@ const OrganizationChartTab = ({ employees }) => {
                 >
                     오늘로 초기화
                 </button>
+
+                <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+
+                <div className="flex items-center gap-2">
+                    <Network className="w-4 h-4 text-indigo-500" />
+                    <span className="text-sm font-bold text-slate-700">조회 본부</span>
+                    <select
+                        value={selectedDivision}
+                        onChange={e => setSelectedDivision(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                        <option value="전체">전체 본부</option>
+                        {divisionsList.map(div => (
+                            <option key={div} value={div}>{div}</option>
+                        ))}
+                    </select>
+                </div>
                 <span className="ml-auto text-xs text-slate-500">
                     <span className="font-bold text-indigo-700">{filteredByDate.length}명</span> 재직 중 ({baseDate} 기준)
                 </span>
@@ -1779,6 +1823,22 @@ const OrganizationChartTab = ({ employees }) => {
                                 className="text-sm font-bold text-slate-700 bg-transparent outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1"
                             />
                             <span className="text-xs text-indigo-600 font-bold ml-1">{filteredByDate.length}명</span>
+                        </div>
+
+                        {/* 본부 선택 (모달 내) */}
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                            <Network className="w-4 h-4 text-indigo-500" />
+                            <span className="text-xs font-bold text-slate-600">조회 본부</span>
+                            <select
+                                value={selectedDivision}
+                                onChange={e => setSelectedDivision(e.target.value)}
+                                className="text-sm font-bold text-slate-700 bg-transparent outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1"
+                            >
+                                <option value="전체">전체 본부</option>
+                                {divisionsList.map(div => (
+                                    <option key={div} value={div}>{div}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="flex items-center gap-3">
                             {/* 콤팩트 모드 단일화 적용됨 */}
