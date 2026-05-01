@@ -551,9 +551,10 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
 
     // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수
     const isEmployedOnDate = (emp, dateStr) => {
-        if (!emp.joinDate) return true;
-        const normalize = (d) => String(d).replace(/\./g, '-').replace(/\s+/g, '');
-        return normalize(emp.joinDate) <= normalize(dateStr);
+        const joined = (emp.joinDate || emp.firstJoinDate || '').replace(/\./g, '-').replace(/\s+/g, '');
+        const normDate = dateStr.replace(/\./g, '-').replace(/\s+/g, '');
+        if (!joined) return true; // 입사일 정보가 없으면 재직으로 간주
+        return joined <= normDate;
     };
 
     // 본부별(구분) 통계
