@@ -563,9 +563,15 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
     const divisionStats = {};
     activeEmployees.forEach(emp => {
         const cleanName = (emp.name || '').replace(/\s+/g, '');
-        const isCEO = emp.position?.includes('대표') || emp.division?.includes('대표') || cleanName === '김홍석';
+        const cleanPos = (emp.position || '').replace(/\s+/g, '');
+        const cleanDiv = (emp.division || '').replace(/\s+/g, '');
+        
+        // 대표이사 판정 (이름, 직위, 본부 중 하나라도 '대표' 포함 시)
+        const isCEO = cleanName === '김홍석' || cleanPos.includes('대표') || cleanDiv.includes('대표');
+        
         const div = isCEO ? '대표이사' : (emp.division || '미지정');
         if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
+        
         if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
         if (isEmployedOnDate(emp, compareDate)) divisionStats[div].compare += 1;
     });
