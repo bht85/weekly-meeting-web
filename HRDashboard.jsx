@@ -1533,80 +1533,7 @@ const OrganizationChartTab = ({ employees }) => {
     const compactMode = true; // 콤팩트 모드로 단일화
     const [selectedDivision, setSelectedDivision] = React.useState('전체');
 
-    const tree = React.useMemo(() => {
-        const root = { name: '컴포즈커피', divisions: {}, ceos: [] };
-// ... (기존 트리 생성 로직 동일)
-
-        employees.forEach(emp => {
-            // 대표이사 추출 로직
-            const isCEO = emp.position?.includes('대표') || emp.division?.includes('대표') || emp.name === '김홍석';
-            
-            if (isCEO) {
-                root.ceos.push(emp);
-                return;
-            }
-
-            const divName = emp.division || '미지정본부';
-            if (!root.divisions[divName]) root.divisions[divName] = { name: divName, departments: {}, empCount: 0, leaders: [] };
-            const div = root.divisions[divName];
-            div.empCount++;
-
-            // 본부장 또는 직속 임원 추출 로직
-            const isDivLeader = emp.position?.includes('본부장') || 
-                                ((emp.department === '-' || !emp.department) && (emp.team === '-' || !emp.team));
-            
-            if (isDivLeader) {
-                div.leaders.push(emp);
-                return; // 본부장은 일반 하위 부서 트리에 넣지 않음
-            }
-
-            let deptName = emp.department || '미지정소속';
-            let teamName = emp.team || emp.department || '미지정부서';
-
-            // 데이터 클렌징: 소속(Department)이 본부명과 같거나 '-' 인데 부서(Team)명이 있는 경우, 부서명을 소속으로 승격
-            if ((deptName === divName || deptName === '-' || deptName === '미지정소속') && teamName && teamName !== '-' && teamName !== '미지정부서') {
-                deptName = teamName;
-            }
-
-            if (!div.departments[deptName]) div.departments[deptName] = { name: deptName, teams: {}, empCount: 0 };
-            const dept = div.departments[deptName];
-            dept.empCount++;
-
-            if (!dept.teams[teamName]) dept.teams[teamName] = { name: teamName, members: [] };
-            const team = dept.teams[teamName];
-            
-            team.members.push(emp);
-        });
-
-        // 멤버 정렬 로직 (직위 기반 정렬 후 이름 가나다순)
-        Object.values(root.divisions).forEach(div => {
-            Object.values(div.departments).forEach(dept => {
-                Object.values(dept.teams).forEach(team => {
-                    team.members.sort((a,b) => {
-                        const getRank = (pos) => {
-                            const ranks = {"대표":0,"이사":1,"본부장":2,"팀장":3,"파트장":4,"부장":5,"차장":6,"과장":7,"대리":8,"주임":9,"사원":10,"인턴":11};
-                            return ranks[pos] ?? 99;
-                        };
-                        const rankA = getRank(a.position);
-                        const rankB = getRank(b.position);
-                        if(rankA !== rankB) return rankA - rankB;
-                        return a.name.localeCompare(b.name);
-                    });
-                });
-            });
-        });
-
-        // 본부별 필터링 적용
-        if (selectedDivision !== '전체') {
-            const filteredDivisions = {};
-            if (root.divisions[selectedDivision]) {
-                filteredDivisions[selectedDivision] = root.divisions[selectedDivision];
-            }
-            root.divisions = filteredDivisions;
-        }
-
-        return root;
-    }, [employees, selectedDivision]);
+    // (기존 중복된 tree 메모 삭제 - 아래 filteredTree에서 처리함)
 
     const divisionsList = React.useMemo(() => {
         const set = new Set();
@@ -1626,13 +1553,15 @@ const OrganizationChartTab = ({ employees }) => {
     // baseDate 기준으로 재직 중인 직원만 필터
     const filteredByDate = React.useMemo(() => {
         if (!baseDate) return employees;
+        const normBase = baseDate.replace(/\./g, '-').replace(/\s+/g, '');
         return employees.filter(emp => {
-            const joined = emp.joinDate || emp.firstJoinDate || '';
-            const exited = emp.exitDate || '';
+            const joined = (emp.joinDate || emp.firstJoinDate || '').replace(/\./g, '-').replace(/\s+/g, '');
+            const exited = (emp.exitDate || '').replace(/\./g, '-').replace(/\s+/g, '');
+            
             // 입사일이 기준일보다 이전이거나 같아야 함
-            const hasJoined = !joined || joined <= baseDate;
+            const hasJoined = !joined || joined <= normBase;
             // 퇴사일이 없거나, 퇴사일이 기준일보다 이후여야 함
-            const notExited = !exited || exited > baseDate;
+            const notExited = !exited || exited > normBase;
             return hasJoined && notExited;
         });
     }, [employees, baseDate]);
@@ -1683,8 +1612,18 @@ const OrganizationChartTab = ({ employees }) => {
                 });
             });
         });
+
+        // [추가] 본부별 필터링 적용
+        if (selectedDivision !== '전체') {
+            const filteredDivisions = {};
+            if (root2.divisions[selectedDivision]) {
+                filteredDivisions[selectedDivision] = root2.divisions[selectedDivision];
+            }
+            root2.divisions = filteredDivisions;
+        }
+
         return root2;
-    }, [filteredByDate]);
+    }, [filteredByDate, selectedDivision]);
 
     const orgChartRef = React.useRef(null);
     const [isExporting, setIsExporting] = React.useState(false);
