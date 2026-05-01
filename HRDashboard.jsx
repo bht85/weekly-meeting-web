@@ -759,13 +759,15 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                         <input type="text" placeholder="이름, 부서 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm" />
                     </div>
                     
-                    {/* Excel Upload Area */}
+                    {/* 엑셀 업로드 버튼 숨김 (데이터 비용 절감) */}
+                    {/* 
                     <div className="relative">
                         <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} ref={fileInputRef} className="hidden" id="excel-upload" />
                         <label htmlFor="excel-upload" className="cursor-pointer bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors whitespace-nowrap shadow-sm">
                             <Upload className="w-4 h-4" /> 엑셀 업로드
                         </label>
-                    </div>
+                    </div> 
+                    */}
 
                     <button onClick={handleDeleteAllEmployees} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-red-100 shadow-sm whitespace-nowrap transition-colors">
                         <Trash2 className="w-4 h-4" /> 초기화
