@@ -551,11 +551,27 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
 
     // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수
     const isEmployedOnDate = (emp, dateStr) => {
-        const toNum = (d) => String(d || '').replace(/[^0-9]/g, '');
+        const toNum = (val) => {
+            if (!val) return '';
+            let d = val;
+            if (typeof val.toDate === 'function') d = val.toDate(); // Firestore Timestamp
+            if (d instanceof Date) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}${month}${day}`;
+            }
+            return String(val).replace(/[^0-9]/g, '');
+        };
+        
         const joined = toNum(emp.joinDate || emp.firstJoinDate);
         const target = toNum(dateStr);
         if (!joined) return true;
-        // 8자리(YYYYMMDD)가 아닌 경우를 대비해 앞에서부터 비교하거나 길이를 맞춤
+        
+        // 대표이사는 날짜와 상관없이 항상 재직으로 간주 (안전장치)
+        const cleanName = (emp.name || '').replace(/\s+/g, '');
+        if (cleanName === '김홍석' || emp.division?.includes('대표')) return true;
+
         return joined <= target;
     };
 
