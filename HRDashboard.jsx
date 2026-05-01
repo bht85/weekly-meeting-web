@@ -551,16 +551,19 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
 
     // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수
     const isEmployedOnDate = (emp, dateStr) => {
-        const joined = (emp.joinDate || emp.firstJoinDate || '').replace(/\./g, '-').replace(/\s+/g, '');
-        const normDate = dateStr.replace(/\./g, '-').replace(/\s+/g, '');
-        if (!joined) return true; // 입사일 정보가 없으면 재직으로 간주
-        return joined <= normDate;
+        const toNum = (d) => String(d || '').replace(/[^0-9]/g, '');
+        const joined = toNum(emp.joinDate || emp.firstJoinDate);
+        const target = toNum(dateStr);
+        if (!joined) return true;
+        // 8자리(YYYYMMDD)가 아닌 경우를 대비해 앞에서부터 비교하거나 길이를 맞춤
+        return joined <= target;
     };
 
     // 본부별(구분) 통계
     const divisionStats = {};
     activeEmployees.forEach(emp => {
-        const isCEO = emp.position?.includes('대표') || emp.division?.includes('대표') || emp.name === '김홍석';
+        const cleanName = (emp.name || '').replace(/\s+/g, '');
+        const isCEO = emp.position?.includes('대표') || emp.division?.includes('대표') || cleanName === '김홍석';
         const div = isCEO ? '대표이사' : (emp.division || '미지정');
         if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
         if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
@@ -1555,15 +1558,14 @@ const OrganizationChartTab = ({ employees }) => {
     // baseDate 기준으로 재직 중인 직원만 필터
     const filteredByDate = React.useMemo(() => {
         if (!baseDate) return employees;
-        const normBase = baseDate.replace(/\./g, '-').replace(/\s+/g, '');
+        const toNum = (d) => String(d || '').replace(/[^0-9]/g, '');
+        const target = toNum(baseDate);
         return employees.filter(emp => {
-            const joined = (emp.joinDate || emp.firstJoinDate || '').replace(/\./g, '-').replace(/\s+/g, '');
-            const exited = (emp.exitDate || '').replace(/\./g, '-').replace(/\s+/g, '');
+            const joined = toNum(emp.joinDate || emp.firstJoinDate);
+            const exited = toNum(emp.exitDate);
             
-            // 입사일이 기준일보다 이전이거나 같아야 함
-            const hasJoined = !joined || joined <= normBase;
-            // 퇴사일이 없거나, 퇴사일이 기준일보다 이후여야 함
-            const notExited = !exited || exited > normBase;
+            const hasJoined = !joined || joined <= target;
+            const notExited = !exited || exited > target;
             return hasJoined && notExited;
         });
     }, [employees, baseDate]);
