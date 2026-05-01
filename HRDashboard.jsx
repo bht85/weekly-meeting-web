@@ -565,27 +565,31 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         };
         
         const joined = toNum(emp.joinDate || emp.firstJoinDate);
+        const exited = toNum(emp.exitDate);
         const target = toNum(dateStr);
-        if (!joined) return true;
         
-        // 대표이사는 날짜와 상관없이 항상 재직으로 간주 (안전장치)
+        // 대표이사는 무조건 재직으로 간주
         const cleanName = (emp.name || '').replace(/\s+/g, '');
         if (cleanName === '김홍석' || emp.division?.includes('대표')) return true;
 
-        return joined <= target;
+        if (!joined) return true; 
+        
+        const hasJoined = joined <= target;
+        const notExited = !exited || exited > target;
+        
+        return hasJoined && notExited;
     };
 
-    // 본부별(구분) 통계
+    // 본부별(구분) 통계 - 전체 인원을 대상으로 계산
     const divisionStats = {};
-    activeEmployees.forEach(emp => {
+    employees.forEach(emp => {
         const cleanName = (emp.name || '').replace(/\s+/g, '');
         const cleanPos = (emp.position || '').replace(/\s+/g, '');
         const cleanDiv = (emp.division || '').replace(/\s+/g, '');
         
-        // 대표이사 판정 (이름, 직위, 본부 중 하나라도 '대표' 포함 시)
         const isCEO = cleanName === '김홍석' || cleanPos.includes('대표') || cleanDiv.includes('대표');
-        
         const div = isCEO ? '대표이사' : (emp.division || '미지정');
+        
         if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
         
         if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
@@ -603,9 +607,9 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         return a.localeCompare(b);
     });
 
-    // 근무지별 통계
+    // 근무지별 통계 - 전체 인원을 대상으로 계산
     const locationStats = {};
-    activeEmployees.forEach(emp => {
+    employees.forEach(emp => {
         const loc = emp.location || '미지정';
         if (!locationStats[loc]) locationStats[loc] = { base: 0, compare: 0 };
         if (isEmployedOnDate(emp, baseDate)) locationStats[loc].base += 1;
@@ -628,8 +632,8 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         '장애인선수단': '-'
     };
 
-    const totalBase = activeEmployees.filter(e => isEmployedOnDate(e, baseDate)).length;
-    const totalCompare = activeEmployees.filter(e => isEmployedOnDate(e, compareDate)).length;
+    const totalBase = employees.filter(e => isEmployedOnDate(e, baseDate)).length;
+    const totalCompare = employees.filter(e => isEmployedOnDate(e, compareDate)).length;
 
     return (
         <div className="space-y-6">
