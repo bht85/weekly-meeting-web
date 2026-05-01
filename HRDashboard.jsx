@@ -653,19 +653,27 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {divisionList.map(div => {
-                                    const diff = divisionStats[div].base - divisionStats[div].compare;
-                                    return (
-                                        <tr key={div} className="hover:bg-slate-50">
-                                            <td className="py-2 font-bold text-slate-800 border-r bg-slate-50">{div}</td>
-                                            <td className="py-2 border-r">{divisionStats[div].base}</td>
-                                            <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{divisionStats[div].compare}</td>
-                                            <td className={`py-2 font-bold ${diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>
-                                                {diff > 0 ? `+${diff}` : diff === 0 ? '-' : diff}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {(() => {
+                                    // 대표이사를 포함한 전체 리스트 보장
+                                    const finalDivList = divisionList.includes('대표이사') 
+                                        ? divisionList 
+                                        : ['대표이사', ...divisionList];
+                                    
+                                    return finalDivList.map(div => {
+                                        const stats = divisionStats[div] || { base: 0, compare: 0 };
+                                        const diff = stats.base - stats.compare;
+                                        return (
+                                            <tr key={div} className="hover:bg-slate-50">
+                                                <td className="py-2 font-bold text-slate-800 border-r bg-slate-50">{div}</td>
+                                                <td className="py-2 border-r">{stats.base}</td>
+                                                <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{stats.compare}</td>
+                                                <td className={`py-2 font-bold ${diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                                                    {diff > 0 ? `+${diff}` : diff === 0 ? '-' : diff}
+                                                </td>
+                                            </tr>
+                                        );
+                                    });
+                                })()}
                                 <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
                                     <td className="py-2 border-r">합계</td>
                                     <td className="py-2 border-r">{totalBase}</td>
