@@ -560,12 +560,13 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
     // 본부별(구분) 통계
     const divisionStats = {};
     activeEmployees.forEach(emp => {
-        const div = emp.division || '미지정';
+        const isCEO = emp.position?.includes('대표') || emp.division?.includes('대표') || emp.name === '김홍석';
+        const div = isCEO ? '대표이사' : (emp.division || '미지정');
         if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
         if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
         if (isEmployedOnDate(emp, compareDate)) divisionStats[div].compare += 1;
     });
-    const DIVISION_ORDER = ['운영본부', '점포개발본부', '마케팅본부', '전략기획본부', '경영지원본부'];
+    const DIVISION_ORDER = ['대표이사', '운영본부', '점포개발본부', '마케팅본부', '전략기획본부', '경영지원본부'];
     const divisionList = Object.keys(divisionStats).sort((a, b) => {
         if (a === '미지정') return 1;
         if (b === '미지정') return -1;
