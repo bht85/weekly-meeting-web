@@ -444,7 +444,7 @@ const Footer = ({ config }) => (
 // 메인 랜딩 페이지
 // ────────────────────────────────────────────────────────────
 export default function LandingPage({ onEnter, user }) {
-    const config = useMemo(() => getCompanyConfig(user), [user]);
+    const config = React.useMemo(() => getCompanyConfig(user), [user]);
 
     return (
         <div className="landing-root">

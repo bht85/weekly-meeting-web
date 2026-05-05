@@ -46,7 +46,7 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
     // Filter departments for display (exclude '선택' and '전체')
-    const displayDepartments = useMemo(() => {
+    const displayDepartments = React.useMemo(() => {
         const depts = departments.filter(d => d !== '선택' && d !== '전체');
         if (isAdmin) return depts;
         return depts.filter(d => d === user?.department);

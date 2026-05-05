@@ -247,7 +247,7 @@ const KPIDashboard = ({ user, isAdmin }) => {
     const [loading, setLoading] = useState(true);
 
     // Filter departments for display
-    const visibleDepts = useMemo(() => {
+    const visibleDepts = React.useMemo(() => {
         if (isAdmin) return DEPARTMENTS_META;
         return DEPARTMENTS_META.filter(d => d.name === user?.department);
     }, [isAdmin, user]);
@@ -813,14 +813,14 @@ function App() {
     }, [user]);
 
     const baseDepts = config.baseDepts;
-    const DEPARTMENTS = useMemo(() => {
+    const DEPARTMENTS = React.useMemo(() => {
         const customNames = customDepartments.map(d => d.name).filter(Boolean);
         return Array.from(new Set([...baseDepts, ...customNames]));
     }, [baseDepts, customDepartments]);
     const TEAM_ORDER = config.teamOrder;
     const FEEDBACK_TEAMS = config.feedbackTeams;
 
-    const isAdmin = useMemo(() =>
+    const isAdmin = React.useMemo(() =>
         user?.email === "daisy@composecoffee.co.kr" ||
         user?.email === "choihy@composecoffee.co.kr" ||
         user?.email === "esc913@composecoffee.co.kr" ||
