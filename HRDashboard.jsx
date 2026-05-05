@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getCollectionName } from './utils';
 import {
-    collection, addDoc, query, getDocs,
+    collection, addDoc, query, getDocs, onSnapshot,
     serverTimestamp, doc, updateDoc, deleteDoc, orderBy, writeBatch
 } from 'firebase/firestore';
 import {
@@ -73,31 +73,64 @@ const HRDashboard = ({ db, user, isAdmin }) => {
         return str;
     };
 
-    // Fetch Data (Manual)
-    const fetchData = async () => {
-        if (!db) return;
+    // 1. 초기 로드 시 로컬 스토리지에서 캐시 데이터 불러오기
+    useEffect(() => {
+        const cachedRecruits = localStorage.getItem('hr_cache_recruits');
+        const cachedOnboardings = localStorage.getItem('hr_cache_onboardings');
+        const cachedEmployees = localStorage.getItem('hr_cache_employees');
+        const cachedTime = localStorage.getItem('hr_cache_time');
+
+        if (cachedRecruits) setRecruits(JSON.parse(cachedRecruits));
+        if (cachedOnboardings) setOnboardings(JSON.parse(cachedOnboardings));
+        if (cachedEmployees) setEmployees(JSON.parse(cachedEmployees));
+        if (cachedTime) setLastUpdated(new Date(cachedTime));
+    }, []);
+
+    // 2. 데이터 수동 조회 함수 (효율성 개선)
+    const fetchHRData = async () => {
+        if (!db || !user) return;
         setLoading(true);
+        console.log("Fetching HR Data (Manual)...");
+
         try {
-            const recruitSnap = await getDocs(query(collection(db, getCollectionName('hr_recruitment', user)), orderBy('createdAt', 'desc')));
-            setRecruits(recruitSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            // 병렬로 데이터 조회
+            const [recruitSnap, onboardSnap, employeeSnap] = await Promise.all([
+                getDocs(query(collection(db, getCollectionName('hr_recruitment', user)), orderBy('createdAt', 'desc'))),
+                getDocs(query(collection(db, getCollectionName('hr_onboarding', user)), orderBy('createdAt', 'desc'))),
+                getDocs(collection(db, getCollectionName('employees', user)))
+            ]);
 
-            const onboardSnap = await getDocs(query(collection(db, getCollectionName('hr_onboarding', user)), orderBy('createdAt', 'desc')));
-            setOnboardings(onboardSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const newRecruits = recruitSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const newOnboardings = onboardSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const newEmployees = employeeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            const employeeSnap = await getDocs(query(collection(db, getCollectionName('employees', user))));
-            setEmployees(employeeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            // 상태 업데이트
+            setRecruits(newRecruits);
+            setOnboardings(newOnboardings);
+            setEmployees(newEmployees);
             
-            setLastUpdated(new Date());
+            const now = new Date();
+            setLastUpdated(now);
+
+            // 로컬 스토리지 저장 (캐싱)
+            localStorage.setItem('hr_cache_recruits', JSON.stringify(newRecruits));
+            localStorage.setItem('hr_cache_onboardings', JSON.stringify(newOnboardings));
+            localStorage.setItem('hr_cache_employees', JSON.stringify(newEmployees));
+            localStorage.setItem('hr_cache_time', now.toISOString());
+
+            setLoading(false);
         } catch (err) {
-            console.error("Data fetch error:", err);
-        } finally {
+            console.error("HR data fetch error:", err);
+            alert("데이터를 불러오는 중 오류가 발생했습니다.");
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [db, user]);
+    // 실시간 동기화가 필요한 경우에만 사용할 수 있도록 handleManualRefresh를 fetchHRData로 교체
+    const handleManualRefresh = () => {
+        fetchHRData();
+    };
+
 
     // Save Data Handlers
     const handleSaveRecruit = async (data) => {
@@ -109,6 +142,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
             }
             setIsRecruitModalOpen(false);
             setEditingRecruit(null);
+            fetchHRData(); // 데이터 반영을 위해 재조회
         } catch (error) { console.error(error); alert("저장 실패"); }
     };
 
@@ -132,6 +166,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
 
             setIsOnboardModalOpen(false);
             setEditingOnboard(null);
+            fetchHRData(); // 데이터 반영을 위해 재조회
         } catch (error) { console.error(error); alert("저장 실패"); }
     };
 
@@ -144,6 +179,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
             }
             setIsEmployeeModalOpen(false);
             setEditingEmployee(null);
+            fetchHRData(); // 데이터 반영을 위해 재조회
         } catch (error) { console.error(error); alert("저장 실패"); }
     };
 
@@ -151,8 +187,10 @@ const HRDashboard = ({ db, user, isAdmin }) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
             await deleteDoc(doc(db, getCollectionName(collectionName, user), id));
+            fetchHRData(); // 데이터 반영을 위해 재조회
         } catch (error) { console.error(error); }
     };
+
 
     // Excel Upload Logic
     const handleExcelUpload = async (e) => {
@@ -257,6 +295,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                     await batch.commit();
                 }
 
+                fetchHRData(); // 데이터 반영을 위해 재조회
                 alert('업로드가 성공적으로 완료되었습니다!');
                 if (fileInputRef.current) fileInputRef.current.value = '';
             };
@@ -389,6 +428,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                     await batch.commit();
                 }
 
+                fetchHRData(); // 데이터 반영을 위해 재조회
                 alert('입퇴사 기록 업로드 및 재직 현황 자동 반영이 완료되었습니다!');
                 if (onboardingFileInputRef.current) onboardingFileInputRef.current.value = '';
 
@@ -402,16 +442,18 @@ const HRDashboard = ({ db, user, isAdmin }) => {
     };
 
 
-    const upcomingRecruits = recruits.filter(r => r.status === '예정');
-    const pastRecruits = recruits.filter(r => r.status !== '예정');
-    const onboardList = onboardings.filter(o => o.type === '입사');
-    const offboardList = onboardings.filter(o => o.type === '퇴사');
+    const upcomingRecruits = React.useMemo(() => recruits.filter(r => r.status === '예정'), [recruits]);
+    const pastRecruits = React.useMemo(() => recruits.filter(r => r.status !== '예정'), [recruits]);
+    const onboardList = React.useMemo(() => onboardings.filter(o => o.type === '입사'), [onboardings]);
+    const offboardList = React.useMemo(() => onboardings.filter(o => o.type === '퇴사'), [onboardings]);
 
-    const filteredEmployees = employees.filter(emp => 
-        emp.name?.includes(searchTerm) || 
-        emp.department?.includes(searchTerm) || 
-        emp.division?.includes(searchTerm)
-    ).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+    const filteredEmployees = React.useMemo(() => {
+        return employees.filter(emp => 
+            emp.name?.includes(searchTerm) || 
+            emp.department?.includes(searchTerm) || 
+            emp.division?.includes(searchTerm)
+        ).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+    }, [employees, searchTerm]);
 
     // 전체 삭제 기능
     const handleDeleteAllEmployees = async () => {
@@ -428,6 +470,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                 });
                 await batch.commit();
             }
+            fetchHRData(); // 데이터 반영을 위해 재조회
             alert("전체 데이터가 삭제되었습니다.");
         } catch (error) {
             console.error(error);
@@ -453,6 +496,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                 chunk.forEach(item => batch.delete(doc(colRef, item.id)));
                 await batch.commit();
             }
+            fetchHRData(); // 데이터 반영을 위해 재조회
             alert(`${garbage.length}건의 잘못된 데이터가 삭제되었습니다.`);
         } catch (e) { console.error(e); alert('삭제 실패: ' + e.message); }
     };
@@ -468,12 +512,12 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                         <p className="text-sm text-slate-500 mt-1">인사 관리의 효율을 높이는 통합 HR 솔루션</p>
                     </div>
                     <button 
-                        onClick={fetchData} 
+                        onClick={handleManualRefresh} 
                         disabled={loading}
-                        className={`ml-4 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold transition-all hover:bg-slate-50 shadow-sm ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`ml-4 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold transition-all hover:bg-slate-50 shadow-sm ${loading ? 'opacity-50 cursor-not-allowed' : 'text-indigo-600 hover:border-indigo-200'}`}
                     >
-                        <Clock className={`w-3.5 h-3.5 text-indigo-500 ${loading ? 'animate-spin' : ''}`} />
-                        데이터 조회/새로고침
+                        <Clock className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? '데이터 조회 중...' : '데이터 조회/새로고침'}
                     </button>
                     {lastUpdated && (
                         <span className="text-[10px] text-slate-400 font-medium hidden sm:block">
@@ -547,10 +591,8 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     });
 
-    const activeEmployees = employees.filter(emp => emp.status !== '퇴사');
-
-    // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수
-    const isEmployedOnDate = (emp, dateStr) => {
+    // 특정 일자 기준으로 재직 중인 인원인지 판별하는 헬퍼 함수 (메모이제이션 적용을 위해 외부나 useMemo 내부에서 활용)
+    const isEmployedOnDate = React.useCallback((emp, dateStr) => {
         const toNum = (val) => {
             if (!val) return '';
             let d = val;
@@ -578,49 +620,63 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         const notExited = !exited || exited > target;
         
         return hasJoined && notExited;
-    };
+    }, []);
 
-    // 본부별(구분) 통계 - 전체 인원을 대상으로 계산
-    const divisionStats = {};
-    employees.forEach(emp => {
-        const cleanName = (emp.name || '').replace(/\s+/g, '');
-        const cleanPos = (emp.position || '').replace(/\s+/g, '');
-        const cleanDiv = (emp.division || '').replace(/\s+/g, '');
+    // 모든 통계 데이터를 useMemo로 묶어서 처리 (효율성 극대화)
+    const stats = useMemo(() => {
+        const divisionStats = {};
+        const locationStats = {};
         
-        const isCEO = cleanName === '김홍석' || cleanPos.includes('대표') || cleanDiv.includes('대표');
-        const div = isCEO ? '대표이사' : (emp.division || '미지정');
-        
-        if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
-        
-        if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
-        if (isEmployedOnDate(emp, compareDate)) divisionStats[div].compare += 1;
-    });
-    const DIVISION_ORDER = ['대표이사', '운영본부', '점포개발본부', '마케팅본부', '전략기획본부', '경영지원본부'];
-    const divisionList = Object.keys(divisionStats).sort((a, b) => {
-        if (a === '미지정') return 1;
-        if (b === '미지정') return -1;
-        const ia = DIVISION_ORDER.indexOf(a);
-        const ib = DIVISION_ORDER.indexOf(b);
-        if (ia !== -1 && ib !== -1) return ia - ib;
-        if (ia !== -1) return -1;
-        if (ib !== -1) return 1;
-        return a.localeCompare(b);
-    });
+        employees.forEach(emp => {
+            // 본부별 통계 계산
+            const cleanName = (emp.name || '').replace(/\s+/g, '');
+            const cleanPos = (emp.position || '').replace(/\s+/g, '');
+            const cleanDiv = (emp.division || '').replace(/\s+/g, '');
+            const isCEO = cleanName === '김홍석' || cleanPos.includes('대표') || cleanDiv.includes('대표');
+            const div = isCEO ? '대표이사' : (emp.division || '미지정');
+            
+            if (!divisionStats[div]) divisionStats[div] = { base: 0, compare: 0 };
+            if (isEmployedOnDate(emp, baseDate)) divisionStats[div].base += 1;
+            if (isEmployedOnDate(emp, compareDate)) divisionStats[div].compare += 1;
 
-    // 근무지별 통계 - 전체 인원을 대상으로 계산
-    const locationStats = {};
-    employees.forEach(emp => {
-        const loc = emp.location || '미지정';
-        if (!locationStats[loc]) locationStats[loc] = { base: 0, compare: 0 };
-        if (isEmployedOnDate(emp, baseDate)) locationStats[loc].base += 1;
-        if (isEmployedOnDate(emp, compareDate)) locationStats[loc].compare += 1;
-    });
-    // 근무지별 인원(기준일) 많은 순으로 정렬, '미지정'은 항상 맨 아래로
-    const locationList = Object.keys(locationStats).sort((a, b) => {
-        if (a === '미지정') return 1;
-        if (b === '미지정') return -1;
-        return locationStats[b].base - locationStats[a].base;
-    });
+            // 근무지별 통계 계산
+            const loc = emp.location || '미지정';
+            if (!locationStats[loc]) locationStats[loc] = { base: 0, compare: 0 };
+            if (isEmployedOnDate(emp, baseDate)) locationStats[loc].base += 1;
+            if (isEmployedOnDate(emp, compareDate)) locationStats[loc].compare += 1;
+        });
+
+        const totalBase = employees.filter(e => isEmployedOnDate(e, baseDate)).length;
+        const totalCompare = employees.filter(e => isEmployedOnDate(e, compareDate)).length;
+
+        // 정렬된 리스트 생성
+        const DIVISION_ORDER = ['대표이사', '운영본부', '점포개발본부', '마케팅본부', '전략기획본부', '경영지원본부'];
+        const sortedDivisions = Object.keys(divisionStats).sort((a, b) => {
+            if (a === '미지정') return 1;
+            if (b === '미지정') return -1;
+            const ia = DIVISION_ORDER.indexOf(a);
+            const ib = DIVISION_ORDER.indexOf(b);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;
+            if (ib !== -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        const sortedLocations = Object.keys(locationStats).sort((a, b) => {
+            if (a === '미지정') return 1;
+            if (b === '미지정') return -1;
+            return locationStats[b].base - locationStats[a].base;
+        });
+
+        return {
+            divisionStats,
+            locationStats,
+            totalBase,
+            totalCompare,
+            divisionList: sortedDivisions,
+            locationList: sortedLocations
+        };
+    }, [employees, baseDate, compareDate, isEmployedOnDate]);
 
     const locationAddressMap = {
         '서울센터': '서울 성동구 성수일로 12길 26, 코리아IT센터',
@@ -632,8 +688,6 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
         '장애인선수단': '-'
     };
 
-    const totalBase = employees.filter(e => isEmployedOnDate(e, baseDate)).length;
-    const totalCompare = employees.filter(e => isEmployedOnDate(e, compareDate)).length;
 
     return (
         <div className="space-y-6">
@@ -675,18 +729,18 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                             <tbody className="divide-y divide-slate-100">
                                 {(() => {
                                     // 대표이사를 포함한 전체 리스트 보장
-                                    const finalDivList = divisionList.includes('대표이사') 
-                                        ? divisionList 
-                                        : ['대표이사', ...divisionList];
+                                    const finalDivList = stats.divisionList.includes('대표이사') 
+                                        ? stats.divisionList 
+                                        : ['대표이사', ...stats.divisionList];
                                     
                                     return finalDivList.map(div => {
-                                        const stats = divisionStats[div] || { base: 0, compare: 0 };
-                                        const diff = stats.base - stats.compare;
+                                        const divData = stats.divisionStats[div] || { base: 0, compare: 0 };
+                                        const diff = divData.base - divData.compare;
                                         return (
                                             <tr key={div} className="hover:bg-slate-50">
                                                 <td className="py-2 font-bold text-slate-800 border-r bg-slate-50">{div}</td>
-                                                <td className="py-2 border-r">{stats.base}</td>
-                                                <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{stats.compare}</td>
+                                                <td className="py-2 border-r">{divData.base}</td>
+                                                <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{divData.compare}</td>
                                                 <td className={`py-2 font-bold ${diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>
                                                     {diff > 0 ? `+${diff}` : diff === 0 ? '-' : diff}
                                                 </td>
@@ -694,12 +748,14 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                         );
                                     });
                                 })()}
+
                                 <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
                                     <td className="py-2 border-r">합계</td>
-                                    <td className="py-2 border-r">{totalBase}</td>
-                                    <td className="py-2 border-r text-indigo-600">{totalCompare}</td>
-                                    <td className="py-2">{totalBase - totalCompare > 0 ? `+${totalBase - totalCompare}` : totalBase - totalCompare === 0 ? '-' : totalBase - totalCompare}</td>
+                                    <td className="py-2 border-r">{stats.totalBase}</td>
+                                    <td className="py-2 border-r text-indigo-600">{stats.totalCompare}</td>
+                                    <td className="py-2">{stats.totalBase - stats.totalCompare > 0 ? `+${stats.totalBase - stats.totalCompare}` : stats.totalBase - stats.totalCompare === 0 ? '-' : stats.totalBase - stats.totalCompare}</td>
                                 </tr>
+
                             </tbody>
                         </table>
                     </div>
@@ -722,13 +778,13 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {locationList.map(loc => {
-                                    const diff = locationStats[loc].base - locationStats[loc].compare;
+                                {stats.locationList.map(loc => {
+                                    const diff = stats.locationStats[loc].base - stats.locationStats[loc].compare;
                                     return (
                                         <tr key={loc} className="hover:bg-slate-50">
                                             <td className="py-2 font-bold text-slate-800 border-r bg-slate-50">{loc}</td>
-                                            <td className="py-2 border-r">{locationStats[loc].base}</td>
-                                            <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{locationStats[loc].compare}</td>
+                                            <td className="py-2 border-r">{stats.locationStats[loc].base}</td>
+                                            <td className="py-2 border-r text-indigo-600 bg-indigo-50/30">{stats.locationStats[loc].compare}</td>
                                             <td className={`py-2 border-r font-bold ${diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>
                                                 {diff > 0 ? `+${diff}` : diff === 0 ? '-' : diff}
                                             </td>
@@ -738,11 +794,12 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                 })}
                                 <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
                                     <td className="py-2 border-r">합계</td>
-                                    <td className="py-2 border-r">{totalBase}</td>
-                                    <td className="py-2 border-r text-indigo-600">{totalCompare}</td>
-                                    <td className="py-2 border-r">{totalBase - totalCompare > 0 ? `+${totalBase - totalCompare}` : totalBase - totalCompare === 0 ? '-' : totalBase - totalCompare}</td>
+                                    <td className="py-2 border-r">{stats.totalBase}</td>
+                                    <td className="py-2 border-r text-indigo-600">{stats.totalCompare}</td>
+                                    <td className="py-2 border-r">{stats.totalBase - stats.totalCompare > 0 ? `+${stats.totalBase - stats.totalCompare}` : stats.totalBase - stats.totalCompare === 0 ? '-' : stats.totalBase - stats.totalCompare}</td>
                                     <td className="py-2"></td>
                                 </tr>
+
                             </tbody>
                         </table>
                     </div>
