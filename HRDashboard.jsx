@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getCollectionName } from './utils';
 import {
     collection, addDoc, query, getDocs, onSnapshot,
@@ -623,7 +623,7 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
     }, []);
 
     // 모든 통계 데이터를 useMemo로 묶어서 처리 (효율성 극대화)
-    const stats = useMemo(() => {
+    const stats = React.useMemo(() => {
         const divisionStats = {};
         const locationStats = {};
         
