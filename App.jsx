@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import './index.css';
 import { getCollectionName, isCasagrande } from './utils';
 import { getCompanyConfig, getCompanyDomain } from './companyConfigs';
 import ReactDOM from 'react-dom/client';
