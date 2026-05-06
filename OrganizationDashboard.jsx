@@ -99,19 +99,19 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                     ...data,
                     createdAt: serverTimestamp()
                 });
-                
-                // [기업 매핑 추가] 외부 메일 사용 시 로그인을 위해 매핑 콜렉션에 등록
-                const currentDomain = user?.forcedDomain || user?.email?.split('@')[1];
-                if (data.email && (!data.email.endsWith(`@${currentDomain}`)) && currentDomain) {
-                    await setDoc(doc(db, 'company_registry', data.email), {
-                        email: data.email,
-                        domain: currentDomain,
-                        registeredAt: serverTimestamp()
-                    });
-                }
-
                 alert('직원이 등록되었습니다.');
             }
+
+            // [기업 매핑 추가] 외부 메일 사용 시 로그인을 위해 매핑 콜렉션에 등록
+            const currentDomain = user?.forcedDomain || user?.email?.split('@')[1];
+            if (data.email && (!data.email.endsWith(`@${currentDomain}`)) && currentDomain) {
+                await setDoc(doc(db, 'company_registry', data.email), {
+                    email: data.email,
+                    domain: currentDomain,
+                    registeredAt: serverTimestamp()
+                });
+            }
+
             setIsAddModalOpen(false);
             setEditingEmployee(null);
         } catch (error) {
@@ -497,7 +497,7 @@ const IndividualTasks = ({ db, employees, departments, selectedEmployee, setSele
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
                                     <span className="text-slate-400">입사일</span>
-                                    <span className="font-bold text-slate-700">{selectedEmployee.joinedAt}</span>
+                                    <span className="font-bold text-slate-700">{selectedEmployee.joinedAt || selectedEmployee.joinDate || '-'}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
                                     <span className="text-slate-400">상태</span>
@@ -627,12 +627,12 @@ const AddEmployeeModal = ({ onClose, onSubmit, departments, defaultDept, employe
     useEffect(() => {
         if (employeeToEdit) {
             setFormData({
-                name: employeeToEdit.name,
-                position: employeeToEdit.position,
-                department: employeeToEdit.department,
-                email: employeeToEdit.email,
-                status: employeeToEdit.status,
-                joinedAt: employeeToEdit.joinedAt,
+                name: employeeToEdit.name || '',
+                position: employeeToEdit.position || '사원',
+                department: employeeToEdit.department || departments[0] || '',
+                email: employeeToEdit.email || '',
+                status: employeeToEdit.status || '재직',
+                joinedAt: employeeToEdit.joinedAt || employeeToEdit.joinDate || new Date().toISOString().split('T')[0],
             });
         }
     }, [employeeToEdit]);

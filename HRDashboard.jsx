@@ -283,6 +283,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
                             bandCode: row['BandCode'] || row['밴드코드'] || '',
                             position: row['직위'] || row['직급'] || '',
                             phone: row['연락처'] || row['전화번호'] || '',
+                            email: row['이메일'] || row['E-mail'] || row['Email'] || '',
                             firstJoinDate: _cleanDateString(row['최초입사일']),
                             joinDate: _cleanDateString(row['입사일']),
                             contractEndDate: _cleanDateString(row['계약종료일수습종료일'] || row['계약종료일'] || row['수습종료일']),
@@ -851,6 +852,7 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                 <th className="px-2 py-3 font-bold border-r">Band Code</th>
                                 <th className="px-2 py-3 font-bold border-r">직위</th>
                                 <th className="px-2 py-3 font-bold border-r">연락처</th>
+                                <th className="px-2 py-3 font-bold border-r">이메일</th>
                                 <th className="px-2 py-3 font-bold border-r">최초입사일</th>
                                 <th className="px-2 py-3 font-bold border-r">입사일</th>
                                 <th className="px-2 py-3 font-bold border-r">종료일</th>
@@ -876,6 +878,7 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                     <td className="px-2 py-2 border-r text-slate-500">{emp.bandCode || '-'}</td>
                                     <td className="px-2 py-2 border-r">{emp.position || '-'}</td>
                                     <td className="px-2 py-2 border-r">{emp.phone || '-'}</td>
+                                    <td className="px-2 py-2 border-r">{emp.email || '-'}</td>
                                     <td className="px-2 py-2 border-r font-mono">{emp.firstJoinDate || '-'}</td>
                                     <td className="px-2 py-2 border-r font-mono text-emerald-600">{emp.joinDate || '-'}</td>
                                     <td className="px-2 py-2 border-r font-mono text-red-500">{emp.contractEndDate || '-'}</td>
@@ -975,7 +978,7 @@ const PendingJoinSelector = ({ pendingJoins, onSelect, registeredNames }) => {
 const EmployeeModal = ({ onClose, onSubmit, initialData, pendingJoins, registeredNames }) => {
     const [formData, setFormData] = useState(initialData || {
         order: '', name: '', contractType: '', status: '재직', division: '', department: '', team: '',
-        location: '', bandCode: '', position: '', phone: '', firstJoinDate: '', joinDate: '', contractEndDate: '', exitDate: '', notes: ''
+        location: '', bandCode: '', position: '', phone: '', email: '', firstJoinDate: '', joinDate: '', contractEndDate: '', exitDate: '', notes: ''
     });
 
     return (
@@ -1045,7 +1048,7 @@ const EmployeeModal = ({ onClose, onSubmit, initialData, pendingJoins, registere
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                    <div className="grid grid-cols-4 gap-4 pt-2 border-t border-slate-100">
                         <div>
                             <label className="block text-xs font-black text-slate-500 mb-1">Band Code</label>
                             <input value={formData.bandCode} onChange={e=>setFormData({...formData, bandCode: e.target.value})} className="w-full border p-2 rounded-lg text-sm" />
@@ -1057,6 +1060,10 @@ const EmployeeModal = ({ onClose, onSubmit, initialData, pendingJoins, registere
                         <div>
                             <label className="block text-xs font-black text-slate-500 mb-1">연락처</label>
                             <input value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} className="w-full border p-2 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-slate-500 mb-1">이메일</label>
+                            <input value={formData.email || ''} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full border p-2 rounded-lg text-sm" />
                         </div>
                     </div>
 
