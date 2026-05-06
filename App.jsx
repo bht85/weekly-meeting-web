@@ -1589,6 +1589,11 @@ function App() {
     const allDates = [...new Set([...(minutes?.map(m => m.date) || []), ...(feedbacks?.map(f => f.date) || [])])].sort((a, b) => b.localeCompare(a));
     const filteredDates = selectedDate === 'recent' ? allDates.slice(0, 2) : (selectedDate ? [selectedDate] : allDates);
 
+    // HR 현황판 권한 체크
+    const ALLOWED_HR_EMAILS = ['esc913@composecoffee.co.kr', 'choihy@composecoffee.co.kr'];
+    const canViewHR = user && ALLOWED_HR_EMAILS.includes(user.email);
+    const visibleNavItems = NAV_ITEMS.filter(item => item.id !== 'hr' || canViewHR);
+
     // 3. 정상 접속
     return (
         <>
@@ -1605,7 +1610,7 @@ function App() {
                             </div>
 
                             <div className="hidden md:flex items-center gap-0.5 bg-slate-100 p-1 rounded-lg">
-                                {NAV_ITEMS.map(item => {
+                                {visibleNavItems.map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1649,7 +1654,7 @@ function App() {
                         <div className="md:hidden bg-white border-t border-gray-200">
                             <div className="p-2 space-y-1">
                                 <p className="px-4 py-2 text-xs font-bold text-gray-400">메뉴 이동</p>
-                                {NAV_ITEMS.map(item => {
+                                {visibleNavItems.map(item => {
                                     const IconComponent = item.icon;
                                     return (
                                         <button
@@ -1717,7 +1722,7 @@ function App() {
                 )}
 
                 {/* [MODE 8] HR 현황판 */}
-                {appMode === 'hr' && (
+                {appMode === 'hr' && canViewHR && (
                     <HRDashboard
                         db={db}
                         user={user}
