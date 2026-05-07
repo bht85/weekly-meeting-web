@@ -25,7 +25,7 @@ const HRDashboard = ({ db, user, isAdmin }) => {
         );
     }
 
-    const [activeTab, setActiveTab] = useState('recruitment'); // 'recruitment' | 'onboarding' | 'roster'
+    const [activeTab, setActiveTab] = useState('recruitment'); // 'recruitment' | 'onboarding' | 'roster' | 'orgchart'
     
     // Recruitment State
     const [recruits, setRecruits] = useState([]);
@@ -1937,3 +1937,4 @@ const OrganizationChartTab = ({ employees }) => {
 };
 
 export default HRDashboard;
+

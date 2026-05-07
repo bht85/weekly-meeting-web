@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import {
     Users, Plus, Mail, Briefcase, Calendar, ChevronRight,
-    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2, Edit2, Settings
+    Search, LayoutGrid, List, CheckCircle2, Clock, UserPlus, X, Trash2, Edit2, Settings, ClipboardList
 } from 'lucide-react';
 
 const JOB_RANKS = {
@@ -34,7 +34,7 @@ const USER_DEFINED_RANKS = {
 const getRank = (position) => USER_DEFINED_RANKS[position] || 99;
 
 const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
-    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual'
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'individual' | 'handover'
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,6 +44,11 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
 
     // For Individual Tab
     const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+    // Handover State
+    const [handovers, setHandovers] = useState([]);
+    const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+    const [editingHandover, setEditingHandover] = useState(null);
 
     // Filter departments for display (exclude '선택' and '전체')
     const displayDepartments = React.useMemo(() => {
@@ -81,7 +86,23 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
             setEmployees(docs);
             setLoading(false);
         });
-        return () => unsubscribe();
+
+        const qHandovers = query(collection(db, getCollectionName('hr_handovers', user)), orderBy('createdAt', 'desc'));
+        const unsubscribeHandovers = onSnapshot(qHandovers, (snapshot) => {
+            let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (!isAdmin && user?.department) {
+                docs = docs.filter(doc => 
+                    doc.leaverDepartment === user.department || 
+                    doc.receiverDepartment === user.department
+                );
+            }
+            setHandovers(docs);
+        });
+
+        return () => {
+            unsubscribe();
+            unsubscribeHandovers();
+        };
     }, [db, selectedEmployee]); // Note: selectedEmployee is in dependency to support re-selection if needed, but logic inside handles updates.
 
     const handleSaveEmployee = async (data) => {
@@ -144,6 +165,27 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
         setIsAddModalOpen(true);
     };
 
+    const handleSaveHandover = async (data) => {
+        try {
+            if (editingHandover) {
+                await updateDoc(doc(db, getCollectionName('hr_handovers', user), editingHandover.id), { ...data, updatedAt: serverTimestamp() });
+            } else {
+                await addDoc(collection(db, getCollectionName('hr_handovers', user)), { ...data, createdAt: serverTimestamp() });
+            }
+            setIsHandoverModalOpen(false);
+            setEditingHandover(null);
+        } catch (error) { console.error(error); alert("저장 실패"); }
+    };
+
+    const handleDeleteHandover = async (id) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+        try {
+            await deleteDoc(doc(db, getCollectionName('hr_handovers', user), id));
+        } catch (error) {
+            console.error(error); alert("삭제 중 오류가 발생했습니다.");
+        }
+    };
+
     return (
         <div className="bg-white min-h-screen p-6 rounded-xl shadow-sm border border-slate-200">
             {/* Header */}
@@ -186,19 +228,29 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                         >
                             <List className="w-4 h-4" /> 인원별 업무
                         </button>
+                        <button
+                            onClick={() => setActiveTab('handover')}
+                            className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'handover'
+                                ? 'bg-white text-indigo-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <ClipboardList className="w-4 h-4" /> 인수인계서
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Content */}
-            {activeTab === 'overview' ? (
+            {activeTab === 'overview' && (
                 <TeamOverview
                     employees={employees}
                     departments={displayDepartments}
                     onOpenAddModal={openAddModal}
                     onDeleteEmployee={handleDeleteEmployee}
                 />
-            ) : (
+            )}
+            {activeTab === 'individual' && (
                 <IndividualTasks
                     db={db}
                     employees={employees}
@@ -208,6 +260,13 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                     onEdit={openEditModal}
                     onDelete={handleDeleteEmployee}
                     user={user}
+                />
+            )}
+            {activeTab === 'handover' && (
+                <HandoverTab
+                    handovers={handovers}
+                    onOpenModal={(h = null) => { setEditingHandover(h); setIsHandoverModalOpen(true); }}
+                    onDelete={handleDeleteHandover}
                 />
             )}
 
@@ -228,6 +287,16 @@ const OrganizationDashboard = ({ db, departments, user, isAdmin }) => {
                     db={db}
                     user={user}
                     onClose={() => setIsDeptModalOpen(false)}
+                />
+            )}
+
+            {/* Handover Modal */}
+            {isHandoverModalOpen && (
+                <HandoverModal 
+                    onClose={() => setIsHandoverModalOpen(false)} 
+                    onSubmit={handleSaveHandover} 
+                    initialData={editingHandover} 
+                    employees={employees} 
                 />
             )}
         </div>
@@ -835,6 +904,211 @@ const DeptManagerModal = ({ db, user, onClose }) => {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Handover Tab Component ---
+const HandoverTab = ({ handovers, onOpenModal, onDelete }) => {
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-indigo-500" /> 퇴사자 인수인계서 관리
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">퇴사 예정자의 업무 인수인계 진행 상황을 관리합니다.</p>
+                </div>
+                <button onClick={() => onOpenModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm transition-colors whitespace-nowrap">
+                    <Plus className="w-4 h-4" /> 인수인계서 작성
+                </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-4 whitespace-nowrap">상태</th>
+                            <th className="px-6 py-4 whitespace-nowrap">인계자 (퇴사자)</th>
+                            <th className="px-6 py-4 whitespace-nowrap">인수자</th>
+                            <th className="px-6 py-4 whitespace-nowrap">인수인계일</th>
+                            <th className="px-6 py-4 whitespace-nowrap">진행률</th>
+                            <th className="px-6 py-4 whitespace-nowrap text-right">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {handovers.map(item => {
+                            const totalTasks = item.tasks?.length || 0;
+                            const completedTasks = item.tasks?.filter(t => t.status === '완료').length || 0;
+                            const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+                            
+                            return (
+                                <tr key={item.id} className="hover:bg-slate-50">
+                                    <td className="px-6 py-3">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold border whitespace-nowrap ${item.status === '완료' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                            {item.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-3 font-bold">{item.leaverDepartment} {item.leaverName}</td>
+                                    <td className="px-6 py-3 font-bold">{item.receiverDepartment} {item.receiverName}</td>
+                                    <td className="px-6 py-3 text-slate-600 text-xs">{item.date}</td>
+                                    <td className="px-6 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-24 bg-slate-200 rounded-full h-2">
+                                                <div className={`h-2 rounded-full ${progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
+                                            </div>
+                                            <span className="text-xs text-slate-500 font-bold">{progress}%</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-3 text-right whitespace-nowrap">
+                                        <button onClick={() => onOpenModal(item)} className="text-slate-400 mx-1 hover:text-indigo-600 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                                        <button onClick={() => onDelete(item.id)} className="text-slate-400 hover:text-red-600 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {handovers.length === 0 && (
+                            <tr>
+                                <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
+                                    등록된 인수인계서가 없습니다.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// --- Handover Modal ---
+const HandoverModal = ({ onClose, onSubmit, initialData, employees }) => {
+    const [formData, setFormData] = useState(initialData || {
+        leaverName: '', leaverDepartment: '',
+        receiverName: '', receiverDepartment: '',
+        date: '', status: '진행중',
+        tasks: [{ id: Date.now(), taskName: '', description: '', status: '진행중' }]
+    });
+
+    const activeEmployees = employees.filter(e => e.status !== '퇴사');
+
+    const handleAddTask = () => {
+        setFormData(prev => ({
+            ...prev,
+            tasks: [...prev.tasks, { id: Date.now(), taskName: '', description: '', status: '진행중' }]
+        }));
+    };
+
+    const handleRemoveTask = (taskId) => {
+        setFormData(prev => ({
+            ...prev,
+            tasks: prev.tasks.filter(t => t.id !== taskId)
+        }));
+    };
+
+    const handleTaskChange = (taskId, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            tasks: prev.tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t)
+        }));
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center mb-6 shrink-0">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-indigo-600" />
+                        {initialData ? '인수인계서 수정' : '새 인수인계서 작성'}
+                    </h3>
+                    <button onClick={onClose}><X className="w-5 h-5 text-slate-400" /></button>
+                </div>
+                
+                <div className="overflow-y-auto flex-1 pr-2 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <h4 className="font-bold text-slate-700 border-b pb-2 mb-2">인계자 (퇴사자)</h4>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">성명</label>
+                                <input value={formData.leaverName} onChange={e => setFormData({ ...formData, leaverName: e.target.value })} placeholder="퇴사자 성명" className="w-full border p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">소속</label>
+                                <input value={formData.leaverDepartment} onChange={e => setFormData({ ...formData, leaverDepartment: e.target.value })} placeholder="퇴사자 소속" className="w-full border p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                            <h4 className="font-bold text-indigo-800 border-b border-indigo-200 pb-2 mb-2">인수자</h4>
+                            <div>
+                                <label className="block text-xs font-bold text-indigo-500 mb-1">성명</label>
+                                <input value={formData.receiverName} onChange={e => setFormData({ ...formData, receiverName: e.target.value })} placeholder="인수자 성명" className="w-full border border-indigo-200 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-indigo-500 mb-1">소속</label>
+                                <input value={formData.receiverDepartment} onChange={e => setFormData({ ...formData, receiverDepartment: e.target.value })} placeholder="인수자 소속" className="w-full border border-indigo-200 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">인수인계 예정일/완료일</label>
+                            <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="w-full border p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">전체 진행 상태</label>
+                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full border p-2 rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
+                                <option value="진행중">진행중</option>
+                                <option value="완료">완료</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-bold text-slate-700">인수인계 세부 항목</label>
+                            <button onClick={handleAddTask} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded flex items-center gap-1 font-bold transition-colors">
+                                <Plus className="w-3 h-3" /> 항목 추가
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {formData.tasks.map((task, index) => (
+                                <div key={task.id} className="bg-white border border-slate-200 rounded-lg p-4 flex gap-3 relative group">
+                                    <div className="mt-2 text-slate-400 font-bold text-sm">{index + 1}.</div>
+                                    <div className="flex-1 space-y-3">
+                                        <div className="flex gap-3">
+                                            <input value={task.taskName} onChange={e => handleTaskChange(task.id, 'taskName', e.target.value)} placeholder="업무명/항목명" className="flex-1 border-b border-slate-200 p-1 text-sm outline-none focus:border-indigo-500 font-bold" />
+                                            <select value={task.status} onChange={e => handleTaskChange(task.id, 'status', e.target.value)} className={`text-xs border p-1 rounded font-bold outline-none ${task.status === '완료' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                                                <option value="진행중">진행중</option>
+                                                <option value="완료">완료</option>
+                                            </select>
+                                        </div>
+                                        <textarea value={task.description} onChange={e => handleTaskChange(task.id, 'description', e.target.value)} placeholder="상세 내용, 관련 파일 경로, 주의사항 등" className="w-full border border-slate-200 rounded p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 min-h-[60px]" />
+                                    </div>
+                                    {formData.tasks.length > 1 && (
+                                        <button onClick={() => handleRemoveTask(task.id)} className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex gap-3 pt-6 shrink-0 border-t border-slate-100 mt-4">
+                    <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-lg text-slate-600 font-bold hover:bg-slate-50">취소</button>
+                    <button onClick={() => {
+                        if (!formData.leaverName || !formData.receiverName) {
+                            alert('인계자(퇴사자)와 인수자의 성명을 모두 입력해주세요.');
+                            return;
+                        }
+                        onSubmit(formData);
+                    }} className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-md">인수인계서 저장</button>
                 </div>
             </div>
         </div>
