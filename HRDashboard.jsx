@@ -883,7 +883,10 @@ const EmployeeRosterTab = ({ employees, searchTerm, setSearchTerm, onOpenModal, 
                                     <td className="px-2 py-2 border-r font-mono text-emerald-600">{emp.joinDate || '-'}</td>
                                     <td className="px-2 py-2 border-r font-mono text-red-500">{emp.contractEndDate || '-'}</td>
                                     <td className="px-2 py-2 border-r font-mono font-bold text-red-600 bg-red-50/50">{emp.exitDate || '-'}</td>
-                                    <td className="px-2 py-2 border-r max-w-[150px] truncate" title={emp.notes}>{emp.notes || '-'}</td>
+                                    <td className="px-2 py-2 border-r max-w-[150px] truncate" title={emp.notes}>
+                                        {emp.hideInOrgChart && <span className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded mr-1">숨김</span>}
+                                        {emp.notes || '-'}
+                                    </td>
                                     <td className="px-2 py-2 text-center">
                                         <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => onOpenModal(emp)} className="p-1 text-slate-400 hover:text-indigo-600"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -978,7 +981,8 @@ const PendingJoinSelector = ({ pendingJoins, onSelect, registeredNames }) => {
 const EmployeeModal = ({ onClose, onSubmit, initialData, pendingJoins, registeredNames }) => {
     const [formData, setFormData] = useState(initialData || {
         order: '', name: '', contractType: '', status: '재직', division: '', department: '', team: '',
-        location: '', bandCode: '', position: '', phone: '', email: '', firstJoinDate: '', joinDate: '', contractEndDate: '', exitDate: '', notes: ''
+        location: '', bandCode: '', position: '', phone: '', email: '', firstJoinDate: '', joinDate: '', contractEndDate: '', exitDate: '', notes: '',
+        hideInOrgChart: false
     });
 
     return (
@@ -1086,9 +1090,22 @@ const EmployeeModal = ({ onClose, onSubmit, initialData, pendingJoins, registere
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-black text-slate-500 mb-1">비고</label>
-                        <input value={formData.notes} onChange={e=>setFormData({...formData, notes: e.target.value})} className="w-full border p-2 rounded-lg text-sm" />
+                    <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                            <label className="block text-xs font-black text-slate-500 mb-1">비고</label>
+                            <input value={formData.notes} onChange={e=>setFormData({...formData, notes: e.target.value})} className="w-full border p-2 rounded-lg text-sm" />
+                        </div>
+                        <div className="pt-5">
+                            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                                <input 
+                                    type="checkbox" 
+                                    checked={formData.hideInOrgChart || false} 
+                                    onChange={e => setFormData({...formData, hideInOrgChart: e.target.checked})}
+                                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                />
+                                <span className="text-sm font-bold text-slate-700">조직도에서 숨기기</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div className="flex gap-3 pt-4">
@@ -1428,7 +1445,7 @@ const OrgNode = ({ title, className, children }) => {
     );
 };
 
-const OrganizationChartContent = ({ employees, tree, compact = false }) => {
+const OrganizationChartContent = ({ employees, tree, compact = false, showLevels = true, showBandCode = true }) => {
     // ── 콤팩트 모드 스타일 설정 ──
     const c = compact ? {
         rootPad:    'px-6 py-4',
@@ -1524,7 +1541,57 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
                     }
                     className={`bg-indigo-50 border-2 border-indigo-200 text-indigo-900 ${c.divPad} ${c.divRounded} shadow-sm whitespace-nowrap text-center flex flex-col items-center justify-center`}
                 >
-                    {Object.values(div.departments).sort((a, b) => {
+                    {!showLevels ? (
+                        <div className="flex flex-col items-center">
+                            {(() => {
+                                // 모든 멤버 합치기
+                                const allMembers = [];
+                                Object.values(div.departments).forEach(dept => {
+                                    Object.values(dept.teams).forEach(team => {
+                                        allMembers.push(...team.members);
+                                    });
+                                });
+                                
+                                // 정렬 (기존 정렬 로직 활용)
+                                allMembers.sort((a, b) => {
+                                    const getRank = (pos) => ({ '대표':0,'이사':1,'본부장':2,'팀장':3,'파트장':4,'공장장':4,'센터장':4,'팀원':10,'매니저':10,'사원':10,'인턴':11 })[pos] ?? 99;
+                                    const rankDiff = getRank(a.position) - getRank(b.position);
+                                    if (rankDiff !== 0) return rankDiff;
+                                    return a.name.localeCompare(b.name);
+                                });
+
+                                // 청크로 나누어 표시 (너무 길어지는 것 방지)
+                                const chunkSize = 15;
+                                const chunks = [];
+                                for (let i = 0; i < allMembers.length; i += chunkSize) {
+                                    chunks.push(allMembers.slice(i, i + chunkSize));
+                                }
+
+                                return chunks.map((chunk, cIdx) => (
+                                    <React.Fragment key={cIdx}>
+                                        {cIdx > 0 && <div className={`w-px ${c.connH} bg-slate-300`}></div>}
+                                        <div className={`flex flex-col ${c.teamW} bg-white border-2 border-slate-700 rounded shadow-sm pb-1`}>
+                                            <div className={`bg-slate-800 text-white flex flex-col items-center justify-center ${c.teamHeaderH} ${c.teamHeaderSz} font-black leading-tight`}>
+                                                <span className="relative -top-[1px]">구성원 {cIdx + 1}</span>
+                                            </div>
+                                            <div className={`flex flex-col ${c.sectionPad} bg-white`}>
+                                                {chunk.map(m => (
+                                                    <div key={m.id} className={`${c.memberPad} rounded flex items-center justify-center gap-1 cursor-default`}>
+                                                        <div className={`font-medium ${c.memberSz} tracking-tighter text-slate-700 whitespace-nowrap`} title={m.name}>{m.name}</div>
+                                                        <div className={`${c.memberBadgeSz} font-bold px-0.5 rounded whitespace-nowrap shrink-0 text-slate-500 bg-slate-50 flex items-center h-[1.2em] relative top-[1px]`}>
+                                                            {showBandCode && m.bandCode ? `${m.bandCode} ` : ''}{m.position ? `(${m.position})` : ''}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </React.Fragment>
+                                ));
+                            })()}
+                        </div>
+                    ) : (
+                        <>
+                        {Object.values(div.departments).sort((a, b) => {
                         const deptOrder = ['운영1팀', '운영2팀', '운영기획팀', '개설지원팀', '경상센터', '전라센터', '충청센터', '제주센터', '직영운영팀', '교육팀', 'QSC팀', 'gsc팀', '점포개발팀', '인테리어팀', '개발지원팀', '전략기획팀', '구매물류팀', '해외사업팀', 'IT지원팀', 'it지원팀', 'IT기획팀', '컴포즈커피랩', '마케팅팀', '디자인팀', 'R&D팀', '재무팀', '재무기획팀', '인사총무팀', '조직혁신팀', '법무팀'];
                         const idxA = deptOrder.findIndex(name => a.name.toLowerCase().includes(name.toLowerCase()));
                         const idxB = deptOrder.findIndex(name => b.name.toLowerCase().includes(name.toLowerCase()));
@@ -1587,7 +1654,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
                                                                     <div key={m.id} className={`${c.memberPad} rounded flex items-center justify-center gap-1 cursor-default relative -top-[3px]`}>
                                                                         <div className={`font-bold ${c.memberSz} tracking-tighter text-blue-600 whitespace-nowrap`} title={m.name}>{m.name}</div>
                                                                         <div className={`${c.memberBadgeSz} font-bold px-0.5 rounded whitespace-nowrap shrink-0 text-blue-600 bg-white shadow-sm border border-blue-100 flex items-center h-[1.2em] relative top-[1px]`}>
-                                                                            {m.bandCode ? `${m.bandCode} ` : ''}({m.position})
+                                                                            {showBandCode && m.bandCode ? `${m.bandCode} ` : ''}({m.position})
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -1599,7 +1666,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
                                                                     <div key={m.id} className={`${c.memberPad} rounded flex items-center justify-center gap-1 cursor-default relative -top-[3px]`}>
                                                                         <div className={`font-medium ${c.memberSz} tracking-tighter text-slate-700 whitespace-nowrap`} title={m.name}>{m.name}</div>
                                                                         <div className={`${c.memberBadgeSz} font-bold px-0.5 rounded whitespace-nowrap shrink-0 text-slate-500 bg-slate-50 flex items-center h-[1.2em] relative top-[1px]`}>
-                                                                            {m.bandCode ? `${m.bandCode} ` : ''}{m.position ? `(${m.position})` : ''}
+                                                                            {showBandCode && m.bandCode ? `${m.bandCode} ` : ''}{m.position ? `(${m.position})` : ''}
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -1611,7 +1678,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
                                                                     <div key={m.id} className={`${c.memberPad} rounded flex items-center justify-center gap-1 cursor-default opacity-80`}>
                                                                         <div className={`font-bold ${c.memberSz} tracking-tighter text-slate-600 whitespace-nowrap`} title={m.name}>{m.name}</div>
                                                                         <div className={`${c.memberBadgeSz} font-bold px-0.5 rounded whitespace-nowrap shrink-0 text-slate-500 bg-white shadow-sm border border-slate-200`}>
-                                                                            {m.bandCode ? `${m.bandCode} ` : ''}({m.position})
+                                                                            {showBandCode && m.bandCode ? `${m.bandCode} ` : ''}({m.position})
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -1626,6 +1693,8 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
                             </div>
                         </OrgNode>
                     ))}
+                    </>
+                    )}
                 </OrgNode>
             ))}
         </OrgNode>
@@ -1636,6 +1705,8 @@ const OrganizationChartContent = ({ employees, tree, compact = false }) => {
 const OrganizationChartTab = ({ employees }) => {
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const compactMode = true; // 콤팩트 모드로 단일화
+    const [showLevels, setShowLevels] = React.useState(true); // 중간 레벨 표기 여부
+    const [showBandCode, setShowBandCode] = React.useState(true); // 밴드코드 표기 여부
     const [selectedDivision, setSelectedDivision] = React.useState('전체');
 
     // (기존 중복된 tree 메모 삭제 - 아래 filteredTree에서 처리함)
@@ -1661,6 +1732,8 @@ const OrganizationChartTab = ({ employees }) => {
         const toNum = (d) => String(d || '').replace(/[^0-9]/g, '');
         const target = toNum(baseDate);
         return employees.filter(emp => {
+            if (emp.hideInOrgChart) return false; // 조직도 숨김 설정된 인원 제외
+
             const joined = toNum(emp.joinDate || emp.firstJoinDate);
             const exited = toNum(emp.exitDate);
             
@@ -1830,6 +1903,49 @@ const OrganizationChartTab = ({ employees }) => {
                         ))}
                     </select>
                 </div>
+
+                <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+
+                <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    <span className="text-sm font-bold text-slate-700">보기 설정</span>
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button 
+                            onClick={() => setShowLevels(true)} 
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${showLevels ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            전체 계층
+                        </button>
+                        <button 
+                            onClick={() => setShowLevels(false)} 
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!showLevels ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            간소화
+                        </button>
+                    </div>
+                </div>
+
+                <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+
+                <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-indigo-500" />
+                    <span className="text-sm font-bold text-slate-700">Band Code</span>
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button 
+                            onClick={() => setShowBandCode(true)} 
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${showBandCode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            표기
+                        </button>
+                        <button 
+                            onClick={() => setShowBandCode(false)} 
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!showBandCode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            미표기
+                        </button>
+                    </div>
+                </div>
+
                 <span className="ml-auto text-xs text-slate-500">
                     <span className="font-bold text-indigo-700">{filteredByDate.length}명</span> 재직 중 ({baseDate} 기준)
                 </span>
@@ -1838,7 +1954,7 @@ const OrganizationChartTab = ({ employees }) => {
             {/* ── 미리보기 썸네일 ── */}
             <div className="relative bg-slate-50 rounded-xl border border-slate-200 h-[600px] overflow-hidden group">
                 <div className="absolute inset-0 origin-top-left pointer-events-none opacity-40 blur-[1px] transition-all group-hover:blur-sm" style={{ transform: 'scale(0.35)', width: '280%', height: '280%' }}>
-                    <OrganizationChartContent employees={filteredByDate} tree={filteredTree} compact={compactMode} />
+                    <OrganizationChartContent employees={filteredByDate} tree={filteredTree} compact={compactMode} showLevels={showLevels} showBandCode={showBandCode} />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors cursor-pointer" onClick={() => setIsFullScreen(true)}>
                     <div className="bg-indigo-600 text-white font-bold px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 transform group-hover:scale-110 transition-transform">
@@ -1883,6 +1999,46 @@ const OrganizationChartTab = ({ employees }) => {
                                 ))}
                             </select>
                         </div>
+
+                        {/* 보기 설정 (모달 내) */}
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                            <Users className="w-4 h-4 text-indigo-500" />
+                            <span className="text-xs font-bold text-slate-600">보기</span>
+                            <div className="flex bg-white/50 p-0.5 rounded border border-slate-200">
+                                <button 
+                                    onClick={() => setShowLevels(true)} 
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${showLevels ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    전체
+                                </button>
+                                <button 
+                                    onClick={() => setShowLevels(false)} 
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${!showLevels ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    간소화
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                            <Target className="w-4 h-4 text-indigo-500" />
+                            <span className="text-xs font-bold text-slate-600">Band Code</span>
+                            <div className="flex bg-white/50 p-0.5 rounded border border-slate-200">
+                                <button 
+                                    onClick={() => setShowBandCode(true)} 
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${showBandCode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    표기
+                                </button>
+                                <button 
+                                    onClick={() => setShowBandCode(false)} 
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${!showBandCode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    미표기
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="flex items-center gap-3">
                             {/* 콤팩트 모드 단일화 적용됨 */}
                             <button
@@ -1927,7 +2083,7 @@ const OrganizationChartTab = ({ employees }) => {
                             </div>
                         )}
                         <div ref={orgChartRef} className="inline-block min-w-max bg-white rounded-2xl shadow-lg p-8">
-                            <OrganizationChartContent employees={filteredByDate} tree={filteredTree} compact={compactMode} />
+                            <OrganizationChartContent employees={filteredByDate} tree={filteredTree} compact={compactMode} showLevels={showLevels} showBandCode={showBandCode} />
                         </div>
                     </div>
                 </div>
