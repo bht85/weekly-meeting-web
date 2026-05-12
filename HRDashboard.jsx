@@ -1590,8 +1590,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false, showLevels
                             })()}
                         </div>
                     ) : (
-                        <>
-                        {Object.values(div.departments).sort((a, b) => {
+                        Object.values(div.departments).sort((a, b) => {
                         const deptOrder = ['운영1팀', '운영2팀', '운영기획팀', '개설지원팀', '경상센터', '전라센터', '충청센터', '제주센터', '직영운영팀', '교육팀', 'QSC팀', 'gsc팀', '점포개발팀', '인테리어팀', '개발지원팀', '전략기획팀', '구매물류팀', '해외사업팀', 'IT지원팀', 'it지원팀', 'IT기획팀', '컴포즈커피랩', '마케팅팀', '디자인팀', 'R&D팀', '재무팀', '재무기획팀', '인사총무팀', '조직혁신팀', '법무팀'];
                         const idxA = deptOrder.findIndex(name => a.name.toLowerCase().includes(name.toLowerCase()));
                         const idxB = deptOrder.findIndex(name => b.name.toLowerCase().includes(name.toLowerCase()));
@@ -1692,8 +1691,7 @@ const OrganizationChartContent = ({ employees, tree, compact = false, showLevels
                                 ))}
                             </div>
                         </OrgNode>
-                    ))}
-                    </>
+                    ))
                     )}
                 </OrgNode>
             ))}
