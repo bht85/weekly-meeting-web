@@ -146,7 +146,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   // 5. Dashboard Aggregation
   const currentYearData = useMemo(() => {
-    return budgetData.filter(d => d.year === selectedYear);
+    // 이전 버전의 데이터(items 배열이 없는 데이터) 및 '선택'이라는 잘못된 팀명으로 저장된 데이터 무시
+    return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
   }, [budgetData, selectedYear]);
 
   const totalSGA = useMemo(() => {
@@ -244,7 +245,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 className="border border-slate-200 rounded-lg p-1.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium"
               >
                 <option value="">본인 소속 팀을 선택하세요</option>
-                {departments.map(dept => (
+                {departments.filter(dept => dept !== '선택').map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
