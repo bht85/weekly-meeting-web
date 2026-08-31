@@ -22,6 +22,7 @@ import HRDashboard from './HRDashboard';
 import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
 import WeeklyReportPDF from './WeeklyReportPDF';
+import BudgetDashboard from './BudgetDashboard';
 
 
 // --- Firebase 라이브러리 ---
@@ -83,15 +84,17 @@ const storage = getStorage(app);
 // --- 부서 메타데이터 (순서 및 아이콘 정의) ---
 const NAV_ITEMS = [
     { id: 'news', label: '업계 동향', icon: Monitor },
-
     { id: 'calendar', label: '캘린더', icon: Calendar },
-    { id: 'meeting', label: '주간회의록', icon: FileText },
-    { id: 'collaboration', label: '협업 요청', icon: Share2 },
-    { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
-    { id: 'org', label: '조직도', icon: Users },
-    { id: 'hr', label: 'HR 현황판', icon: PieChart },
-    { id: 'kpi', label: 'KPI', icon: BarChart3 },
+    { id: 'budget', label: '사업계획', icon: Calculator },
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
+    
+    // --- 현재 미사용으로 임시 숨김 처리 ---
+    // { id: 'meeting', label: '주간회의록', icon: FileText },
+    // { id: 'collaboration', label: '협업 요청', icon: Share2 },
+    // { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
+    // { id: 'org', label: '조직도', icon: Users },
+    // { id: 'hr', label: 'HR 현황판', icon: PieChart },
+    // { id: 'kpi', label: 'KPI', icon: BarChart3 },
 ];
 
 const SECTIONS = [
@@ -1690,6 +1693,9 @@ function App() {
 
                 {/* [MODE 9] 맛집/식단 (New) */}
                 {appMode === 'lunch' && <LunchDashboard db={db} user={user} />}
+
+                {/* [MODE 10] 사업계획 (판관비) */}
+                {appMode === 'budget' && <BudgetDashboard db={db} user={user} departments={DEPARTMENTS} />}
 
                 {/* [MODE 4] 협업 요청 */}
                 {appMode === 'collaboration' && (
