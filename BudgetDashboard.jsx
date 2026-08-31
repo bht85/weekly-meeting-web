@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -53,7 +53,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const existing = budgetData.find(d => d.id === docId);
     
     if (existing && existing.items && existing.items.length > 0) {
-      // 기존 데이터 로드 (과거 detail 텍스트가 가이드에 없더라도 일단 표시)
       setItems(existing.items);
     } else {
       // 빈 항목 1개 기본 제공
@@ -63,6 +62,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         id: Date.now().toString(),
         category: firstCategory,
         detail: firstDetail,
+        description: '',
         months: Array(12).fill(0)
       }]);
     }
@@ -77,6 +77,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       id: Date.now().toString(),
       category: firstCategory,
       detail: firstDetail,
+      description: '',
       months: Array(12).fill(0)
     }]);
   };
@@ -100,13 +101,29 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   };
 
   const handleMonthChange = (id, monthIndex, value) => {
-    const numStr = value.replace(/[^0-9]/g, '');
+    const numStr = String(value).replace(/[^0-9]/g, '');
     const numVal = numStr ? parseInt(numStr, 10) : 0;
     
     setItems(prev => prev.map(item => {
       if (item.id === id) {
         const newMonths = [...item.months];
         newMonths[monthIndex] = numVal;
+        return { ...item, months: newMonths };
+      }
+      return item;
+    }));
+  };
+
+  const handleFillRight = (id, startIndex, value) => {
+    const numStr = String(value).replace(/[^0-9]/g, '');
+    const numVal = numStr ? parseInt(numStr, 10) : 0;
+    
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const newMonths = [...item.months];
+        for(let i = startIndex + 1; i < 12; i++) {
+          newMonths[i] = numVal;
+        }
         return { ...item, months: newMonths };
       }
       return item;
@@ -176,7 +193,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     return Object.entries(totals)
       .map(([name, value]) => ({ name, value }))
       .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value); // 큰 금액 순 정렬
+      .sort((a, b) => b.value - a.value);
   }, [currentYearData]);
 
   const teamTotals = useMemo(() => {
@@ -292,9 +309,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-36">계정과목</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[200px]">세목 (세부내용)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[160px]">세목 (세부항목)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[160px]">적요 (상세내역)</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-20">{m}월</th>
+                    <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-24">{m}월</th>
                   ))}
                   <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-24">합계</th>
                   <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-12">삭제</th>
@@ -303,7 +321,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               <tbody className="bg-white divide-y divide-slate-200">
                 {!selectedTeam ? (
                   <tr>
-                    <td colSpan="16" className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan="17" className="px-6 py-12 text-center text-slate-500">
                       상단에서 팀을 먼저 선택해 주세요.
                     </td>
                   </tr>
@@ -337,15 +355,35 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           </div>
                         )}
                       </td>
+                      <td className="px-2 py-2 align-top">
+                        <input 
+                          type="text" 
+                          value={item.description || ''}
+                          onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          placeholder="비고, 상세명칭 입력"
+                          className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                        />
+                      </td>
                       {item.months.map((val, mIndex) => (
                         <td key={mIndex} className="px-1 py-2 align-top">
-                          <input 
-                            type="text" 
-                            value={val ? formatNumber(val) : ''}
-                            onChange={(e) => handleMonthChange(item.id, mIndex, e.target.value)}
-                            className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5 text-right px-1"
-                            placeholder="0"
-                          />
+                          <div className="relative group flex items-center">
+                            <input 
+                              type="text" 
+                              value={val ? formatNumber(val) : ''}
+                              onChange={(e) => handleMonthChange(item.id, mIndex, e.target.value)}
+                              className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5 text-right px-1 pr-4"
+                              placeholder="0"
+                            />
+                            {mIndex < 11 && (
+                              <button
+                                onClick={() => handleFillRight(item.id, mIndex, val)}
+                                className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-indigo-500 hover:text-indigo-700 bg-white/80 rounded"
+                                title="이 달의 금액을 12월까지 모두 동일하게 채우기"
+                              >
+                                <ChevronsRight className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       ))}
                       <td className="px-4 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3">
@@ -366,7 +404,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               {selectedTeam && items.length > 0 && (
                 <tfoot className="bg-slate-50 border-t border-slate-200">
                   <tr>
-                    <td colSpan="2" className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
+                    <td colSpan="3" className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
                     {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
                       const monthTotal = items.reduce((sum, item) => sum + (item.months[mIndex] || 0), 0);
                       return (
