@@ -1,19 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3 } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { ACCOUNT_GUIDE } from './accountGuide';
 
-const CATEGORIES = [
-  '인건비', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', 
-  '세금과공과', '감가상각비', '임차료', '수선비', '보험료', '차량유지비', 
-  '교육훈련비', '도서인쇄비', '소모품비', '지급수수료', '광고선전비', '기타'
-];
-
+const CATEGORIES = Object.keys(ACCOUNT_GUIDE);
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57', '#FEE500', '#FF9999'];
 
-// 재무팀 및 관리자 이메일 목록 (전체 데이터 조회 및 대시보드 접근 권한)
+// 재무팀 및 관리자 이메일 목록
 const FINANCE_EMAILS = [
     'choihy@composecoffee.co.kr',
     'kth@composecoffee.co.kr',
@@ -34,6 +30,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [items, setItems] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // 1. Fetch Data
   useEffect(() => {
@@ -55,13 +53,16 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const existing = budgetData.find(d => d.id === docId);
     
     if (existing && existing.items && existing.items.length > 0) {
+      // 기존 데이터 로드 (과거 detail 텍스트가 가이드에 없더라도 일단 표시)
       setItems(existing.items);
     } else {
       // 빈 항목 1개 기본 제공
+      const firstCategory = CATEGORIES[0];
+      const firstDetail = ACCOUNT_GUIDE[firstCategory][0].name;
       setItems([{
         id: Date.now().toString(),
-        category: '인건비',
-        detail: '',
+        category: firstCategory,
+        detail: firstDetail,
         months: Array(12).fill(0)
       }]);
     }
@@ -70,10 +71,12 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   // 3. Grid Handlers
   const handleAddRow = () => {
+    const firstCategory = CATEGORIES[0];
+    const firstDetail = ACCOUNT_GUIDE[firstCategory][0].name;
     setItems(prev => [...prev, {
       id: Date.now().toString(),
-      category: '기타',
-      detail: '',
+      category: firstCategory,
+      detail: firstDetail,
       months: Array(12).fill(0)
     }]);
   };
@@ -85,6 +88,11 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const handleItemChange = (id, field, value) => {
     setItems(prev => prev.map(item => {
       if (item.id === id) {
+        if (field === 'category') {
+          // 카테고리 변경 시, 첫 번째 세목으로 자동 변경
+          const firstDetail = ACCOUNT_GUIDE[value]?.[0]?.name || '';
+          return { ...item, category: value, detail: firstDetail };
+        }
         return { ...item, [field]: value };
       }
       return item;
@@ -146,7 +154,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   // 5. Dashboard Aggregation
   const currentYearData = useMemo(() => {
-    // 이전 버전의 데이터(items 배열이 없는 데이터) 및 '선택'이라는 잘못된 팀명으로 저장된 데이터 무시
     return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
   }, [budgetData, selectedYear]);
 
@@ -209,27 +216,37 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit mb-6">
-        {isFinance && (
+      {/* Tabs & Guide Button */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
+          {isFinance && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+                activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              전사 대시보드 (재무팀 전용)
+            </button>
+          )}
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => setActiveTab('input')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-              activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              activeTab === 'input' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
-            전사 대시보드 (재무팀 전용)
+            <Edit3 className="w-4 h-4" />
+            부서별 예산 입력
           </button>
-        )}
-        <button
-          onClick={() => setActiveTab('input')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-            activeTab === 'input' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-          }`}
+        </div>
+        
+        <button 
+          onClick={() => setIsGuideOpen(true)}
+          className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
         >
-          <Edit3 className="w-4 h-4" />
-          부서별 예산 입력
+          <BookOpen className="w-4 h-4" />
+          계정과목 기준표 (가이드)
         </button>
       </div>
 
@@ -238,7 +255,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h2 className="font-bold text-slate-800">예산 상세 입력 <span className="text-xs font-normal text-slate-500 ml-1">(단위: 천원)</span></h2>
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">예산 상세 입력 <span className="text-xs font-normal text-slate-500 ml-1">(단위: 천원)</span></h2>
               <select 
                 value={selectedTeam} 
                 onChange={(e) => setSelectedTeam(e.target.value)}
@@ -274,8 +291,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-32">계정과목</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[150px]">세부내용</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-36">계정과목</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[200px]">세목 (세부내용)</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                     <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-20">{m}월</th>
                   ))}
@@ -290,11 +307,14 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       상단에서 팀을 먼저 선택해 주세요.
                     </td>
                   </tr>
-                ) : items.map((item, index) => {
+                ) : items.map((item) => {
                   const rowTotal = item.months.reduce((sum, val) => sum + (val || 0), 0);
+                  const availableDetails = ACCOUNT_GUIDE[item.category] || [];
+                  const selectedDetailInfo = availableDetails.find(d => d.name === item.detail);
+                  
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50">
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 align-top">
                         <select 
                           value={item.category}
                           onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
@@ -303,17 +323,22 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </td>
-                      <td className="px-2 py-2">
-                        <input 
-                          type="text" 
+                      <td className="px-2 py-2 align-top">
+                        <select 
                           value={item.detail}
                           onChange={(e) => handleItemChange(item.id, 'detail', e.target.value)}
-                          placeholder="세부내용 입력"
                           className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
-                        />
+                        >
+                          {availableDetails.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                        </select>
+                        {selectedDetailInfo && (
+                          <div className="mt-1 text-[10px] text-slate-400 break-words leading-tight">
+                            {selectedDetailInfo.desc}
+                          </div>
+                        )}
                       </td>
                       {item.months.map((val, mIndex) => (
-                        <td key={mIndex} className="px-1 py-2">
+                        <td key={mIndex} className="px-1 py-2 align-top">
                           <input 
                             type="text" 
                             value={val ? formatNumber(val) : ''}
@@ -323,10 +348,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           />
                         </td>
                       ))}
-                      <td className="px-4 py-2 text-right font-bold text-indigo-600 text-sm">
+                      <td className="px-4 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3">
                         {formatNumber(rowTotal)}
                       </td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2 align-top text-center pt-3">
                         <button 
                           onClick={() => handleRemoveRow(item.id)}
                           className="text-red-400 hover:text-red-600 transition-colors p-1"
@@ -387,7 +412,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500">제출 완료 팀</p>
-                <p className="text-2xl font-bold text-slate-800">{currentYearData.length} <span className="text-base font-normal text-slate-500">/ {departments.length} 팀</span></p>
+                <p className="text-2xl font-bold text-slate-800">{currentYearData.length} <span className="text-base font-normal text-slate-500">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
               </div>
             </div>
           </div>
@@ -466,6 +491,59 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                  </tbody>
                </table>
              </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guide Modal */}
+      {isGuideOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">📘 판매관리비 운영 기준 (가이드)</h2>
+              <button 
+                onClick={() => setIsGuideOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-0 relative flex-1">
+              <table className="min-w-full divide-y divide-slate-200 border-collapse">
+                <thead className="bg-indigo-50 sticky top-0 shadow-sm z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-bold text-indigo-900 border-r border-indigo-100">계정과목</th>
+                    <th className="px-4 py-3 text-left text-sm font-bold text-indigo-900 border-r border-indigo-100">세목 (세부항목)</th>
+                    <th className="px-4 py-3 text-left text-sm font-bold text-indigo-900 border-r border-indigo-100">정의 및 관리 목적</th>
+                    <th className="px-4 py-3 text-center text-sm font-bold text-indigo-900">구분(코드)</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {Object.entries(ACCOUNT_GUIDE).flatMap(([category, subItems]) =>
+                    subItems.map((sub, idx) => (
+                      <tr key={`${category}-${sub.name}`} className="hover:bg-slate-50">
+                        {idx === 0 && (
+                          <td rowSpan={subItems.length} className="px-4 py-3 text-sm font-bold text-slate-800 align-middle border-r border-slate-200 bg-white">
+                            {category}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-sm font-medium text-slate-700 border-r border-slate-200 whitespace-nowrap">{sub.name}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 border-r border-slate-200 break-words max-w-sm">{sub.desc}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500 text-center whitespace-nowrap">{sub.code}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+              <button 
+                onClick={() => setIsGuideOpen(false)}
+                className="bg-slate-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-900 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
