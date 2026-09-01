@@ -6,6 +6,8 @@ const MOCK_FRANCHISES = [
         id: 'F20230801',
         name: '강남역점',
         owner: '홍길동',
+        bizNumber: '123-45-67890',
+        bizType: '커피전문점',
         contractDate: '2023-08-01',
         openDate: '2023-09-15',
         status: '오픈완료',
@@ -16,6 +18,8 @@ const MOCK_FRANCHISES = [
         id: 'F20230815',
         name: '판교테크노밸리점',
         owner: '김철수',
+        bizNumber: '234-56-78901',
+        bizType: '휴게음식점',
         contractDate: '2023-08-15',
         openDate: '2023-10-01',
         status: '잔금대기',
@@ -26,6 +30,8 @@ const MOCK_FRANCHISES = [
         id: 'F20230901',
         name: '홍대입구점',
         owner: '이영희',
+        bizNumber: '345-67-89012',
+        bizType: '일반음식점',
         contractDate: '2023-09-01',
         openDate: '2023-10-20',
         status: '인테리어중',
@@ -47,7 +53,7 @@ const FranchiseDashboard = () => {
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', contractDate: '', openDate: '' });
+    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '' });
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -66,6 +72,8 @@ const FranchiseDashboard = () => {
             id,
             name: newFranchise.name,
             owner: newFranchise.owner,
+            bizNumber: newFranchise.bizNumber,
+            bizType: newFranchise.bizType,
             contractDate: newFranchise.contractDate,
             openDate: newFranchise.openDate,
             status: '계약완료',
@@ -74,7 +82,7 @@ const FranchiseDashboard = () => {
         };
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
-        setNewFranchise({ name: '', owner: '', contractDate: '', openDate: '' });
+        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '' });
         setActiveTab('dashboard'); // 등록 후 대시보드로 이동해서 확인
     };
 
@@ -136,6 +144,11 @@ const FranchiseDashboard = () => {
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-slate-800">{f.name}</div>
                                             <div className="text-xs text-slate-500">{f.id} | {f.owner}</div>
+                                            {f.bizNumber && (
+                                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                                    {f.bizNumber} {f.bizType ? `(${f.bizType})` : ''}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(f.status)}`}>
@@ -250,15 +263,37 @@ const FranchiseDashboard = () => {
                                     onChange={e => setNewFranchise({...newFranchise, name: e.target.value})}
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        placeholder="대표자 성함"
+                                        value={newFranchise.owner}
+                                        onChange={e => setNewFranchise({...newFranchise, owner: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">사업자등록번호</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        placeholder="예: 123-45-67890"
+                                        value={newFranchise.bizNumber}
+                                        onChange={e => setNewFranchise({...newFranchise, bizNumber: e.target.value})}
+                                    />
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">업태/종목</label>
                                 <input 
                                     type="text" 
-                                    required
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                    placeholder="대표자 성함"
-                                    value={newFranchise.owner}
-                                    onChange={e => setNewFranchise({...newFranchise, owner: e.target.value})}
+                                    placeholder="예: 커피전문점 / 휴게음식점"
+                                    value={newFranchise.bizType}
+                                    onChange={e => setNewFranchise({...newFranchise, bizType: e.target.value})}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
