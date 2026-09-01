@@ -83,7 +83,7 @@ const FranchiseDashboard = () => {
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
         setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '' });
-        setActiveTab('dashboard'); // 등록 후 대시보드로 이동해서 확인
+        setActiveTab('basic'); // 등록 후 기본정보 목록으로 이동
     };
 
     const handleUpdateOpenDate = (id, newDate) => {
@@ -190,6 +190,54 @@ const FranchiseDashboard = () => {
         </div>
     );
 
+    const renderBasicInfoTab = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-slate-800">가맹점 기본정보 목록</h2>
+                <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                    <Plus className="w-4 h-4" /> 신규 가맹점 등록
+                </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-4 py-3">가맹점 코드</th>
+                                <th className="px-4 py-3">가맹점명</th>
+                                <th className="px-4 py-3">대표자</th>
+                                <th className="px-4 py-3">사업자등록번호</th>
+                                <th className="px-4 py-3">업태/종목</th>
+                                <th className="px-4 py-3">계약일자</th>
+                                <th className="px-4 py-3">오픈(예정)일자</th>
+                                <th className="px-4 py-3">상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {franchises.map(f => (
+                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-medium text-slate-500">{f.id}</td>
+                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-4 py-3">{f.owner}</td>
+                                    <td className="px-4 py-3 text-slate-500">{f.bizNumber || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-500">{f.bizType || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-600">{f.contractDate}</td>
+                                    <td className="px-4 py-3 text-indigo-600 font-medium">{f.openDate}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={`px-2 py-1 text-[10px] rounded-full border ${getStatusColor(f.status)}`}>
+                                            {f.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderPlaceholder = (title, description, icon, actionLabel, onAction) => (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center flex flex-col items-center justify-center min-h-[400px]">
             {icon}
@@ -235,13 +283,7 @@ const FranchiseDashboard = () => {
             {/* 탭 콘텐츠 */}
             <div>
                 {activeTab === 'dashboard' && renderDashboard()}
-                {activeTab === 'basic' && renderPlaceholder(
-                    '가맹점 기본정보 관리', 
-                    '영업/개설팀에서 신규 가맹점을 등록하고, 계약일자 및 대표자 정보 등을 관리하는 화면입니다.', 
-                    <FileText className="w-12 h-12 text-slate-300" />,
-                    '신규 가맹점 등록',
-                    () => setIsAddModalOpen(true)
-                )}
+                {activeTab === 'basic' && renderBasicInfoTab()}
                 {activeTab === 'sales' && renderPlaceholder(
                     '매출/수금 관리', 
                     '가맹비/교육비 매출과 오픈매출(계약금/중도금/잔금) 입금 내역을 업로드하고 각 가맹점에 매칭하는 화면입니다.', 
