@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X } from 'lucide-react';
 
 const MOCK_FRANCHISES = [
@@ -49,8 +49,26 @@ const TABS = [
 
 const FranchiseDashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [franchises, setFranchises] = useState(MOCK_FRANCHISES);
-    const [selectedMonth, setSelectedMonth] = useState(''); // 'YYYY-MM' format
+    const [franchises, setFranchises] = useState(() => {
+        const saved = localStorage.getItem('franchises');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        return MOCK_FRANCHISES;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('franchises', JSON.stringify(franchises));
+    }, [franchises]);
+
+    const getCurrentMonth = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    };
+    
+    const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
