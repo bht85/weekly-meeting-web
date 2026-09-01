@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 const HRDashboard = ({ db, user, isAdmin }) => {
-    const allowedEmails = ['esc913@composecoffee.co.kr', 'choihy@composecoffee.co.kr'];
+    const allowedEmails = ['choihy@composrcoffee.co.kr', 'choihy@composecoffee.co.kr'];
     const hasAccess = user && allowedEmails.includes(user.email);
 
     if (!hasAccess) {

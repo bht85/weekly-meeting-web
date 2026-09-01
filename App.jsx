@@ -88,13 +88,13 @@ const NAV_ITEMS = [
     { id: 'budget', label: '사업계획', icon: Calculator },
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
     
-    // --- 현재 미사용으로 임시 숨김 처리 ---
-    // { id: 'meeting', label: '주간회의록', icon: FileText },
-    // { id: 'collaboration', label: '협업 요청', icon: Share2 },
-    // { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
-    // { id: 'org', label: '조직도', icon: Users },
-    // { id: 'hr', label: 'HR 현황판', icon: PieChart },
-    // { id: 'kpi', label: 'KPI', icon: BarChart3 },
+    // --- 관리자(choihy) 전용 메뉴 ---
+    { id: 'meeting', label: '주간회의록', icon: FileText },
+    { id: 'collaboration', label: '협업 요청', icon: Share2 },
+    { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
+    { id: 'org', label: '조직도', icon: Users },
+    { id: 'hr', label: 'HR 현황판', icon: PieChart },
+    { id: 'kpi', label: 'KPI', icon: BarChart3 },
 ];
 
 const SECTIONS = [
@@ -1592,10 +1592,15 @@ function App() {
     const allDates = [...new Set([...(minutes?.map(m => m.date) || []), ...(feedbacks?.map(f => f.date) || [])])].sort((a, b) => b.localeCompare(a));
     const filteredDates = selectedDate === 'recent' ? allDates.slice(0, 2) : (selectedDate ? [selectedDate] : allDates);
 
-    // HR 현황판 권한 체크
-    const ALLOWED_HR_EMAILS = ['esc913@composecoffee.co.kr', 'choihy@composecoffee.co.kr'];
-    const canViewHR = user && ALLOWED_HR_EMAILS.includes(user.email);
-    const visibleNavItems = NAV_ITEMS.filter(item => item.id !== 'hr' || canViewHR);
+    // 관리자(choihy) 권한 체크 및 모든 메뉴 노출
+    const ALLOWED_HR_EMAILS = ['choihy@composrcoffee.co.kr', 'choihy@composecoffee.co.kr'];
+    const canViewAdminScreens = user && ALLOWED_HR_EMAILS.includes(user.email);
+    const visibleNavItems = NAV_ITEMS.filter(item => {
+        // 기본으로 노출할 메뉴들
+        const defaultVisible = ['news', 'calendar', 'budget', 'lunch'];
+        // 관리자면 모든 메뉴 노출, 아니면 기본 메뉴만 노출
+        return canViewAdminScreens || defaultVisible.includes(item.id);
+    });
 
     // 3. 정상 접속
     return (
