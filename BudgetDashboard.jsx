@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -24,7 +24,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   const [activeTab, setActiveTab] = useState(isFinance ? 'dashboard' : 'input');
   const [selectedYear, setSelectedYear] = useState(2027);
-  const [selectedTeam, setSelectedTeam] = useState('');
+  // 재무팀(관리자)은 기본 선택 없음, 일반 유저는 본인 팀 자동 선택
+  const [selectedTeam, setSelectedTeam] = useState(isFinance ? '' : (user?.department || ''));
   
   const [budgetData, setBudgetData] = useState([]);
   const [items, setItems] = useState([]);
@@ -187,6 +188,49 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     }
   };
 
+  useEffect(() => {
+    if (!isFinance && user?.department) {
+      setSelectedTeam(user.department);
+    }
+  }, [user, isFinance]);
+
+  const handleExportExcel = () => {
+    const headers = ['부서명', '연도', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    
+    const exportData = budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
+    
+    if (exportData.length === 0) {
+      alert("해당 연도에 등록된 예산 데이터가 없습니다.");
+      return;
+    }
+
+    exportData.forEach(doc => {
+      doc.items.forEach(item => {
+        const row = [
+          doc.team,
+          doc.year,
+          item.category,
+          item.detail,
+          `"${(item.description || '').replace(/"/g, '""')}"`,
+          ...item.months,
+          item.months.reduce((sum, val) => sum + (val || 0), 0)
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedYear}년도_판관비_예산취합.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // 5. Dashboard Aggregation
   const currentYearData = useMemo(() => {
     return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
@@ -307,13 +351,22 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           </button>
         </div>
         
-        <button 
-          onClick={() => setIsGuideOpen(true)}
-          className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-        >
-          <BookOpen className="w-4 h-4" />
-          계정과목 기준표 (가이드)
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            엑셀 다운로드
+          </button>
+          <button 
+            onClick={() => setIsGuideOpen(true)}
+            className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
+            <BookOpen className="w-4 h-4" />
+            계정과목 기준표 (가이드)
+          </button>
+        </div>
       </div>
 
       {/* INPUT TAB */}
@@ -325,10 +378,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               <select 
                 value={selectedTeam} 
                 onChange={(e) => setSelectedTeam(e.target.value)}
-                className="border border-slate-200 rounded-lg p-1.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium"
+                disabled={!isFinance}
+                className="border border-slate-200 rounded-lg p-1.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium disabled:bg-slate-100 disabled:text-slate-500"
               >
                 <option value="">본인 소속 팀을 선택하세요</option>
-                {departments.filter(dept => dept !== '선택').map(dept => (
+                {departments
+                  .filter(dept => dept !== '선택' && (isFinance || dept === user?.department))
+                  .map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
