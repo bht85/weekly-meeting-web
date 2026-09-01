@@ -32,6 +32,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [loadedFormId, setLoadedFormId] = useState(null);
 
   // 1. Fetch Data
   useEffect(() => {
@@ -47,15 +48,25 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   useEffect(() => {
     if (!selectedTeam) {
       setItems([]);
+      setLoadedFormId(null);
       return;
     }
     const docId = `${selectedYear}_${selectedTeam}`;
+    
+    // 이미 현재 팀/연도의 데이터를 로드해서 작성 중인 경우, 
+    // 누군가 다른 데이터를 저장하여 budgetData가 업데이트되더라도 내 화면이 초기화되지 않도록 방어
+    if (loadedFormId === docId) {
+      return;
+    }
+
     const existing = budgetData.find(d => d.id === docId);
     
+    // budgetData에 기존 데이터가 있으면 로드
     if (existing && existing.items && existing.items.length > 0) {
       setItems(existing.items);
-    } else {
-      // 빈 항목 1개 기본 제공
+      setLoadedFormId(docId);
+    } else if (budgetData.length > 0 || !existing) {
+      // 빈 항목 1개 기본 제공 (새로운 폼)
       const firstCategory = CATEGORIES[0];
       const firstDetail = ACCOUNT_GUIDE[firstCategory][0].name;
       setItems([{
@@ -65,9 +76,12 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         description: '',
         months: Array(12).fill(0)
       }]);
+      // 아직 서버에서 budgetData 전체가 덜 불러와졌을 수 있으므로 budgetData가 비어있지 않을때만 완료처리하거나 일단 로컬 폼 할당
+      // 더 안전한 방법은 위 로직대로 폼 ID를 마킹해두는 것.
+      setLoadedFormId(docId);
     }
     setSaveMessage('');
-  }, [selectedYear, selectedTeam, budgetData]);
+  }, [selectedYear, selectedTeam, budgetData, loadedFormId]);
 
   // 3. Grid Handlers
   const handleAddRow = () => {
@@ -145,7 +159,11 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         const rowTotal = item.months.reduce((sum, val) => sum + (val || 0), 0);
         totalAmount += rowTotal;
         return {
-          ...item,
+          id: item.id || Date.now().toString(),
+          category: item.category || '',
+          detail: item.detail || '',
+          description: item.description || '',
+          months: (item.months || []).map(v => v || 0),
           rowTotal
         };
       });
@@ -305,17 +323,17 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="w-[1650px] min-w-full divide-y divide-slate-200 table-fixed">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-36">계정과목</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[160px]">세목 (세부항목)</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider min-w-[160px]">적요 (상세내역)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">계정과목</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">세목 (세부항목)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">적요 (상세내역)</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-24">{m}월</th>
+                    <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-[85px]">{m}월</th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-24">합계</th>
-                  <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-12">삭제</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[100px]">합계</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-[50px]">삭제</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
