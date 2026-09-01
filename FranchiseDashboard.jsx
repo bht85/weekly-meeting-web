@@ -86,6 +86,21 @@ const FranchiseDashboard = () => {
         setActiveTab('basic'); // 등록 후 기본정보 목록으로 이동
     };
 
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editFranchise, setEditFranchise] = useState(null);
+
+    const openEditModal = (f) => {
+        setEditFranchise({ ...f });
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditSubmit = (e) => {
+        e.preventDefault();
+        setFranchises(franchises.map(f => f.id === editFranchise.id ? editFranchise : f));
+        setIsEditModalOpen(false);
+        setEditFranchise(null);
+    };
+
     const handleUpdateOpenDate = (id, newDate) => {
         setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
     };
@@ -212,6 +227,7 @@ const FranchiseDashboard = () => {
                                 <th className="px-4 py-3">계약일자</th>
                                 <th className="px-4 py-3">오픈(예정)일자</th>
                                 <th className="px-4 py-3">상태</th>
+                                <th className="px-4 py-3 text-center">관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -228,6 +244,11 @@ const FranchiseDashboard = () => {
                                         <span className={`px-2 py-1 text-[10px] rounded-full border ${getStatusColor(f.status)}`}>
                                             {f.status}
                                         </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <button onClick={() => openEditModal(f)} className="px-2 py-1 text-xs text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50">
+                                            수정
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -450,6 +471,96 @@ const FranchiseDashboard = () => {
                                 </button>
                                 <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
                                     등록하기
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 기본정보 수정 모달 */}
+            {isEditModalOpen && editFranchise && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-lg font-bold text-slate-800">가맹점 기본정보 수정</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">가맹점명 (지점명)</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                    value={editFranchise.name}
+                                    onChange={e => setEditFranchise({...editFranchise, name: e.target.value})}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">대표자명</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        value={editFranchise.owner}
+                                        onChange={e => setEditFranchise({...editFranchise, owner: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">사업자등록번호</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        value={editFranchise.bizNumber}
+                                        onChange={e => setEditFranchise({...editFranchise, bizNumber: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">업태/종목</label>
+                                <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                    value={editFranchise.bizType}
+                                    onChange={e => setEditFranchise({...editFranchise, bizType: e.target.value})}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">계약일자</label>
+                                    <input 
+                                        type="date" 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                        value={editFranchise.contractDate}
+                                        onChange={e => setEditFranchise({...editFranchise, contractDate: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">상태</label>
+                                    <select 
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                        value={editFranchise.status}
+                                        onChange={e => setEditFranchise({...editFranchise, status: e.target.value})}
+                                    >
+                                        <option value="계약완료">계약완료</option>
+                                        <option value="인테리어중">인테리어중</option>
+                                        <option value="잔금대기">잔금대기</option>
+                                        <option value="오픈완료">오픈완료</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 flex gap-3">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">
+                                    취소
+                                </button>
+                                <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                                    저장하기
                                 </button>
                             </div>
                         </form>
