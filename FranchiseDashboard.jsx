@@ -62,6 +62,35 @@ const TABS = [
     { id: 'expense', label: '매입/비용 관리', icon: ShoppingCart },
 ];
 
+const DateInlineEditor = ({ value, onSave }) => {
+    const [editValue, setEditValue] = React.useState(value || '');
+    const isChanged = editValue !== (value || '');
+    
+    // 외부에서 데이터 변경 시 동기화
+    React.useEffect(() => {
+        setEditValue(value || '');
+    }, [value]);
+
+    return (
+        <div className="flex items-center gap-1">
+            <input 
+                type="date" 
+                value={editValue} 
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-28 px-1 py-1 border border-transparent rounded-md text-xs text-slate-700 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 hover:bg-white hover:border-slate-300 transition-colors bg-transparent"
+            />
+            {isChanged && (
+                <button 
+                    onClick={() => onSave(editValue)}
+                    className="px-2 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded shadow hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                >
+                    저장
+                </button>
+            )}
+        </div>
+    );
+};
+
 const FranchiseDashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     
@@ -323,12 +352,9 @@ const FranchiseDashboard = () => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <input 
-                                                type="date" 
-                                                value={f.openDate || ''} 
-                                                onChange={(e) => handleUpdateOpenDate(f.id, e.target.value)}
-                                                className="px-2 py-1 border border-transparent rounded-md text-xs text-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-transparent hover:bg-white hover:border-slate-300 transition-colors"
-                                                title="클릭하여 오픈일자 수정"
+                                            <DateInlineEditor 
+                                                value={f.openDate} 
+                                                onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                                             />
                                         </td>
                                         <td className="px-4 py-3 text-right text-green-600 font-medium">{totalSales.toLocaleString()}</td>
@@ -379,12 +405,9 @@ const FranchiseDashboard = () => {
                                     <td className="px-4 py-3 text-slate-500">{f.bizType || '-'}</td>
                                     <td className="px-4 py-3 text-slate-600">{f.contractDate}</td>
                                     <td className="px-4 py-3 text-indigo-600 font-medium">
-                                        <input 
-                                            type="date" 
-                                            value={f.openDate || ''} 
-                                            onChange={(e) => handleUpdateOpenDate(f.id, e.target.value)}
-                                            className="px-2 py-1 border border-transparent rounded-md text-xs text-indigo-600 font-medium focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-transparent hover:bg-white hover:border-slate-300 transition-colors"
-                                            title="클릭하여 오픈일자 수정"
+                                        <DateInlineEditor 
+                                            value={f.openDate} 
+                                            onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                                         />
                                     </td>
                                     <td className="px-4 py-3">
@@ -961,6 +984,16 @@ const FranchiseDashboard = () => {
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
                                         value={editFranchise.contractDate}
                                         onChange={e => setEditFranchise({...editFranchise, contractDate: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">예상 오픈일자</label>
+                                    <input 
+                                        type="date" 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                        value={editFranchise.openDate}
+                                        onChange={e => setEditFranchise({...editFranchise, openDate: e.target.value})}
                                     />
                                 </div>
                                 <div>
