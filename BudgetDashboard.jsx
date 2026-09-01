@@ -231,6 +231,42 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     document.body.removeChild(link);
   };
 
+  const handleExportSummaryExcel = () => {
+    const headers = ['계정과목', '세목(세부항목)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    
+    if (detailMonthlyTotals.length === 0) {
+      alert("해당 연도에 등록된 예산 데이터가 없습니다.");
+      return;
+    }
+
+    detailMonthlyTotals.forEach(c => {
+      const row = [
+        c.category,
+        c.detail,
+        ...c.months,
+        c.total
+      ];
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // 총계 행 추가
+    const monthTotals = Array(12).fill(0).map((_, i) => detailMonthlyTotals.reduce((sum, c) => sum + c.months[i], 0));
+    const grandTotal = detailMonthlyTotals.reduce((sum, c) => sum + c.total, 0);
+    const totalRow = ['총계', '', ...monthTotals, grandTotal];
+    csvContent += totalRow.join(',') + '\n';
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedYear}년도_계정과목_월별합산현황.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // 5. Dashboard Aggregation
   const currentYearData = useMemo(() => {
     return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
@@ -560,41 +596,11 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             </div>
           </div>
 
+          {/* 차트 영역 숨김 처리 (요청 사항)
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><PieChartIcon className="w-4 h-4 text-slate-500" /> 항목별 비중</h3>
-              <div className="h-64">
-                {categoryTotals.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={categoryTotals} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                        {categoryTotals.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatNumber(value) + ' 천원'} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : <div className="flex items-center justify-center h-full text-slate-400 text-sm">데이터 없음</div>}
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-slate-500" /> 팀별 판관비 총액</h3>
-              <div className="h-64">
-                {teamTotals.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={teamTotals} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 12}} />
-                      <Tooltip formatter={(value) => formatNumber(value) + ' 천원'} />
-                      <Bar dataKey="value" fill="#4f46e5" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : <div className="flex items-center justify-center h-full text-slate-400 text-sm">데이터 없음</div>}
-              </div>
-            </div>
+            ... 차트 영역 ...
           </div>
+          */}
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
              <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -638,8 +644,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
           {/* New Category by Month Summary Table */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-             <div className="p-4 border-b border-slate-100 bg-slate-50">
+             <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                <h3 className="font-bold text-slate-800">계정과목 및 세목별 월별 합산 현황 (단위: 천원)</h3>
+               <button
+                 onClick={handleExportSummaryExcel}
+                 className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
+               >
+                 <Download className="w-4 h-4" />
+                 엑셀 다운로드
+               </button>
              </div>
              <div className="overflow-x-auto">
                <table className="w-[1400px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
