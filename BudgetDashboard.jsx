@@ -221,6 +221,28 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     })).sort((a, b) => b.value - a.value);
   }, [currentYearData]);
 
+  const categoryMonthlyTotals = useMemo(() => {
+    const map = {};
+    CATEGORIES.forEach(c => {
+      map[c] = { name: c, months: Array(12).fill(0), total: 0 };
+    });
+
+    currentYearData.forEach(doc => {
+      (doc.items || []).forEach(item => {
+        if (map[item.category]) {
+          (item.months || []).forEach((val, idx) => {
+            if (idx < 12) map[item.category].months[idx] += (val || 0);
+          });
+          map[item.category].total += (item.rowTotal || 0);
+        }
+      });
+    });
+
+    return Object.values(map)
+      .filter(c => c.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [currentYearData]);
+
   const formatNumber = (num) => {
     if (!num && num !== 0) return '';
     return num.toLocaleString();
@@ -545,6 +567,57 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                      );
                    })}
                  </tbody>
+               </table>
+             </div>
+          </div>
+
+          {/* New Category by Month Summary Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+             <div className="p-4 border-b border-slate-100 bg-slate-50">
+               <h3 className="font-bold text-slate-800">계정과목별 월별 합산 현황 (단위: 천원)</h3>
+             </div>
+             <div className="overflow-x-auto">
+               <table className="w-[1200px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
+                 <thead className="bg-slate-50">
+                   <tr>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[160px]">계정과목</th>
+                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                       <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[75px]">{m}월</th>
+                     ))}
+                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase w-[120px]">합계</th>
+                   </tr>
+                 </thead>
+                 <tbody className="bg-white divide-y divide-slate-200">
+                   {categoryMonthlyTotals.map(c => (
+                     <tr key={c.name} className="hover:bg-slate-50">
+                       <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-slate-900">{c.name}</td>
+                       {c.months.map((val, idx) => (
+                         <td key={idx} className="px-2 py-3 whitespace-nowrap text-sm text-slate-500 text-right">
+                           {formatNumber(val)}
+                         </td>
+                       ))}
+                       <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-indigo-600 text-right">
+                         {formatNumber(c.total)}
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+                 <tfoot className="bg-slate-50 border-t border-slate-200">
+                   <tr>
+                     <td className="px-6 py-3 text-left font-bold text-slate-700">총계</td>
+                     {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                       const monthGrandTotal = categoryMonthlyTotals.reduce((sum, c) => sum + c.months[mIndex], 0);
+                       return (
+                         <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-sm">
+                           {formatNumber(monthGrandTotal)}
+                         </td>
+                       );
+                     })}
+                     <td className="px-6 py-3 text-right font-bold text-indigo-600 text-base">
+                       {formatNumber(totalSGA)}
+                     </td>
+                   </tr>
+                 </tfoot>
                </table>
              </div>
           </div>
