@@ -262,7 +262,15 @@ const FranchiseDashboard = () => {
                                     <td className="px-4 py-3 text-slate-500">{f.bizNumber || '-'}</td>
                                     <td className="px-4 py-3 text-slate-500">{f.bizType || '-'}</td>
                                     <td className="px-4 py-3 text-slate-600">{f.contractDate}</td>
-                                    <td className="px-4 py-3 text-indigo-600 font-medium">{f.openDate}</td>
+                                    <td className="px-4 py-3 text-indigo-600 font-medium">
+                                        <input 
+                                            type="date" 
+                                            value={f.openDate || ''} 
+                                            onChange={(e) => handleUpdateOpenDate(f.id, e.target.value)}
+                                            className="px-2 py-1 border border-transparent rounded-md text-xs text-indigo-600 font-medium focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-transparent hover:bg-white hover:border-slate-300 transition-colors"
+                                            title="클릭하여 오픈일자 수정"
+                                        />
+                                    </td>
                                     <td className="px-4 py-3">
                                         <span className={`px-2 py-1 text-[10px] rounded-full border ${getStatusColor(f.status)}`}>
                                             {f.status}
