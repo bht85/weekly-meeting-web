@@ -237,6 +237,84 @@ const FranchiseDashboard = () => {
             </div>
         </div>
     );
+    const renderSalesTab = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-slate-800">매출/수금 내역</h2>
+                <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                    <Plus className="w-4 h-4" /> 입금 내역 업로드
+                </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-4 py-3">가맹점명</th>
+                                <th className="px-4 py-3 text-right">총 수금액</th>
+                                <th className="px-4 py-3 text-right text-slate-400">가맹비</th>
+                                <th className="px-4 py-3 text-right text-slate-400">교육비</th>
+                                <th className="px-4 py-3 text-right text-blue-500">계약금</th>
+                                <th className="px-4 py-3 text-right text-blue-500">중도금</th>
+                                <th className="px-4 py-3 text-right text-blue-500">잔금</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {franchises.map(f => (
+                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-4 py-3 text-right font-bold text-green-600">{calcTotalSales(f).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-slate-600">{f.sales.franchiseFee.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-slate-600">{f.sales.educationFee.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.deposit.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.middle.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.balance.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderExpenseTab = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-slate-800">매입/비용 내역</h2>
+                <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                    <Plus className="w-4 h-4" /> 매입 내역 등록
+                </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-4 py-3">가맹점명</th>
+                                <th className="px-4 py-3 text-right">총 매입액</th>
+                                <th className="px-4 py-3 text-right text-orange-500">인테리어</th>
+                                <th className="px-4 py-3 text-right text-purple-500">기기장비</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {franchises.map(f => (
+                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-4 py-3 text-right font-bold text-red-600">{calcTotalExpenses(f).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-orange-600">{f.expenses.interior.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-purple-600">{f.expenses.equipment.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
 
     const renderPlaceholder = (title, description, icon, actionLabel, onAction) => (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center flex flex-col items-center justify-center min-h-[400px]">
@@ -284,20 +362,8 @@ const FranchiseDashboard = () => {
             <div>
                 {activeTab === 'dashboard' && renderDashboard()}
                 {activeTab === 'basic' && renderBasicInfoTab()}
-                {activeTab === 'sales' && renderPlaceholder(
-                    '매출/수금 관리', 
-                    '가맹비/교육비 매출과 오픈매출(계약금/중도금/잔금) 입금 내역을 업로드하고 각 가맹점에 매칭하는 화면입니다.', 
-                    <DollarSign className="w-12 h-12 text-slate-300" />,
-                    '입금 내역 업로드',
-                    () => alert('입금 내역(엑셀) 업로드 기능은 데이터베이스 연동 시 구현됩니다.')
-                )}
-                {activeTab === 'expense' && renderPlaceholder(
-                    '매입/비용 관리', 
-                    '인테리어, 기기장비 등의 발주 비용을 가맹점별로 입력하고 매칭하는 화면입니다.', 
-                    <ShoppingCart className="w-12 h-12 text-slate-300" />,
-                    '비용 내역 등록',
-                    () => alert('매입/비용 내역 등록 기능은 데이터베이스 연동 시 구현됩니다.')
-                )}
+                {activeTab === 'sales' && renderSalesTab()}
+                {activeTab === 'expense' && renderExpenseTab()}
             </div>
 
             {/* 신규 등록 모달 */}
