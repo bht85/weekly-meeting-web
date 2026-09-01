@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2 } from 'lucide-react';
 
+const MOCK_VENDORS = [
+    { id: 'v-1', name: '다온디자인 (인테리어)' },
+    { id: 'v-2', name: '현대사인 (간판)' },
+    { id: 'v-3', name: '제일공조 (냉난방)' }
+];
+
 const MOCK_CATALOG = [
     { id: 'eq-1', name: '에스프레소 머신', price: 15000000 },
     { id: 'eq-2', name: '제빙기', price: 2000000 },
@@ -20,7 +26,7 @@ const MOCK_FRANCHISES = [
         sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 20000000 } },
         expenses: { 
             equipmentItems: [{ itemId: 'eq-1', qty: 1 }, { itemId: 'eq-2', qty: 1 }],
-            interiorItems: [{ id: 'int-0', name: '기본 인테리어 (20평)', price: 30000000 }, { id: 'int-1', name: '간판 및 외부사인', price: 5000000 }]
+            interiorItems: [{ id: 'int-0', vendorId: 'v-1', price: 30000000 }, { id: 'int-1', vendorId: 'v-2', price: 5000000 }]
         }
     },
     {
@@ -35,7 +41,7 @@ const MOCK_FRANCHISES = [
         sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 0 } },
         expenses: { 
             equipmentItems: [{ itemId: 'eq-1', qty: 1 }, { itemId: 'eq-3', qty: 2 }],
-            interiorItems: [{ id: 'int-2', name: '기본 인테리어 (25평)', price: 38000000 }]
+            interiorItems: [{ id: 'int-2', vendorId: 'v-1', price: 38000000 }]
         }
     },
     {
@@ -50,7 +56,7 @@ const MOCK_FRANCHISES = [
         sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 0, balance: 0 } },
         expenses: { 
             equipmentItems: [],
-            interiorItems: [{ id: 'int-3', name: '기본 인테리어 (15평)', price: 15000000 }]
+            interiorItems: [{ id: 'int-3', vendorId: 'v-1', price: 15000000 }]
         }
     }
 ];
@@ -104,6 +110,16 @@ const FranchiseDashboard = () => {
         localStorage.setItem('expenseCatalogV2', JSON.stringify(expenseCatalog));
     }, [expenseCatalog]);
 
+    // Vendor State (Interior)
+    const [vendorCatalog, setVendorCatalog] = useState(() => {
+        const saved = localStorage.getItem('vendorCatalogV1');
+        return saved ? JSON.parse(saved) : MOCK_VENDORS;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('vendorCatalogV1', JSON.stringify(vendorCatalog));
+    }, [vendorCatalog]);
+
     // Franchises State
     const [franchises, setFranchises] = useState(() => {
         const saved = localStorage.getItem('franchisesV2');
@@ -130,6 +146,10 @@ const FranchiseDashboard = () => {
     // 단가표 관리 모달 (기기장비 전용)
     const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
     const [newCatalogItem, setNewCatalogItem] = useState({ name: '', price: '' });
+
+    // 협력업체 관리 모달 (인테리어 등)
+    const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
+    const [newVendorItem, setNewVendorItem] = useState({ name: '' });
 
     // 비용 매칭 모달
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
@@ -205,6 +225,23 @@ const FranchiseDashboard = () => {
         setExpenseCatalog(expenseCatalog.filter(item => item.id !== id));
     };
 
+    // 협력업체 마스터 추가
+    const handleAddVendorItem = (e) => {
+        e.preventDefault();
+        if(!newVendorItem.name) return;
+        
+        const newItem = {
+            id: 'v-' + Date.now(),
+            name: newVendorItem.name
+        };
+        setVendorCatalog([...vendorCatalog, newItem]);
+        setNewVendorItem({ name: '' });
+    };
+
+    const handleDeleteVendorItem = (id) => {
+        setVendorCatalog(vendorCatalog.filter(item => item.id !== id));
+    };
+
     // 비용 상세 모달 열기
     const openMatchModal = (f) => {
         setMatchingFranchise(f);
@@ -235,7 +272,7 @@ const FranchiseDashboard = () => {
     const handleAddInterior = () => {
         setEditingInteriorItems([
             ...editingInteriorItems, 
-            { id: 'int-' + Date.now(), name: '', price: 0 }
+            { id: 'int-' + Date.now(), vendorId: '', price: 0 }
         ]);
     };
 
@@ -475,8 +512,11 @@ const FranchiseDashboard = () => {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-slate-800">매입/비용 내역</h2>
                 <div className="flex gap-2">
+                    <button onClick={() => setIsVendorModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors text-sm">
+                        <Settings className="w-4 h-4" /> 협력업체(인테리어) 마스터
+                    </button>
                     <button onClick={() => setIsCatalogModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors text-sm">
-                        <Settings className="w-4 h-4" /> 기기장비 마스터 관리
+                        <Settings className="w-4 h-4" /> 기기장비 마스터
                     </button>
                 </div>
             </div>
@@ -653,6 +693,75 @@ const FranchiseDashboard = () => {
                 </div>
             )}
 
+            {/* 협력업체 마스터 관리 모달 */}
+            {isVendorModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Settings className="w-5 h-5"/> 협력업체(인테리어) 마스터 관리</h3>
+                            <button onClick={() => setIsVendorModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+                            <form onSubmit={handleAddVendorItem} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+                                <h4 className="text-sm font-bold text-slate-800 mb-3">새 협력업체 추가</h4>
+                                <div className="flex items-end gap-3">
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">업체명 (분야)</label>
+                                        <input 
+                                            type="text" required
+                                            value={newVendorItem.name}
+                                            onChange={e => setNewVendorItem({...newVendorItem, name: e.target.value})}
+                                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-indigo-500"
+                                            placeholder="예: 다온디자인 (인테리어)"
+                                        />
+                                    </div>
+                                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 h-[38px]">
+                                        추가
+                                    </button>
+                                </div>
+                            </form>
+
+                            <h4 className="text-sm font-bold text-slate-800 mb-2">등록된 협력업체 리스트</h4>
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left">분류</th>
+                                            <th className="px-4 py-2 text-left">업체명</th>
+                                            <th className="px-4 py-2 text-center w-16">삭제</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {vendorCatalog.map(item => (
+                                            <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                                                <td className="px-4 py-2">
+                                                    <span className="px-2 py-1 text-[10px] rounded-md border bg-orange-50 text-orange-700 border-orange-200">
+                                                        협력업체
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2 text-slate-800 font-medium">{item.name}</td>
+                                                <td className="px-4 py-2 text-center">
+                                                    <button onClick={() => handleDeleteVendorItem(item.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+                                                        <Trash2 className="w-4 h-4 mx-auto" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {vendorCatalog.length === 0 && (
+                                            <tr>
+                                                <td colSpan="3" className="px-4 py-8 text-center text-slate-500">등록된 협력업체가 없습니다.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* 비용 상세 입력 모달 */}
             {isMatchModalOpen && matchingFranchise && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -683,7 +792,7 @@ const FranchiseDashboard = () => {
                                     <table className="w-full text-sm">
                                         <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200">
                                             <tr>
-                                                <th className="px-4 py-2 text-left">항목명 / 내역</th>
+                                                <th className="px-4 py-2 text-left">협력업체 선택</th>
                                                 <th className="px-4 py-2 text-right w-48">금액(원)</th>
                                                 <th className="px-4 py-2 text-center w-16">삭제</th>
                                             </tr>
@@ -692,13 +801,16 @@ const FranchiseDashboard = () => {
                                             {editingInteriorItems.map((item, idx) => (
                                                 <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                                                     <td className="px-4 py-2">
-                                                        <input 
-                                                            type="text"
-                                                            value={item.name}
-                                                            onChange={(e) => handleUpdateInterior(item.id, 'name', e.target.value)}
-                                                            placeholder="예: 간판 공사"
+                                                        <select
+                                                            value={item.vendorId || ''}
+                                                            onChange={(e) => handleUpdateInterior(item.id, 'vendorId', e.target.value)}
                                                             className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:border-orange-400"
-                                                        />
+                                                        >
+                                                            <option value="" disabled>업체를 선택하세요</option>
+                                                            {vendorCatalog.map(v => (
+                                                                <option key={v.id} value={v.id}>{v.name}</option>
+                                                            ))}
+                                                        </select>
                                                     </td>
                                                     <td className="px-4 py-2">
                                                         <input 
