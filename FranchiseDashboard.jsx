@@ -50,6 +50,7 @@ const TABS = [
 const FranchiseDashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [franchises, setFranchises] = useState(MOCK_FRANCHISES);
+    const [selectedMonth, setSelectedMonth] = useState(''); // 'YYYY-MM' format
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -108,30 +109,34 @@ const FranchiseDashboard = () => {
     const calcTotalSales = (f) => f.sales.franchiseFee + f.sales.educationFee + f.sales.open.deposit + f.sales.open.middle + f.sales.open.balance;
     const calcTotalExpenses = (f) => f.expenses.interior + f.expenses.equipment;
 
+    const filteredFranchises = selectedMonth
+        ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
+        : franchises;
+
     const renderDashboard = () => (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">총 오픈/진행 가맹점</div>
-                    <div className="text-2xl font-bold">{franchises.length}개</div>
+                    <div className="text-2xl font-bold">{filteredFranchises.length}개</div>
                 </div>
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">총 예상 매출액</div>
                     <div className="text-2xl font-bold text-green-600">
-                        {(franchises.reduce((acc, f) => acc + calcTotalSales(f), 0)).toLocaleString()}원
+                        {(filteredFranchises.reduce((acc, f) => acc + calcTotalSales(f), 0)).toLocaleString()}원
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">총 매입/비용</div>
                     <div className="text-2xl font-bold text-red-600">
-                        {(franchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0)).toLocaleString()}원
+                        {(filteredFranchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0)).toLocaleString()}원
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">예상 누적 마진</div>
                     <div className="text-2xl font-bold text-indigo-600">
-                        {((franchises.reduce((acc, f) => acc + calcTotalSales(f), 0)) - 
-                          (franchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0))).toLocaleString()}원
+                        {((filteredFranchises.reduce((acc, f) => acc + calcTotalSales(f), 0)) - 
+                          (filteredFranchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0))).toLocaleString()}원
                     </div>
                 </div>
             </div>
@@ -158,7 +163,7 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {franchises.map(f => {
+                            {filteredFranchises.map(f => {
                                 const totalSales = calcTotalSales(f);
                                 const totalExpenses = calcTotalExpenses(f);
                                 const margin = totalSales - totalExpenses;
@@ -231,7 +236,7 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {franchises.map(f => (
+                            {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 font-medium text-slate-500">{f.id}</td>
                                     <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
@@ -282,7 +287,7 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {franchises.map(f => (
+                            {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
                                     <td className="px-4 py-3 text-right font-bold text-green-600">{calcTotalSales(f).toLocaleString()}</td>
@@ -321,7 +326,7 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {franchises.map(f => (
+                            {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
                                     <td className="px-4 py-3 text-right font-bold text-red-600">{calcTotalExpenses(f).toLocaleString()}</td>
@@ -350,12 +355,31 @@ const FranchiseDashboard = () => {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative">
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <Building2 className="w-6 h-6 text-indigo-600" />
-                    오픈가맹 관리
-                </h1>
-                <p className="mt-2 text-slate-500 text-sm">신규 가맹점의 기본 정보, 수금, 비용을 각 부서에서 취합하여 최종 수익성을 분석합니다.</p>
+            <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <Building2 className="w-6 h-6 text-indigo-600" />
+                        오픈가맹 관리
+                    </h1>
+                    <p className="mt-2 text-slate-500 text-sm">신규 가맹점의 기본 정보, 수금, 비용을 각 부서에서 취합하여 최종 수익성을 분석합니다.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-slate-700 whitespace-nowrap">오픈월 선택:</label>
+                    <input 
+                        type="month" 
+                        value={selectedMonth} 
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {selectedMonth && (
+                        <button 
+                            onClick={() => setSelectedMonth('')}
+                            className="px-3 py-2 text-sm text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+                        >
+                            전체보기
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* 탭 네비게이션 */}
