@@ -11,8 +11,8 @@ const MOCK_FRANCHISES = [
         contractDate: '2023-08-01',
         openDate: '2023-09-15',
         status: '오픈완료',
-        sales: { deposit: 10000000, middle: 20000000, balance: 20000000 },
-        expenses: { interior: 15000000, equipment: 12000000, etc: 3000000 }
+        sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 20000000 } },
+        expenses: { interior: 35000000, equipment: 25000000 }
     },
     {
         id: 'F20230815',
@@ -23,8 +23,8 @@ const MOCK_FRANCHISES = [
         contractDate: '2023-08-15',
         openDate: '2023-10-01',
         status: '잔금대기',
-        sales: { deposit: 10000000, middle: 20000000, balance: 0 },
-        expenses: { interior: 18000000, equipment: 12000000, etc: 0 }
+        sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 0 } },
+        expenses: { interior: 38000000, equipment: 25000000 }
     },
     {
         id: 'F20230901',
@@ -35,8 +35,8 @@ const MOCK_FRANCHISES = [
         contractDate: '2023-09-01',
         openDate: '2023-10-20',
         status: '인테리어중',
-        sales: { deposit: 10000000, middle: 0, balance: 0 },
-        expenses: { interior: 5000000, equipment: 0, etc: 0 }
+        sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 0, balance: 0 } },
+        expenses: { interior: 15000000, equipment: 0 }
     }
 ];
 
@@ -77,8 +77,8 @@ const FranchiseDashboard = () => {
             contractDate: newFranchise.contractDate,
             openDate: newFranchise.openDate,
             status: '계약완료',
-            sales: { deposit: 0, middle: 0, balance: 0 },
-            expenses: { interior: 0, equipment: 0, etc: 0 }
+            sales: { franchiseFee: 0, educationFee: 0, open: { deposit: 0, middle: 0, balance: 0 } },
+            expenses: { interior: 0, equipment: 0 }
         };
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
@@ -90,6 +90,9 @@ const FranchiseDashboard = () => {
         setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
     };
 
+    const calcTotalSales = (f) => f.sales.franchiseFee + f.sales.educationFee + f.sales.open.deposit + f.sales.open.middle + f.sales.open.balance;
+    const calcTotalExpenses = (f) => f.expenses.interior + f.expenses.equipment;
+
     const renderDashboard = () => (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -100,20 +103,20 @@ const FranchiseDashboard = () => {
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">총 예상 매출액</div>
                     <div className="text-2xl font-bold text-green-600">
-                        {(franchises.reduce((acc, f) => acc + f.sales.deposit + f.sales.middle + f.sales.balance, 0)).toLocaleString()}원
+                        {(franchises.reduce((acc, f) => acc + calcTotalSales(f), 0)).toLocaleString()}원
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">총 매입/비용</div>
                     <div className="text-2xl font-bold text-red-600">
-                        {(franchises.reduce((acc, f) => acc + f.expenses.interior + f.expenses.equipment + f.expenses.etc, 0)).toLocaleString()}원
+                        {(franchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0)).toLocaleString()}원
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">예상 누적 마진</div>
                     <div className="text-2xl font-bold text-indigo-600">
-                        {((franchises.reduce((acc, f) => acc + f.sales.deposit + f.sales.middle + f.sales.balance, 0)) - 
-                          (franchises.reduce((acc, f) => acc + f.expenses.interior + f.expenses.equipment + f.expenses.etc, 0))).toLocaleString()}원
+                        {((franchises.reduce((acc, f) => acc + calcTotalSales(f), 0)) - 
+                          (franchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0))).toLocaleString()}원
                     </div>
                 </div>
             </div>
@@ -141,8 +144,8 @@ const FranchiseDashboard = () => {
                         </thead>
                         <tbody>
                             {franchises.map(f => {
-                                const totalSales = f.sales.deposit + f.sales.middle + f.sales.balance;
-                                const totalExpenses = f.expenses.interior + f.expenses.equipment + f.expenses.etc;
+                                const totalSales = calcTotalSales(f);
+                                const totalExpenses = calcTotalExpenses(f);
                                 const margin = totalSales - totalExpenses;
                                 return (
                                     <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -241,14 +244,14 @@ const FranchiseDashboard = () => {
                 )}
                 {activeTab === 'sales' && renderPlaceholder(
                     '매출/수금 관리', 
-                    '재무팀에서 통장 입금 내역을 업로드하고, 각 가맹점의 계약금/중도금/잔금과 매칭하는 화면입니다.', 
+                    '가맹비/교육비 매출과 오픈매출(계약금/중도금/잔금) 입금 내역을 업로드하고 각 가맹점에 매칭하는 화면입니다.', 
                     <DollarSign className="w-12 h-12 text-slate-300" />,
                     '입금 내역 업로드',
                     () => alert('입금 내역(엑셀) 업로드 기능은 데이터베이스 연동 시 구현됩니다.')
                 )}
                 {activeTab === 'expense' && renderPlaceholder(
                     '매입/비용 관리', 
-                    '구매/시설팀에서 인테리어, 기기장비 등의 발주 비용을 가맹점별로 입력하고 매칭하는 화면입니다.', 
+                    '인테리어, 기기장비 등의 발주 비용을 가맹점별로 입력하고 매칭하는 화면입니다.', 
                     <ShoppingCart className="w-12 h-12 text-slate-300" />,
                     '비용 내역 등록',
                     () => alert('매입/비용 내역 등록 기능은 데이터베이스 연동 시 구현됩니다.')
