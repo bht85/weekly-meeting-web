@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2 } from 'lucide-react';
 
 const MOCK_VENDORS = [
-    { id: 'v-1', name: '다온디자인 (인테리어)' },
-    { id: 'v-2', name: '현대사인 (간판)' },
-    { id: 'v-3', name: '제일공조 (냉난방)' }
+    { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
+    { id: 'v-2', name: '현대사인', category: '간판/외부사인' },
+    { id: 'v-3', name: '제일공조', category: '냉난방/닥트' }
 ];
 
 const MOCK_CATALOG = [
@@ -112,12 +112,12 @@ const FranchiseDashboard = () => {
 
     // Vendor State (Interior)
     const [vendorCatalog, setVendorCatalog] = useState(() => {
-        const saved = localStorage.getItem('vendorCatalogV1');
+        const saved = localStorage.getItem('vendorCatalogV2');
         return saved ? JSON.parse(saved) : MOCK_VENDORS;
     });
 
     useEffect(() => {
-        localStorage.setItem('vendorCatalogV1', JSON.stringify(vendorCatalog));
+        localStorage.setItem('vendorCatalogV2', JSON.stringify(vendorCatalog));
     }, [vendorCatalog]);
 
     // Franchises State
@@ -149,7 +149,7 @@ const FranchiseDashboard = () => {
 
     // 협력업체 관리 모달 (인테리어 등)
     const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
-    const [newVendorItem, setNewVendorItem] = useState({ name: '' });
+    const [newVendorItem, setNewVendorItem] = useState({ name: '', category: '' });
 
     // 비용 매칭 모달
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
@@ -228,14 +228,15 @@ const FranchiseDashboard = () => {
     // 협력업체 마스터 추가
     const handleAddVendorItem = (e) => {
         e.preventDefault();
-        if(!newVendorItem.name) return;
+        if(!newVendorItem.name || !newVendorItem.category) return;
         
         const newItem = {
             id: 'v-' + Date.now(),
-            name: newVendorItem.name
+            name: newVendorItem.name,
+            category: newVendorItem.category
         };
         setVendorCatalog([...vendorCatalog, newItem]);
-        setNewVendorItem({ name: '' });
+        setNewVendorItem({ name: '', category: '' });
     };
 
     const handleDeleteVendorItem = (id) => {
@@ -708,13 +709,23 @@ const FranchiseDashboard = () => {
                                 <h4 className="text-sm font-bold text-slate-800 mb-3">새 협력업체 추가</h4>
                                 <div className="flex items-end gap-3">
                                     <div className="flex-1">
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">업체명 (분야)</label>
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">업체명</label>
                                         <input 
                                             type="text" required
                                             value={newVendorItem.name}
                                             onChange={e => setNewVendorItem({...newVendorItem, name: e.target.value})}
                                             className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-indigo-500"
-                                            placeholder="예: 다온디자인 (인테리어)"
+                                            placeholder="예: 다온디자인"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">취급분야 (종목)</label>
+                                        <input 
+                                            type="text" required
+                                            value={newVendorItem.category}
+                                            onChange={e => setNewVendorItem({...newVendorItem, category: e.target.value})}
+                                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-indigo-500"
+                                            placeholder="예: 간판/외부사인"
                                         />
                                     </div>
                                     <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 h-[38px]">
@@ -728,7 +739,7 @@ const FranchiseDashboard = () => {
                                 <table className="w-full text-sm">
                                     <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-2 text-left">분류</th>
+                                            <th className="px-4 py-2 text-left">취급분야</th>
                                             <th className="px-4 py-2 text-left">업체명</th>
                                             <th className="px-4 py-2 text-center w-16">삭제</th>
                                         </tr>
@@ -738,7 +749,7 @@ const FranchiseDashboard = () => {
                                             <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
                                                 <td className="px-4 py-2">
                                                     <span className="px-2 py-1 text-[10px] rounded-md border bg-orange-50 text-orange-700 border-orange-200">
-                                                        협력업체
+                                                        {item.category}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-2 text-slate-800 font-medium">{item.name}</td>
@@ -808,7 +819,7 @@ const FranchiseDashboard = () => {
                                                         >
                                                             <option value="" disabled>업체를 선택하세요</option>
                                                             {vendorCatalog.map(v => (
-                                                                <option key={v.id} value={v.id}>{v.name}</option>
+                                                                <option key={v.id} value={v.id}>[{v.category}] {v.name}</option>
                                                             ))}
                                                         </select>
                                                     </td>
