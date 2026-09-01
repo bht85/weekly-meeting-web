@@ -23,6 +23,7 @@ import CalendarDashboard from './CalendarDashboard';
 import LandingPage from './LandingPage';
 import WeeklyReportPDF from './WeeklyReportPDF';
 import BudgetDashboard from './BudgetDashboard';
+import FranchiseDashboard from './FranchiseDashboard';
 
 
 // --- Firebase 라이브러리 ---
@@ -87,6 +88,7 @@ const NAV_ITEMS = [
     { id: 'calendar', label: '캘린더', icon: Calendar },
     { id: 'budget', label: '사업계획', icon: Calculator },
     { id: 'lunch', label: '맛집/식단', icon: Utensils },
+    { id: 'franchise', label: '오픈가맹', icon: Building2 },
     
     // --- 관리자(choihy) 전용 메뉴 ---
     { id: 'meeting', label: '주간회의록', icon: FileText },
@@ -1597,7 +1599,7 @@ function App() {
     const canViewAdminScreens = user && ALLOWED_HR_EMAILS.includes(user.email);
     const visibleNavItems = NAV_ITEMS.filter(item => {
         // 기본으로 노출할 메뉴들
-        const defaultVisible = ['news', 'calendar', 'budget', 'lunch'];
+        const defaultVisible = ['news', 'calendar', 'budget', 'lunch', 'franchise'];
         // 관리자면 모든 메뉴 노출, 아니면 기본 메뉴만 노출
         return canViewAdminScreens || defaultVisible.includes(item.id);
     });
@@ -1701,6 +1703,9 @@ function App() {
 
                 {/* [MODE 10] 사업계획 (판관비) */}
                 {appMode === 'budget' && <BudgetDashboard db={db} user={user} departments={DEPARTMENTS} />}
+
+                {/* [MODE 11] 오픈가맹 */}
+                {appMode === 'franchise' && <FranchiseDashboard />}
 
                 {/* [MODE 4] 협업 요청 */}
                 {appMode === 'collaboration' && (
