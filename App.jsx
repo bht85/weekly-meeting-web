@@ -1583,10 +1583,10 @@ function App() {
         return <UnauthorizedView email={user.email} onLogout={handleLogout} />;
     }
 
-    // 3. 로그인 성공 → 회사별 랜딩 페이지 (입장 버튼 누르면 메인으로)
-    if (showLanding) {
-        return <LandingPage user={user} onEnter={() => setShowLanding(false)} />;
-    }
+    // 3. 로그인 성공 → 회사별 랜딩 페이지 제거 (바로 메인으로 입장)
+    // if (showLanding) {
+    //     return <LandingPage user={user} onEnter={() => setShowLanding(false)} />;
+    // }
 
     // --- [복구] 날짜 데이터 계산 로직 ---
     const allDates = [...new Set([...(minutes?.map(m => m.date) || []), ...(feedbacks?.map(f => f.date) || [])])].sort((a, b) => b.localeCompare(a));
