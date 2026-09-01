@@ -86,6 +86,10 @@ const FranchiseDashboard = () => {
         setActiveTab('dashboard'); // 등록 후 대시보드로 이동해서 확인
     };
 
+    const handleUpdateOpenDate = (id, newDate) => {
+        setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
+    };
+
     const renderDashboard = () => (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -128,6 +132,7 @@ const FranchiseDashboard = () => {
                             <tr>
                                 <th className="px-4 py-3">코드/가맹점명</th>
                                 <th className="px-4 py-3">상태</th>
+                                <th className="px-4 py-3">오픈(예정)일자</th>
                                 <th className="px-4 py-3 text-right">총 매출 (A)</th>
                                 <th className="px-4 py-3 text-right">총 매입 (B)</th>
                                 <th className="px-4 py-3 text-right">최종 마진 (A-B)</th>
@@ -154,6 +159,15 @@ const FranchiseDashboard = () => {
                                             <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(f.status)}`}>
                                                 {f.status}
                                             </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <input 
+                                                type="date" 
+                                                value={f.openDate || ''} 
+                                                onChange={(e) => handleUpdateOpenDate(f.id, e.target.value)}
+                                                className="px-2 py-1 border border-transparent rounded-md text-xs text-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-transparent hover:bg-white hover:border-slate-300 transition-colors"
+                                                title="클릭하여 오픈일자 수정"
+                                            />
                                         </td>
                                         <td className="px-4 py-3 text-right text-green-600 font-medium">{totalSales.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right text-red-600 font-medium">{totalExpenses.toLocaleString()}</td>
