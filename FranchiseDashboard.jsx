@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2, Calculator } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, FileText, X, Settings, Trash2, Calculator } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
@@ -150,6 +150,20 @@ const FranchiseDashboard = () => {
     };
     
     const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+
+    const handlePrevMonth = () => {
+        if (!selectedMonth) return;
+        const [year, month] = selectedMonth.split('-');
+        const date = new Date(year, parseInt(month) - 1 - 1, 1);
+        setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+    };
+
+    const handleNextMonth = () => {
+        if (!selectedMonth) return;
+        const [year, month] = selectedMonth.split('-');
+        const date = new Date(year, parseInt(month) - 1 + 1, 1);
+        setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+    };
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1023,12 +1037,28 @@ const FranchiseDashboard = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-slate-700 whitespace-nowrap">오픈월 선택:</label>
-                    <input 
-                        type="month" 
-                        value={selectedMonth} 
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                    />
+                    <div className="flex items-center">
+                        <button 
+                            onClick={handlePrevMonth}
+                            className="p-2 border border-slate-300 border-r-0 rounded-l-lg hover:bg-slate-50 text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 z-10"
+                            title="이전 달"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <input 
+                            type="month" 
+                            value={selectedMonth} 
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="px-3 py-2 border border-slate-300 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:z-20"
+                        />
+                        <button 
+                            onClick={handleNextMonth}
+                            className="p-2 border border-slate-300 border-l-0 rounded-r-lg hover:bg-slate-50 text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 z-10"
+                            title="다음 달"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
                     {selectedMonth && (
                         <button 
                             onClick={() => setSelectedMonth('')}
