@@ -322,6 +322,19 @@ const FranchiseDashboard = () => {
         setIsDepositMatchModalOpen(true);
     };
 
+    // 미매칭 내역 삭제
+    const handleDeleteUnmatchedTxn = (id) => {
+        if(confirm('이 내역을 목록에서 삭제하시겠습니까? (실제 계좌 내역에는 영향이 없습니다)')) {
+            setBankTransactions(bankTransactions.filter(t => t.id !== id));
+        }
+    };
+
+    const handleClearAllUnmatchedTxns = () => {
+        if(confirm('현재 미매칭된 모든 내역을 삭제하시겠습니까?')) {
+            setBankTransactions(bankTransactions.filter(t => t.matchedFranchiseId !== null));
+        }
+    };
+
     // 입금 매칭 실행
     const handleMatchDeposit = (e) => {
         e.preventDefault();
@@ -650,6 +663,12 @@ const FranchiseDashboard = () => {
                     <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden mb-6">
                         <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex justify-between items-center">
                             <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({unmatchedTxns.length}건)</h3>
+                            <button 
+                                onClick={handleClearAllUnmatchedTxns}
+                                className="text-xs px-2 py-1 bg-white text-orange-600 border border-orange-300 rounded hover:bg-orange-50 font-medium"
+                            >
+                                미매칭 전체 삭제
+                            </button>
                         </div>
                         <div className="overflow-x-auto max-h-60 overflow-y-auto">
                             <table className="w-full text-sm text-left">
@@ -681,12 +700,21 @@ const FranchiseDashboard = () => {
                                                 {txn.amount.toLocaleString()}
                                             </td>
                                             <td className="px-4 py-2 text-center">
-                                                <button 
-                                                    onClick={() => openDepositMatchModal(txn)}
-                                                    className="px-3 py-1 bg-white border border-orange-300 text-orange-700 rounded hover:bg-orange-50 text-xs font-bold"
-                                                >
-                                                    매칭하기
-                                                </button>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button 
+                                                        onClick={() => openDepositMatchModal(txn)}
+                                                        className="px-3 py-1 bg-white border border-orange-300 text-orange-700 rounded hover:bg-orange-50 text-xs font-bold"
+                                                    >
+                                                        매칭하기
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteUnmatchedTxn(txn.id)}
+                                                        className="p-1 text-orange-400 hover:text-red-500 transition-colors"
+                                                        title="내역 삭제"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
