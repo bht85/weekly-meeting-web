@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2 } from 'lucide-react';
 
 const MOCK_VENDORS = [
@@ -130,6 +131,16 @@ const FranchiseDashboard = () => {
         localStorage.setItem('franchisesV2', JSON.stringify(franchises));
     }, [franchises]);
 
+    // Bank Transactions State
+    const [bankTransactions, setBankTransactions] = useState(() => {
+        const saved = localStorage.getItem('bankTransactionsV1');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('bankTransactionsV1', JSON.stringify(bankTransactions));
+    }, [bankTransactions]);
+
     const getCurrentMonth = () => {
         const today = new Date();
         const year = today.getFullYear();
@@ -156,6 +167,14 @@ const FranchiseDashboard = () => {
     const [matchingFranchise, setMatchingFranchise] = useState(null);
     const [editingEquipmentItems, setEditingEquipmentItems] = useState([]);
     const [editingInteriorItems, setEditingInteriorItems] = useState([]);
+
+    // 입금 매칭 모달
+    const [isDepositMatchModalOpen, setIsDepositMatchModalOpen] = useState(false);
+    const [selectedDepositTxn, setSelectedDepositTxn] = useState(null);
+    const [depositMatchForm, setDepositMatchForm] = useState({ franchiseId: '', category: '' });
+    
+    // 파일 업로드 ref
+    const fileInputRef = useRef(null);
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -205,6 +224,91 @@ const FranchiseDashboard = () => {
 
     const handleUpdateOpenDate = (id, newDate) => {
         setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
+    };
+
+    // 엑셀 파일 파싱
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const bstr = evt.target.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            
+            // 2nd row header usually, let's just parse JSON and map
+            const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            
+            // Filter only positive deposits
+            const newTxns = [];
+            data.forEach((row, idx) => {
+                const amount = Number(row['입금'] || row['입금액'] || row['입금액(원)'] || 0);
+                if (amount > 0) {
+                    newTxns.push({
+                        id: 'txn-' + Date.now() + '-' + idx,
+                        date: row['거래일시'] || row['거래일자'] || '',
+                        summary: row['적요'] || '',
+                        memo: row['메모'] || '',
+                        sender: row['의뢰인/수취인'] || row['의뢰인'] || row['보낸사람'] || '',
+                        amount: amount,
+                        matchedFranchiseId: null,
+                        matchedCategory: null
+                    });
+                }
+            });
+
+            if (newTxns.length > 0) {
+                setBankTransactions([...bankTransactions, ...newTxns]);
+                alert(`${newTxns.length}건의 입금 내역이 추가되었습니다.`);
+            } else {
+                alert('유효한 입금 내역을 찾을 수 없습니다.');
+            }
+            e.target.value = null; // reset input
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    // 매칭 팝업 열기
+    const openDepositMatchModal = (txn) => {
+        setSelectedDepositTxn(txn);
+        setDepositMatchForm({ franchiseId: '', category: '' });
+        setIsDepositMatchModalOpen(true);
+    };
+
+    // 입금 매칭 실행
+    const handleMatchDeposit = (e) => {
+        e.preventDefault();
+        const { franchiseId, category } = depositMatchForm;
+        if(!franchiseId || !category || !selectedDepositTxn) return;
+
+        // 1. Update bankTransaction
+        const updatedTxns = bankTransactions.map(t => 
+            t.id === selectedDepositTxn.id 
+                ? { ...t, matchedFranchiseId: franchiseId, matchedCategory: category } 
+                : t
+        );
+        setBankTransactions(updatedTxns);
+
+        // 2. Add amount to selected franchise sales
+        const amount = selectedDepositTxn.amount;
+        const updatedFranchises = franchises.map(f => {
+            if (f.id === franchiseId) {
+                let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
+                if (category === 'franchiseFee') newSales.franchiseFee += amount;
+                else if (category === 'educationFee') newSales.educationFee += amount;
+                else if (category === 'deposit') newSales.open.deposit += amount;
+                else if (category === 'middle') newSales.open.middle += amount;
+                else if (category === 'balance') newSales.open.balance += amount;
+                return { ...f, sales: newSales };
+            }
+            return f;
+        });
+        setFranchises(updatedFranchises);
+        
+        setIsDepositMatchModalOpen(false);
+        setSelectedDepositTxn(null);
     };
 
     // 마스터 단가표(기기장비) 추가
@@ -466,16 +570,79 @@ const FranchiseDashboard = () => {
             </div>
         </div>
     );
-    const renderSalesTab = () => (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-slate-800">매출/수금 내역</h2>
-                <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
-                    <Plus className="w-4 h-4" /> 입금 내역 업로드
-                </button>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    const renderSalesTab = () => {
+        const unmatchedTxns = bankTransactions.filter(t => !t.matchedFranchiseId);
+
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-slate-800">매출/수금 내역</h2>
+                    <div>
+                        <input 
+                            type="file" 
+                            accept=".xlsx, .xls" 
+                            className="hidden" 
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                        />
+                        <button 
+                            onClick={() => fileInputRef.current.click()}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                        >
+                            <Plus className="w-4 h-4" /> 엑셀 업로드(입금내역)
+                        </button>
+                    </div>
+                </div>
+
+                {/* 미매칭 입금 내역 */}
+                {unmatchedTxns.length > 0 && (
+                    <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden mb-6">
+                        <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex justify-between items-center">
+                            <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({unmatchedTxns.length}건)</h3>
+                        </div>
+                        <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-orange-700 bg-orange-50 border-b border-orange-200 sticky top-0">
+                                    <tr>
+                                        <th className="px-4 py-2">거래일시</th>
+                                        <th className="px-4 py-2">적요 / 메모</th>
+                                        <th className="px-4 py-2">의뢰인/수취인</th>
+                                        <th className="px-4 py-2 text-right">입금액(원)</th>
+                                        <th className="px-4 py-2 text-center">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {unmatchedTxns.map(txn => (
+                                        <tr key={txn.id} className="border-b border-orange-100 hover:bg-orange-100/50">
+                                            <td className="px-4 py-2">{txn.date}</td>
+                                            <td className="px-4 py-2 text-xs">
+                                                <div className="font-medium">{txn.summary}</div>
+                                                <div className="text-orange-600">{txn.memo}</div>
+                                            </td>
+                                            <td className="px-4 py-2 font-bold text-slate-700">{txn.sender}</td>
+                                            <td className="px-4 py-2 text-right font-bold text-indigo-600">
+                                                {txn.amount.toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                <button 
+                                                    onClick={() => openDepositMatchModal(txn)}
+                                                    className="px-3 py-1 bg-white border border-orange-300 text-orange-700 rounded hover:bg-orange-50 text-xs font-bold"
+                                                >
+                                                    매칭하기
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700">가맹점별 수금 현황</h3>
+                    </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
@@ -506,7 +673,8 @@ const FranchiseDashboard = () => {
                 </div>
             </div>
         </div>
-    );
+        );
+    };
 
     const renderExpenseTab = () => (
         <div className="space-y-6">
@@ -768,6 +936,77 @@ const FranchiseDashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 입금 매칭 팝업 모달 */}
+            {isDepositMatchModalOpen && selectedDepositTxn && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h3 className="text-lg font-bold text-slate-800">입금 내역 매칭</h3>
+                            <button onClick={() => setIsDepositMatchModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">거래일시</span>
+                                    <span className="font-medium text-slate-800">{selectedDepositTxn.date}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">의뢰인</span>
+                                    <span className="font-medium text-slate-800">{selectedDepositTxn.sender}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">입금액</span>
+                                    <span className="font-bold text-indigo-600">{selectedDepositTxn.amount.toLocaleString()}원</span>
+                                </div>
+                            </div>
+                            
+                            <form id="depositMatchForm" onSubmit={handleMatchDeposit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">대상 가맹점 선택</label>
+                                    <select 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                        value={depositMatchForm.franchiseId}
+                                        onChange={e => setDepositMatchForm({...depositMatchForm, franchiseId: e.target.value})}
+                                    >
+                                        <option value="" disabled>가맹점을 선택하세요</option>
+                                        {franchises.map(f => (
+                                            <option key={f.id} value={f.id}>{f.name} ({f.owner})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">수금 항목 선택</label>
+                                    <select 
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                        value={depositMatchForm.category}
+                                        onChange={e => setDepositMatchForm({...depositMatchForm, category: e.target.value})}
+                                    >
+                                        <option value="" disabled>항목을 선택하세요</option>
+                                        <option value="franchiseFee">가맹비 (17104 계좌 권장)</option>
+                                        <option value="educationFee">교육비 (17104 계좌 권장)</option>
+                                        <option value="deposit">계약금 (85804 계좌 권장)</option>
+                                        <option value="middle">중도금 (85804 계좌 권장)</option>
+                                        <option value="balance">잔금 (85804 계좌 권장)</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                            <button type="button" onClick={() => setIsDepositMatchModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">
+                                취소
+                            </button>
+                            <button type="submit" form="depositMatchForm" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                                매칭 완료 (금액 합산)
+                            </button>
                         </div>
                     </div>
                 </div>
