@@ -238,32 +238,56 @@ const FranchiseDashboard = () => {
             const wsname = wb.SheetNames[0];
             const ws = wb.Sheets[wsname];
             
-            // 2nd row header usually, let's just parse JSON and map
-            const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            // 2D 배열로 전체 데이터 가져오기
+            const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
             
-            // Filter only positive deposits
+            // 헤더 행 찾기 (보통 '입금' 이나 '거래일시'가 포함된 행)
+            let headerRowIndex = 0;
+            for (let i = 0; i < Math.min(rawData.length, 20); i++) {
+                const rowStr = rawData[i].join('').replace(/\s/g, '');
+                if (rowStr.includes('입금') || rowStr.includes('거래일시') || rowStr.includes('적요')) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            const headers = rawData[headerRowIndex].map(h => String(h).trim().replace(/\s/g, ''));
             const newTxns = [];
-            data.forEach((row, idx) => {
-                const amount = Number(row['입금'] || row['입금액'] || row['입금액(원)'] || 0);
+
+            // 데이터 행 순회
+            for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+                const rowArray = rawData[i];
+                if (!rowArray || rowArray.length === 0) continue;
+
+                // 헤더를 키로 하는 객체 생성
+                const rowObj = {};
+                headers.forEach((h, idx) => {
+                    rowObj[h] = rowArray[idx];
+                });
+
+                // 금액 파싱 (콤마 제거)
+                let amountStr = String(rowObj['입금'] || rowObj['입금액'] || rowObj['입금액(원)'] || '0').replace(/,/g, '').trim();
+                const amount = Number(amountStr);
+
                 if (amount > 0) {
                     newTxns.push({
-                        id: 'txn-' + Date.now() + '-' + idx,
-                        date: row['거래일시'] || row['거래일자'] || '',
-                        summary: row['적요'] || '',
-                        memo: row['메모'] || '',
-                        sender: row['의뢰인/수취인'] || row['의뢰인'] || row['보낸사람'] || '',
+                        id: 'txn-' + Date.now() + '-' + i,
+                        date: String(rowObj['거래일시'] || rowObj['거래일자'] || ''),
+                        summary: String(rowObj['적요'] || ''),
+                        memo: String(rowObj['메모'] || ''),
+                        sender: String(rowObj['의뢰인/수취인'] || rowObj['의뢰인'] || rowObj['보낸사람'] || rowObj['수취인'] || ''),
                         amount: amount,
                         matchedFranchiseId: null,
                         matchedCategory: null
                     });
                 }
-            });
+            }
 
             if (newTxns.length > 0) {
                 setBankTransactions([...bankTransactions, ...newTxns]);
                 alert(`${newTxns.length}건의 입금 내역이 추가되었습니다.`);
             } else {
-                alert('유효한 입금 내역을 찾을 수 없습니다.');
+                alert('유효한 입금 내역을 찾을 수 없습니다.\n엑셀 파일 상단에 "거래일시", "입금", "의뢰인/수취인" 등의 열이 있는지 확인해주세요.');
             }
             e.target.value = null; // reset input
         };
