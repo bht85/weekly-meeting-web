@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2 } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronRight, FileText, X, Settings, Trash2, Calculator } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
@@ -67,6 +67,7 @@ const TABS = [
     { id: 'basic', label: '가맹점 기본정보', icon: FileText },
     { id: 'sales', label: '매출/수금 관리', icon: DollarSign },
     { id: 'expense', label: '매입/비용 관리', icon: ShoppingCart },
+    { id: 'accounting', label: '월별 세무/전표', icon: Calculator },
 ];
 
 const DateInlineEditor = ({ value, onSave }) => {
@@ -855,6 +856,151 @@ const FranchiseDashboard = () => {
         </div>
     );
 
+    const renderAccountingTab = () => {
+        // 1. 매출 세금계산서 발행용 집계 (오픈일자 기준)
+        const filteredFranchisesForTax = selectedMonth 
+            ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
+            : franchises;
+
+        // 2. 입금 내역별 전표 발행 내역 (입금일자 기준)
+        const filteredBankTxnsForVoucher = selectedMonth
+            ? bankTransactions.filter(t => t.matchedFranchiseId && t.date && t.date.startsWith(selectedMonth))
+            : bankTransactions.filter(t => t.matchedFranchiseId);
+
+        return (
+            <div className="space-y-8">
+                {!selectedMonth && (
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg flex items-center gap-2">
+                        <span className="font-bold">안내:</span> 
+                        <span>우측 상단에서 <strong>오픈월 선택</strong>을 하시면 해당 월의 세무/전표 데이터를 정확히 보실 수 있습니다.</span>
+                    </div>
+                )}
+
+                {/* 매출 세금계산서 발행용 집계 */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                        <h2 className="text-lg font-bold text-slate-800">1. 월별 매출 확정 내역 (세금계산서 발행용)</h2>
+                        <p className="text-sm text-slate-500 mt-1">
+                            오픈일자 기준으로 해당 월에 확정된 가맹점별 매출입니다. (오픈비용: 계약금+중도금+잔금 합계)
+                        </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
+                                <tr>
+                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3">사업자번호</th>
+                                    <th className="px-4 py-3 text-right">가맹비</th>
+                                    <th className="px-4 py-3 text-right">교육비</th>
+                                    <th className="px-4 py-3 text-right">오픈비용</th>
+                                    <th className="px-4 py-3 text-right bg-indigo-50 font-bold text-indigo-700">총 공급가액</th>
+                                    <th className="px-4 py-3 text-right bg-indigo-50 font-bold text-indigo-700">부가세(10%)</th>
+                                    <th className="px-4 py-3 text-right bg-indigo-100 font-bold text-indigo-900">합계</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredFranchisesForTax.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                                            선택하신 월에 오픈하는 가맹점이 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredFranchisesForTax.map(f => {
+                                        const fFee = f.sales.franchiseFee || 0;
+                                        const eFee = f.sales.educationFee || 0;
+                                        const openCost = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+                                        const supplyAmt = fFee + eFee + openCost;
+                                        const vat = Math.floor(supplyAmt * 0.1);
+                                        const total = supplyAmt + vat;
+                                        return (
+                                            <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{f.name}</td>
+                                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{f.bizNumber || '-'}</td>
+                                                <td className="px-4 py-3 text-right">{fFee.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right">{eFee.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right">{openCost.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 bg-indigo-50/30">{supplyAmt.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-slate-500 bg-indigo-50/30">{vat.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-indigo-900 bg-indigo-50/50">{total.toLocaleString()}</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* 입금 매칭 전표 작성용 데이터 */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                        <h2 className="text-lg font-bold text-slate-800">2. 월별 입금 매칭 내역 (전표 작성용)</h2>
+                        <p className="text-sm text-slate-500 mt-1">해당 월에 은행으로 입금되어 가맹점과 매칭이 완료된 내역입니다.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
+                                <tr>
+                                    <th className="px-4 py-3">입금일자</th>
+                                    <th className="px-4 py-3">가맹점(거래처)</th>
+                                    <th className="px-4 py-3">사업자번호</th>
+                                    <th className="px-4 py-3">수신계좌</th>
+                                    <th className="px-4 py-3">수금항목</th>
+                                    <th className="px-4 py-3">적요/메모</th>
+                                    <th className="px-4 py-3 text-right">입금액(원)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredBankTxnsForVoucher.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
+                                            선택하신 월에 매칭된 입금 내역이 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredBankTxnsForVoucher.sort((a,b) => a.date.localeCompare(b.date)).map(txn => {
+                                        const matchedFranchise = franchises.find(f => f.id === txn.matchedFranchiseId);
+                                        const fName = matchedFranchise ? matchedFranchise.name : '알수없음';
+                                        const fBizNum = matchedFranchise ? matchedFranchise.bizNumber : '-';
+                                        
+                                        const catMap = {
+                                            'franchiseFee': '가맹비',
+                                            'educationFee': '교육비',
+                                            'deposit': '계약금',
+                                            'middle': '중도금',
+                                            'balance': '잔금'
+                                        };
+                                        const catLabel = catMap[txn.matchedCategory] || txn.matchedCategory;
+
+                                        return (
+                                            <tr key={txn.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="px-4 py-3 whitespace-nowrap">{txn.date}</td>
+                                                <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{fName}</td>
+                                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fBizNum || '-'}</td>
+                                                <td className="px-4 py-3 text-xs whitespace-nowrap">
+                                                    <span className={`px-2 py-0.5 rounded font-bold ${txn.account === '17104' ? 'bg-indigo-100 text-indigo-800' : txn.account === '85804' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
+                                                        {txn.account || '미지정'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{catLabel}</td>
+                                                <td className="px-4 py-3 text-xs">
+                                                    <div className="font-medium">{txn.summary}</div>
+                                                    <div className="text-slate-500">{txn.memo}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 whitespace-nowrap">{txn.amount.toLocaleString()}</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative">
             <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -911,6 +1057,7 @@ const FranchiseDashboard = () => {
                 {activeTab === 'basic' && renderBasicInfoTab()}
                 {activeTab === 'sales' && renderSalesTab()}
                 {activeTab === 'expense' && renderExpenseTab()}
+                {activeTab === 'accounting' && renderAccountingTab()}
             </div>
 
             {/* 기기장비 마스터 관리 모달 */}
