@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, FileText, X, Settings, Trash2, Calculator } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, FileText, X, Settings, Trash2, Calculator, RotateCcw } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
@@ -386,6 +386,45 @@ const FranchiseDashboard = () => {
         
         setIsDepositMatchModalOpen(false);
         setSelectedDepositTxn(null);
+    };
+
+    const handleUnmatchDeposit = (txnId) => {
+        if (!window.confirm("매칭을 취소하고 다시 미매칭 상태로 되돌리시겠습니까?")) return;
+
+        const txn = bankTransactions.find(t => t.id === txnId);
+        if (!txn || !txn.matchedFranchiseId || !txn.matchedCategory) return;
+
+        // 1. Subtract amount from franchise sales
+        const amount = txn.amount;
+        const updatedFranchises = franchises.map(f => {
+            if (f.id === txn.matchedFranchiseId) {
+                let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
+                if (txn.matchedCategory === 'franchiseFee') newSales.franchiseFee -= amount;
+                else if (txn.matchedCategory === 'educationFee') newSales.educationFee -= amount;
+                else if (txn.matchedCategory === 'deposit') newSales.open.deposit -= amount;
+                else if (txn.matchedCategory === 'middle') newSales.open.middle -= amount;
+                else if (txn.matchedCategory === 'balance') newSales.open.balance -= amount;
+                
+                // 음수 방지 (안전 장치)
+                if (newSales.franchiseFee < 0) newSales.franchiseFee = 0;
+                if (newSales.educationFee < 0) newSales.educationFee = 0;
+                if (newSales.open.deposit < 0) newSales.open.deposit = 0;
+                if (newSales.open.middle < 0) newSales.open.middle = 0;
+                if (newSales.open.balance < 0) newSales.open.balance = 0;
+
+                return { ...f, sales: newSales };
+            }
+            return f;
+        });
+        setFranchises(updatedFranchises);
+
+        // 2. Clear matched info from bankTransaction
+        const updatedTxns = bankTransactions.map(t => 
+            t.id === txnId 
+                ? { ...t, matchedFranchiseId: null, matchedCategory: null } 
+                : t
+        );
+        setBankTransactions(updatedTxns);
     };
 
     // 마스터 단가표(기기장비) 추가
@@ -973,12 +1012,13 @@ const FranchiseDashboard = () => {
                                     <th className="px-4 py-3">수금항목</th>
                                     <th className="px-4 py-3">적요/메모</th>
                                     <th className="px-4 py-3 text-right">입금액(원)</th>
+                                    <th className="px-4 py-3 text-center">관리</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredBankTxnsForVoucher.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
+                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
                                             선택하신 월에 매칭된 입금 내역이 없습니다.
                                         </td>
                                     </tr>
@@ -1013,6 +1053,16 @@ const FranchiseDashboard = () => {
                                                     <div className="text-slate-500">{txn.memo}</div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-indigo-600 whitespace-nowrap">{txn.amount.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button 
+                                                        onClick={() => handleUnmatchDeposit(txn.id)}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors font-medium border border-rose-200 whitespace-nowrap"
+                                                        title="매칭 취소"
+                                                    >
+                                                        <RotateCcw className="w-3 h-3" />
+                                                        원복
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })
