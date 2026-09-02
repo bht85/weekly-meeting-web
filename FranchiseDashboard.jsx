@@ -177,8 +177,9 @@ const FranchiseDashboard = () => {
     const fileInputRef = useRef(null);
     const [uploadingAccount, setUploadingAccount] = useState('');
     
-    // 미매칭 내역 검색어
+    // 미매칭 내역 검색 및 필터
     const [unmatchedSearchTerm, setUnmatchedSearchTerm] = useState('');
+    const [unmatchedAccountFilter, setUnmatchedAccountFilter] = useState('ALL');
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -635,9 +636,15 @@ const FranchiseDashboard = () => {
         const totalUnmatchedTxns = bankTransactions.filter(t => !t.matchedFranchiseId);
         
         let displayUnmatchedTxns = totalUnmatchedTxns;
+        
+        if (unmatchedAccountFilter !== 'ALL') {
+            // 미지정 계좌도 필터링을 원할 수 있으므로, 해당 문자열과 비교
+            displayUnmatchedTxns = displayUnmatchedTxns.filter(t => (t.account || '') === unmatchedAccountFilter);
+        }
+
         if (unmatchedSearchTerm) {
             const term = unmatchedSearchTerm.toLowerCase();
-            displayUnmatchedTxns = totalUnmatchedTxns.filter(t => 
+            displayUnmatchedTxns = displayUnmatchedTxns.filter(t => 
                 (t.summary && t.summary.toLowerCase().includes(term)) || 
                 (t.memo && t.memo.toLowerCase().includes(term)) || 
                 (t.sender && t.sender.toLowerCase().includes(term)) ||
@@ -678,6 +685,16 @@ const FranchiseDashboard = () => {
                         <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({totalUnmatchedTxns.length}건)</h3>
                             <div className="flex gap-2 w-full sm:w-auto">
+                                <select
+                                    value={unmatchedAccountFilter}
+                                    onChange={(e) => setUnmatchedAccountFilter(e.target.value)}
+                                    className="px-2 py-1 text-sm border border-orange-300 rounded focus:outline-none focus:border-orange-500 bg-white"
+                                >
+                                    <option value="ALL">전체 계좌</option>
+                                    <option value="17104">17104 (가맹비/교육비)</option>
+                                    <option value="85804">85804 (계약/중도/잔금)</option>
+                                    <option value="">미지정</option>
+                                </select>
                                 <input 
                                     type="text"
                                     placeholder="적요, 메모, 수취인, 금액 검색..."
