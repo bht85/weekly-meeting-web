@@ -1013,6 +1013,7 @@ const FranchiseDashboard = () => {
                                     <th className="px-4 py-3">가맹점(거래처)</th>
                                     <th className="px-4 py-3">사업자번호</th>
                                     <th className="px-4 py-3">수신계좌</th>
+                                    <th className="px-4 py-3">의뢰인/수취인</th>
                                     <th className="px-4 py-3">수금항목</th>
                                     <th className="px-4 py-3">적요/메모</th>
                                     <th className="px-4 py-3 text-right">입금액(원)</th>
@@ -1022,7 +1023,7 @@ const FranchiseDashboard = () => {
                             <tbody>
                                 {filteredBankTxnsForVoucher.length === 0 ? (
                                     <tr>
-                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                                        <td colSpan="9" className="px-4 py-8 text-center text-slate-500">
                                             선택하신 월에 매칭된 입금 내역이 없습니다.
                                         </td>
                                     </tr>
@@ -1051,6 +1052,7 @@ const FranchiseDashboard = () => {
                                                         {txn.account || '미지정'}
                                                     </span>
                                                 </td>
+                                                <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{txn.sender || '-'}</td>
                                                 <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{catLabel}</td>
                                                 <td className="px-4 py-3 text-xs">
                                                     <div className="font-medium">{txn.summary}</div>
