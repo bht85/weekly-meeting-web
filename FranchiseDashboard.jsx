@@ -173,8 +173,9 @@ const FranchiseDashboard = () => {
     const [selectedDepositTxn, setSelectedDepositTxn] = useState(null);
     const [depositMatchForm, setDepositMatchForm] = useState({ franchiseId: '', category: '' });
     
-    // 파일 업로드 ref
+    // 파일 업로드 ref 및 계좌 선택 상태
     const fileInputRef = useRef(null);
+    const [uploadingAccount, setUploadingAccount] = useState('');
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -277,6 +278,7 @@ const FranchiseDashboard = () => {
                         memo: String(rowObj['메모'] || ''),
                         sender: String(rowObj['의뢰인/수취인'] || rowObj['의뢰인'] || rowObj['보낸사람'] || rowObj['수취인'] || ''),
                         amount: amount,
+                        account: uploadingAccount, // 계좌 정보 저장
                         matchedFranchiseId: null,
                         matchedCategory: null
                     });
@@ -290,6 +292,7 @@ const FranchiseDashboard = () => {
                 alert('유효한 입금 내역을 찾을 수 없습니다.\n엑셀 파일 상단에 "거래일시", "입금", "의뢰인/수취인" 등의 열이 있는지 확인해주세요.');
             }
             e.target.value = null; // reset input
+            setUploadingAccount(''); // 리셋
         };
         reader.readAsBinaryString(file);
     };
@@ -297,7 +300,11 @@ const FranchiseDashboard = () => {
     // 매칭 팝업 열기
     const openDepositMatchModal = (txn) => {
         setSelectedDepositTxn(txn);
-        setDepositMatchForm({ franchiseId: '', category: '' });
+        let defaultCategory = '';
+        if (txn.account === '17104') defaultCategory = 'franchiseFee';
+        else if (txn.account === '85804') defaultCategory = 'deposit';
+        
+        setDepositMatchForm({ franchiseId: '', category: defaultCategory });
         setIsDepositMatchModalOpen(true);
     };
 
@@ -601,7 +608,7 @@ const FranchiseDashboard = () => {
             <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold text-slate-800">매출/수금 내역</h2>
-                    <div>
+                    <div className="flex gap-2">
                         <input 
                             type="file" 
                             accept=".xlsx, .xls" 
@@ -610,10 +617,16 @@ const FranchiseDashboard = () => {
                             onChange={handleFileUpload}
                         />
                         <button 
-                            onClick={() => fileInputRef.current.click()}
+                            onClick={() => { setUploadingAccount('17104'); fileInputRef.current.click(); }}
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
                         >
-                            <Plus className="w-4 h-4" /> 엑셀 업로드(입금내역)
+                            <Plus className="w-4 h-4" /> 가맹/교육비 (17104계좌)
+                        </button>
+                        <button 
+                            onClick={() => { setUploadingAccount('85804'); fileInputRef.current.click(); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                        >
+                            <Plus className="w-4 h-4" /> 계약/중도/잔금 (85804계좌)
                         </button>
                     </div>
                 </div>
@@ -628,6 +641,7 @@ const FranchiseDashboard = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-orange-700 bg-orange-50 border-b border-orange-200 sticky top-0">
                                     <tr>
+                                        <th className="px-4 py-2">수신계좌</th>
                                         <th className="px-4 py-2">거래일시</th>
                                         <th className="px-4 py-2">적요 / 메모</th>
                                         <th className="px-4 py-2">의뢰인/수취인</th>
@@ -638,6 +652,11 @@ const FranchiseDashboard = () => {
                                 <tbody>
                                     {unmatchedTxns.map(txn => (
                                         <tr key={txn.id} className="border-b border-orange-100 hover:bg-orange-100/50">
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${txn.account === '17104' ? 'bg-indigo-100 text-indigo-800' : txn.account === '85804' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
+                                                    {txn.account || '미지정'}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-2">{txn.date}</td>
                                             <td className="px-4 py-2 text-xs">
                                                 <div className="font-medium">{txn.summary}</div>
@@ -977,6 +996,12 @@ const FranchiseDashboard = () => {
                         </div>
                         <div className="p-6">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">수신계좌</span>
+                                    <span className={`font-bold ${selectedDepositTxn.account === '17104' ? 'text-indigo-600' : selectedDepositTxn.account === '85804' ? 'text-blue-600' : 'text-slate-800'}`}>
+                                        {selectedDepositTxn.account ? `${selectedDepositTxn.account} 계좌` : '미지정'}
+                                    </span>
+                                </div>
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">거래일시</span>
                                     <span className="font-medium text-slate-800">{selectedDepositTxn.date}</span>
