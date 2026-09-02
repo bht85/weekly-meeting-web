@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, FileText, X, Settings, Trash2, Calculator, RotateCcw } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
@@ -195,6 +195,10 @@ const FranchiseDashboard = () => {
     // 미매칭 내역 검색 및 필터
     const [unmatchedSearchTerm, setUnmatchedSearchTerm] = useState('');
     const [unmatchedAccountFilter, setUnmatchedAccountFilter] = useState('ALL');
+
+    // 세무/전표 탭 아코디언 상태
+    const [expandedVendors, setExpandedVendors] = useState({});
+    const [expandedEquipments, setExpandedEquipments] = useState({});
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -1074,42 +1078,73 @@ const FranchiseDashboard = () => {
 
                 {/* 3. 월별 매입 세부 내역 */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
-                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                        <h2 className="text-lg font-bold text-slate-800">3. 월별 매입 세부 내역 (협력업체)</h2>
-                        <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점의 인테리어 등 협력업체 매입 내역입니다.</p>
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800">3. 월별 매입 세부 내역 (협력업체별)</h2>
+                            <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점의 인테리어 등 협력업체 매입 내역입니다.</p>
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3 w-8"></th>
                                     <th className="px-4 py-3">협력업체명</th>
                                     <th className="px-4 py-3">취급분야</th>
-                                    <th className="px-4 py-3 text-right">매입가액(원)</th>
+                                    <th className="px-4 py-3 text-right">총 매입가액(원)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredFranchisesForTax.flatMap(f => (f.expenses?.interiorItems || []).map(item => ({ f, item }))).length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
-                                            매입 세부 내역이 없습니다.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredFranchisesForTax.flatMap(f => 
-                                        (f.expenses?.interiorItems || []).map(item => {
-                                            const vendor = vendorCatalog.find(v => v.id === item.vendorId);
-                                            return (
-                                                <tr key={`${f.id}-${item.id}`} className="border-b border-slate-100 hover:bg-slate-50">
-                                                    <td className="px-4 py-3 font-medium text-slate-800">{f.name}</td>
-                                                    <td className="px-4 py-3 font-bold text-slate-700">{vendor ? vendor.name : '알수없음'}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{vendor ? vendor.category : '-'}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-red-600">{Number(item.price).toLocaleString()}</td>
+                                {(() => {
+                                    const interiorDetails = filteredFranchisesForTax.flatMap(f => (f.expenses?.interiorItems || []).map(item => ({ f, item })));
+                                    if (interiorDetails.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
+                                                    매입 세부 내역이 없습니다.
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                    
+                                    const grouped = interiorDetails.reduce((acc, curr) => {
+                                        const vId = curr.item.vendorId;
+                                        if (!acc[vId]) acc[vId] = { vendor: vendorCatalog.find(v => v.id === vId), items: [], total: 0 };
+                                        acc[vId].items.push(curr);
+                                        acc[vId].total += Number(curr.item.price) || 0;
+                                        return acc;
+                                    }, {});
+
+                                    return Object.entries(grouped).map(([vId, group]) => {
+                                        const isExpanded = expandedVendors[vId];
+                                        return (
+                                            <React.Fragment key={vId}>
+                                                <tr 
+                                                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                                                    onClick={() => setExpandedVendors(prev => ({...prev, [vId]: !prev[vId]}))}
+                                                >
+                                                    <td className="px-4 py-3 text-slate-400">
+                                                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-slate-800">{group.vendor ? group.vendor.name : '알수없음'}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{group.vendor ? group.vendor.category : '-'}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-red-600">{group.total.toLocaleString()}</td>
                                                 </tr>
-                                            );
-                                        })
-                                    )
-                                )}
+                                                {isExpanded && group.items.map((detail, idx) => (
+                                                    <tr key={`${vId}-detail-${idx}`} className="bg-slate-50/50 border-b border-slate-50 text-xs">
+                                                        <td className="px-4 py-2 border-l-2 border-red-300"></td>
+                                                        <td className="px-4 py-2 text-slate-700" colSpan="2">
+                                                            ↳ {detail.f.name} {detail.f.bizNumber ? `(${detail.f.bizNumber})` : ''}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right text-slate-600 font-medium">
+                                                            {Number(detail.item.price).toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -1117,47 +1152,81 @@ const FranchiseDashboard = () => {
 
                 {/* 4. 기기장비 불출 내역 */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
-                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                        <h2 className="text-lg font-bold text-slate-800">4. 월별 기기장비 불출 내역</h2>
-                        <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점에 불출된 기기장비 내역입니다.</p>
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800">4. 월별 기기장비 불출 내역 (장비별)</h2>
+                            <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점에 불출된 기기장비 내역입니다.</p>
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3 w-8"></th>
                                     <th className="px-4 py-3">장비명</th>
                                     <th className="px-4 py-3 text-right">단가(원)</th>
-                                    <th className="px-4 py-3 text-center">수량(개)</th>
-                                    <th className="px-4 py-3 text-right">합계(원)</th>
+                                    <th className="px-4 py-3 text-center">총 수량(개)</th>
+                                    <th className="px-4 py-3 text-right">총 합계(원)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredFranchisesForTax.flatMap(f => (f.expenses?.equipmentItems || []).map(item => ({ f, item }))).length === 0 ? (
-                                    <tr>
-                                        <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
-                                            기기장비 불출 내역이 없습니다.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredFranchisesForTax.flatMap(f => 
-                                        (f.expenses?.equipmentItems || []).map(item => {
-                                            const eq = expenseCatalog.find(c => c.id === item.itemId);
-                                            const eqName = eq ? eq.name : '알수없음';
-                                            const eqPrice = eq ? eq.price : 0;
-                                            const total = eqPrice * item.qty;
-                                            return (
-                                                <tr key={`${f.id}-${item.itemId}`} className="border-b border-slate-100 hover:bg-slate-50">
-                                                    <td className="px-4 py-3 font-medium text-slate-800">{f.name}</td>
-                                                    <td className="px-4 py-3 font-bold text-slate-700">{eqName}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-600">{eqPrice.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-center font-medium text-slate-800">{item.qty}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-purple-600">{total.toLocaleString()}</td>
+                                {(() => {
+                                    const equipmentDetails = filteredFranchisesForTax.flatMap(f => (f.expenses?.equipmentItems || []).map(item => ({ f, item })));
+                                    if (equipmentDetails.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                                                    기기장비 불출 내역이 없습니다.
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                    
+                                    const grouped = equipmentDetails.reduce((acc, curr) => {
+                                        const eqId = curr.item.itemId;
+                                        if (!acc[eqId]) {
+                                            acc[eqId] = { eq: expenseCatalog.find(c => c.id === eqId), items: [], totalQty: 0, totalPrice: 0 };
+                                        }
+                                        acc[eqId].items.push(curr);
+                                        acc[eqId].totalQty += curr.item.qty;
+                                        acc[eqId].totalPrice += (acc[eqId].eq ? acc[eqId].eq.price : 0) * curr.item.qty;
+                                        return acc;
+                                    }, {});
+
+                                    return Object.entries(grouped).map(([eqId, group]) => {
+                                        const isExpanded = expandedEquipments[eqId];
+                                        return (
+                                            <React.Fragment key={eqId}>
+                                                <tr 
+                                                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                                                    onClick={() => setExpandedEquipments(prev => ({...prev, [eqId]: !prev[eqId]}))}
+                                                >
+                                                    <td className="px-4 py-3 text-slate-400">
+                                                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-slate-800">{group.eq ? group.eq.name : '알수없음'}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-600">{group.eq ? group.eq.price.toLocaleString() : '0'}</td>
+                                                    <td className="px-4 py-3 text-center font-bold text-slate-800">{group.totalQty}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-purple-600">{group.totalPrice.toLocaleString()}</td>
                                                 </tr>
-                                            );
-                                        })
-                                    )
-                                )}
+                                                {isExpanded && group.items.map((detail, idx) => (
+                                                    <tr key={`${eqId}-detail-${idx}`} className="bg-slate-50/50 border-b border-slate-50 text-xs">
+                                                        <td className="px-4 py-2 border-l-2 border-purple-300"></td>
+                                                        <td className="px-4 py-2 text-slate-700" colSpan="2">
+                                                            ↳ {detail.f.name} {detail.f.bizNumber ? `(${detail.f.bizNumber})` : ''}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center text-slate-600 font-medium">
+                                                            {detail.item.qty}개
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right text-slate-600 font-medium">
+                                                            {((group.eq ? group.eq.price : 0) * detail.item.qty).toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>
