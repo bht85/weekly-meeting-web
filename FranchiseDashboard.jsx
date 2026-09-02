@@ -1,30 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw, Package } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
-    { id: 'v-2', name: '현대사인', category: '간판/외부사인' },
-    { id: 'v-3', name: '제일공조', category: '냉난방/닥트' }
+    { id: 'v-2', name: '간판마을', category: '간판/사인물' },
 ];
 
 const MOCK_CATALOG = [
-    { id: 'eq-1', name: '에스프레소 머신', price: 15000000 },
-    { id: 'eq-2', name: '제빙기', price: 2000000 },
-    { id: 'eq-3', name: '그라인더', price: 3000000 },
+    { id: 'eq-1', name: '포스기 세트(본체+프린터)', price: 1200000 },
+    { id: 'eq-2', name: '키오스크 21인치', price: 2500000 },
+    { id: 'eq-3', name: '주방용 프린터', price: 350000 }
 ];
 
 const MOCK_FRANCHISES = [
     {
         id: 'F20230801',
-        name: '강남역점',
+        name: '강남본점',
         owner: '홍길동',
         bizNumber: '123-45-67890',
-        bizType: '커피전문점',
+        bizType: '일반음식점',
         contractDate: '2023-08-01',
         openDate: '2023-09-15',
         status: '오픈완료',
-        sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 20000000 } },
+        sales: { franchiseFee: 15000000, educationFee: 3000000, open: { deposit: 10000000, middle: 20000000, balance: 10000000 } },
         expenses: { 
             equipmentItems: [{ itemId: 'eq-1', qty: 1 }, { itemId: 'eq-2', qty: 1 }],
             interiorItems: [{ id: 'int-0', vendorId: 'v-1', price: 30000000 }, { id: 'int-1', vendorId: 'v-2', price: 5000000 }]
@@ -68,6 +67,7 @@ const TABS = [
     { id: 'sales', label: '매출/수금 관리', icon: DollarSign },
     { id: 'expense', label: '매입/비용 관리', icon: ShoppingCart },
     { id: 'accounting', label: '월별 세무/전표', icon: Calculator },
+    { id: 'monthly_purchases', label: '월별 매입', icon: Package },
 ];
 
 const DateInlineEditor = ({ value, onSave }) => {
@@ -1075,12 +1075,36 @@ const FranchiseDashboard = () => {
                         </table>
                     </div>
                 </div>
+            </div>
+        );
+    };
 
-                {/* 3. 월별 매입 세부 내역 */}
+    const renderMonthlyPurchasesTab = () => {
+        if (!selectedMonth) {
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+                    <p className="text-slate-500">우측 상단에서 <strong className="text-slate-700">오픈월</strong>을 선택해주세요.</p>
+                </div>
+            );
+        }
+
+        const filteredFranchisesForTax = franchises.filter(f => f.openDate.startsWith(selectedMonth));
+
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-indigo-50 text-indigo-900 p-4 rounded-xl flex items-start gap-3 border border-indigo-100">
+                    <Package className="w-5 h-5 text-indigo-600 mt-0.5" />
+                    <div>
+                        <h3 className="font-bold">월별 매입 관리 ({selectedMonth})</h3>
+                        <p className="text-sm mt-1 text-indigo-800">선택하신 월에 오픈하는 가맹점과 관련된 협력업체 매입 내역 및 기기장비 불출 내역을 관리합니다.</p>
+                    </div>
+                </div>
+
+                {/* 1. 월별 매입 세부 내역 */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
                     <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800">3. 월별 매입 세부 내역 (협력업체별)</h2>
+                            <h2 className="text-lg font-bold text-slate-800">1. 월별 매입 세부 내역 (협력업체별)</h2>
                             <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점의 인테리어 등 협력업체 매입 내역입니다.</p>
                         </div>
                     </div>
@@ -1150,11 +1174,11 @@ const FranchiseDashboard = () => {
                     </div>
                 </div>
 
-                {/* 4. 기기장비 불출 내역 */}
+                {/* 2. 기기장비 불출 내역 */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
                     <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800">4. 월별 기기장비 불출 내역 (장비별)</h2>
+                            <h2 className="text-lg font-bold text-slate-800">2. 월별 기기장비 불출 내역 (장비별)</h2>
                             <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점에 불출된 기기장비 내역입니다.</p>
                         </div>
                     </div>
@@ -1308,6 +1332,7 @@ const FranchiseDashboard = () => {
                 {activeTab === 'sales' && renderSalesTab()}
                 {activeTab === 'expense' && renderExpenseTab()}
                 {activeTab === 'accounting' && renderAccountingTab()}
+                {activeTab === 'monthly_purchases' && renderMonthlyPurchasesTab()}
             </div>
 
             {/* 기기장비 마스터 관리 모달 */}
