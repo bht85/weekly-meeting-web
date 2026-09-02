@@ -888,14 +888,18 @@ const FranchiseDashboard = () => {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3">가맹점명</th>
-                                    <th className="px-4 py-3">사업자번호</th>
-                                    <th className="px-4 py-3 text-right">가맹비</th>
-                                    <th className="px-4 py-3 text-right">교육비</th>
-                                    <th className="px-4 py-3 text-right">오픈비용</th>
-                                    <th className="px-4 py-3 text-right bg-indigo-50 font-bold text-indigo-700">총 공급가액</th>
-                                    <th className="px-4 py-3 text-right bg-indigo-50 font-bold text-indigo-700">부가세(10%)</th>
-                                    <th className="px-4 py-3 text-right bg-indigo-100 font-bold text-indigo-900">합계</th>
+                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">가맹점명</th>
+                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">사업자번호</th>
+                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (입금총액 기준)</th>
+                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (입금총액 기준)</th>
+                                </tr>
+                                <tr>
+                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-indigo-50/50">합계(총액)</th>
+                                    <th className="px-4 py-2 text-right bg-indigo-50/30">공급가액</th>
+                                    <th className="px-4 py-2 text-right bg-indigo-50/30">부가세</th>
+                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-orange-50/50">합계(총액)</th>
+                                    <th className="px-4 py-2 text-right bg-orange-50/30">공급가액</th>
+                                    <th className="px-4 py-2 text-right bg-orange-50/30">부가세</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -907,22 +911,28 @@ const FranchiseDashboard = () => {
                                     </tr>
                                 ) : (
                                     filteredFranchisesForTax.map(f => {
-                                        const fFee = f.sales.franchiseFee || 0;
-                                        const eFee = f.sales.educationFee || 0;
-                                        const openCost = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
-                                        const supplyAmt = fFee + eFee + openCost;
-                                        const vat = Math.floor(supplyAmt * 0.1);
-                                        const total = supplyAmt + vat;
+                                        // 가맹+교육비 역산
+                                        const basicTotal = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
+                                        const basicSupply = Math.round(basicTotal / 1.1);
+                                        const basicVat = basicTotal - basicSupply;
+
+                                        // 오픈비용 역산
+                                        const openTotal = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+                                        const openSupply = Math.round(openTotal / 1.1);
+                                        const openVat = openTotal - openSupply;
+
                                         return (
                                             <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                                 <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{f.name}</td>
                                                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{f.bizNumber || '-'}</td>
-                                                <td className="px-4 py-3 text-right">{fFee.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right">{eFee.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right">{openCost.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 bg-indigo-50/30">{supplyAmt.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-500 bg-indigo-50/30">{vat.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-indigo-900 bg-indigo-50/50">{total.toLocaleString()}</td>
+                                                
+                                                <td className="px-4 py-3 text-right font-bold text-indigo-700 border-l border-slate-100 bg-indigo-50/30">{basicTotal.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-600 bg-indigo-50/10">{basicSupply.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-500 bg-indigo-50/10">{basicVat.toLocaleString()}</td>
+                                                
+                                                <td className="px-4 py-3 text-right font-bold text-orange-700 border-l border-slate-100 bg-orange-50/30">{openTotal.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-600 bg-orange-50/10">{openSupply.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-500 bg-orange-50/10">{openVat.toLocaleString()}</td>
                                             </tr>
                                         );
                                     })
