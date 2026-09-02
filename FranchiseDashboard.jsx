@@ -270,26 +270,40 @@ const FranchiseDashboard = () => {
                 let amountStr = String(rowObj['입금'] || rowObj['입금액'] || rowObj['입금액(원)'] || '0').replace(/,/g, '').trim();
                 const amount = Number(amountStr);
 
+                // 중복 방지를 위한 고유 키 생성 (날짜_적요_메모_의뢰인_금액_계좌)
+                const uniqueKey = `${String(rowObj['거래일시'] || rowObj['거래일자'] || '')}_${String(rowObj['적요'] || '')}_${String(rowObj['메모'] || '')}_${String(rowObj['의뢰인/수취인'] || rowObj['의뢰인'] || rowObj['보낸사람'] || rowObj['수취인'] || '')}_${amount}_${uploadingAccount}`;
+                
                 if (amount > 0) {
                     newTxns.push({
-                        id: 'txn-' + Date.now() + '-' + i,
+                        id: uniqueKey, // 식별자로 고유 키 사용
                         date: String(rowObj['거래일시'] || rowObj['거래일자'] || ''),
                         summary: String(rowObj['적요'] || ''),
                         memo: String(rowObj['메모'] || ''),
                         sender: String(rowObj['의뢰인/수취인'] || rowObj['의뢰인'] || rowObj['보낸사람'] || rowObj['수취인'] || ''),
                         amount: amount,
-                        account: uploadingAccount, // 계좌 정보 저장
+                        account: uploadingAccount,
                         matchedFranchiseId: null,
                         matchedCategory: null
                     });
                 }
             }
 
-            if (newTxns.length > 0) {
-                setBankTransactions([...bankTransactions, ...newTxns]);
-                alert(`${newTxns.length}건의 입금 내역이 추가되었습니다.`);
+            // 기존 내역과 비교하여 중복 제거
+            const existingKeys = new Set(bankTransactions.map(t => t.id));
+            const uniqueNewTxns = newTxns.filter(t => !existingKeys.has(t.id));
+            const duplicateCount = newTxns.length - uniqueNewTxns.length;
+
+            if (uniqueNewTxns.length > 0) {
+                setBankTransactions([...bankTransactions, ...uniqueNewTxns]);
+                let msg = `${uniqueNewTxns.length}건의 입금 내역이 새로 추가되었습니다.`;
+                if (duplicateCount > 0) msg += `\n(이미 업로드된 ${duplicateCount}건의 중복 내역은 제외되었습니다.)`;
+                alert(msg);
             } else {
-                alert('유효한 입금 내역을 찾을 수 없습니다.\n엑셀 파일 상단에 "거래일시", "입금", "의뢰인/수취인" 등의 열이 있는지 확인해주세요.');
+                if (duplicateCount > 0) {
+                    alert(`업로드하신 ${duplicateCount}건 모두 이미 등록된 중복 내역입니다.`);
+                } else {
+                    alert('유효한 입금 내역을 찾을 수 없습니다.\n엑셀 파일 상단에 "거래일시", "입금", "의뢰인/수취인" 등의 열이 있는지 확인해주세요.');
+                }
             }
             e.target.value = null; // reset input
             setUploadingAccount(''); // 리셋
