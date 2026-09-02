@@ -1071,6 +1071,97 @@ const FranchiseDashboard = () => {
                         </table>
                     </div>
                 </div>
+
+                {/* 3. 월별 매입 세부 내역 */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                        <h2 className="text-lg font-bold text-slate-800">3. 월별 매입 세부 내역 (협력업체)</h2>
+                        <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점의 인테리어 등 협력업체 매입 내역입니다.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
+                                <tr>
+                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3">협력업체명</th>
+                                    <th className="px-4 py-3">취급분야</th>
+                                    <th className="px-4 py-3 text-right">매입가액(원)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredFranchisesForTax.flatMap(f => (f.expenses?.interiorItems || []).map(item => ({ f, item }))).length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
+                                            매입 세부 내역이 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredFranchisesForTax.flatMap(f => 
+                                        (f.expenses?.interiorItems || []).map(item => {
+                                            const vendor = vendorCatalog.find(v => v.id === item.vendorId);
+                                            return (
+                                                <tr key={`${f.id}-${item.id}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <td className="px-4 py-3 font-medium text-slate-800">{f.name}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-700">{vendor ? vendor.name : '알수없음'}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{vendor ? vendor.category : '-'}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-red-600">{Number(item.price).toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* 4. 기기장비 불출 내역 */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                        <h2 className="text-lg font-bold text-slate-800">4. 월별 기기장비 불출 내역</h2>
+                        <p className="text-sm text-slate-500 mt-1">해당 월에 오픈하는 가맹점에 불출된 기기장비 내역입니다.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
+                                <tr>
+                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3">장비명</th>
+                                    <th className="px-4 py-3 text-right">단가(원)</th>
+                                    <th className="px-4 py-3 text-center">수량(개)</th>
+                                    <th className="px-4 py-3 text-right">합계(원)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredFranchisesForTax.flatMap(f => (f.expenses?.equipmentItems || []).map(item => ({ f, item }))).length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                                            기기장비 불출 내역이 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredFranchisesForTax.flatMap(f => 
+                                        (f.expenses?.equipmentItems || []).map(item => {
+                                            const eq = expenseCatalog.find(c => c.id === item.itemId);
+                                            const eqName = eq ? eq.name : '알수없음';
+                                            const eqPrice = eq ? eq.price : 0;
+                                            const total = eqPrice * item.qty;
+                                            return (
+                                                <tr key={`${f.id}-${item.itemId}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <td className="px-4 py-3 font-medium text-slate-800">{f.name}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-700">{eqName}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-600">{eqPrice.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-center font-medium text-slate-800">{item.qty}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-purple-600">{total.toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         );
     };
