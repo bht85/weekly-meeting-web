@@ -176,6 +176,9 @@ const FranchiseDashboard = () => {
     // 파일 업로드 ref 및 계좌 선택 상태
     const fileInputRef = useRef(null);
     const [uploadingAccount, setUploadingAccount] = useState('');
+    
+    // 미매칭 내역 검색어
+    const [unmatchedSearchTerm, setUnmatchedSearchTerm] = useState('');
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -629,7 +632,18 @@ const FranchiseDashboard = () => {
         </div>
     );
     const renderSalesTab = () => {
-        const unmatchedTxns = bankTransactions.filter(t => !t.matchedFranchiseId);
+        const totalUnmatchedTxns = bankTransactions.filter(t => !t.matchedFranchiseId);
+        
+        let displayUnmatchedTxns = totalUnmatchedTxns;
+        if (unmatchedSearchTerm) {
+            const term = unmatchedSearchTerm.toLowerCase();
+            displayUnmatchedTxns = totalUnmatchedTxns.filter(t => 
+                (t.summary && t.summary.toLowerCase().includes(term)) || 
+                (t.memo && t.memo.toLowerCase().includes(term)) || 
+                (t.sender && t.sender.toLowerCase().includes(term)) ||
+                (t.amount && t.amount.toString().includes(term))
+            );
+        }
 
         return (
             <div className="space-y-6">
@@ -659,20 +673,29 @@ const FranchiseDashboard = () => {
                 </div>
 
                 {/* 미매칭 입금 내역 */}
-                {unmatchedTxns.length > 0 && (
+                {totalUnmatchedTxns.length > 0 && (
                     <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden mb-6">
-                        <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex justify-between items-center">
-                            <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({unmatchedTxns.length}건)</h3>
-                            <button 
-                                onClick={handleClearAllUnmatchedTxns}
-                                className="text-xs px-2 py-1 bg-white text-orange-600 border border-orange-300 rounded hover:bg-orange-50 font-medium"
-                            >
-                                미매칭 전체 삭제
-                            </button>
+                        <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({totalUnmatchedTxns.length}건)</h3>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <input 
+                                    type="text"
+                                    placeholder="적요, 메모, 수취인, 금액 검색..."
+                                    value={unmatchedSearchTerm}
+                                    onChange={(e) => setUnmatchedSearchTerm(e.target.value)}
+                                    className="px-3 py-1 text-sm border border-orange-300 rounded focus:outline-none focus:border-orange-500 w-full sm:w-64"
+                                />
+                                <button 
+                                    onClick={handleClearAllUnmatchedTxns}
+                                    className="text-xs px-2 py-1 bg-white text-orange-600 border border-orange-300 rounded hover:bg-orange-50 font-medium whitespace-nowrap"
+                                >
+                                    미매칭 전체 삭제
+                                </button>
+                            </div>
                         </div>
                         <div className="overflow-x-auto max-h-60 overflow-y-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-orange-700 bg-orange-50 border-b border-orange-200 sticky top-0">
+                                <thead className="text-xs text-orange-700 bg-orange-50 border-b border-orange-200 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-2">수신계좌</th>
                                         <th className="px-4 py-2">거래일시</th>
@@ -683,7 +706,7 @@ const FranchiseDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {unmatchedTxns.map(txn => (
+                                    {displayUnmatchedTxns.map(txn => (
                                         <tr key={txn.id} className="border-b border-orange-100 hover:bg-orange-100/50">
                                             <td className="px-4 py-2">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${txn.account === '17104' ? 'bg-indigo-100 text-indigo-800' : txn.account === '85804' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
@@ -718,6 +741,13 @@ const FranchiseDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
+                                    {displayUnmatchedTxns.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="px-4 py-8 text-center text-orange-600 font-medium">
+                                                검색 결과가 없습니다.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
