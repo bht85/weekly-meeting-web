@@ -655,6 +655,34 @@ const FranchiseDashboard = () => {
 
     const calcTotalFreeRentals = (f) => calcFreeEquipmentExpense(f) + calcFreeInteriorExpense(f);
     
+    // 운영점 추가 내역 삭제 핸들러
+    const handleDeleteOperatingExpense = (franchiseId, expIndex) => {
+        if (!confirm('이 매입/비용 내역을 삭제하시겠습니까?')) return;
+        const updated = franchises.map(f => {
+            if (f.id === franchiseId) {
+                const newExps = f.operating.expenses.filter((_, i) => i !== expIndex);
+                return { ...f, operating: { ...f.operating, expenses: newExps } };
+            }
+            return f;
+        });
+        setFranchises(updated);
+        const currentF = updated.find(f => f.id === franchiseId);
+        setSelectedOperatingFranchise(currentF);
+    };
+
+    const handleDeleteOperatingFreeRental = (franchiseId, frIndex) => {
+        if (!confirm('이 무상 대여 내역을 삭제하시겠습니까?')) return;
+        const updated = franchises.map(f => {
+            if (f.id === franchiseId) {
+                const newFrs = f.operating.freeRentals.filter((_, i) => i !== frIndex);
+                return { ...f, operating: { ...f.operating, freeRentals: newFrs } };
+            }
+            return f;
+        });
+        setFranchises(updated);
+        const currentF = updated.find(f => f.id === franchiseId);
+        setSelectedOperatingFranchise(currentF);
+    };
     // 운영점 추가 거래 합계 계산
     const calcOperatingSales = (f) => {
         if (!f.operating?.sales) return 0;
@@ -2721,6 +2749,7 @@ const FranchiseDashboard = () => {
                                                 <th className="px-4 py-2">귀속월</th>
                                                 <th className="px-4 py-2">내역 요약</th>
                                                 <th className="px-4 py-2 text-right">금액</th>
+                                                <th className="px-4 py-2 w-16 text-center">관리</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2736,6 +2765,15 @@ const FranchiseDashboard = () => {
                                                             <td className="px-4 py-2 font-medium">{exp.date}</td>
                                                             <td className="px-4 py-2 text-slate-600">장비 {eqCount}건, 인테리어 {intCount}건</td>
                                                             <td className="px-4 py-2 text-right font-medium text-red-600">{(eqSum + intSum).toLocaleString()}원</td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                <button 
+                                                                    onClick={() => handleDeleteOperatingExpense(selectedOperatingFranchise.id, idx)}
+                                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                                    title="내역 삭제"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
                                                         </tr>
                                                     )
                                                 })
@@ -2759,6 +2797,7 @@ const FranchiseDashboard = () => {
                                                 <th className="px-4 py-2">귀속월</th>
                                                 <th className="px-4 py-2">내역 요약</th>
                                                 <th className="px-4 py-2 text-right">가액 합계</th>
+                                                <th className="px-4 py-2 w-16 text-center">관리</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2774,6 +2813,15 @@ const FranchiseDashboard = () => {
                                                             <td className="px-4 py-2 font-medium">{fr.date}</td>
                                                             <td className="px-4 py-2 text-slate-600">장비 {eqCount}건, 인테리어 {intCount}건</td>
                                                             <td className="px-4 py-2 text-right font-medium text-indigo-600">{(eqSum + intSum).toLocaleString()}원</td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                <button 
+                                                                    onClick={() => handleDeleteOperatingFreeRental(selectedOperatingFranchise.id, idx)}
+                                                                    className="p-1 text-slate-400 hover:text-indigo-500 transition-colors"
+                                                                    title="내역 삭제"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
                                                         </tr>
                                                     )
                                                 })
