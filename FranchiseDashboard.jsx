@@ -1056,6 +1056,28 @@ const FranchiseDashboard = () => {
             );
         }
 
+        const totals = filteredFranchises.reduce((acc, f) => {
+            const expectedFranchise = f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000;
+            const expectedOpen = f.expectedOpenCost || 0;
+            const receivedFranchise = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
+            const receivedOpen = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+            
+            acc.expectedFranchise += expectedFranchise;
+            acc.expectedOpen += expectedOpen;
+            acc.receivedFranchise += receivedFranchise;
+            acc.deposit += f.sales.open.deposit || 0;
+            acc.middle += f.sales.open.middle || 0;
+            acc.balance += f.sales.open.balance || 0;
+            
+            return acc;
+        }, {
+            expectedFranchise: 0, expectedOpen: 0, receivedFranchise: 0, deposit: 0, middle: 0, balance: 0
+        });
+        
+        const totalExpected = totals.expectedFranchise + totals.expectedOpen;
+        const totalReceived = totals.receivedFranchise + totals.deposit + totals.middle + totals.balance;
+        const totalBalance = totalExpected - totalReceived;
+
         return (
             <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
@@ -1203,6 +1225,23 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
+                            <tr className="border-b-2 border-slate-300 bg-slate-100 text-right font-bold text-slate-800">
+                                <td className="px-4 py-3 text-left border-r border-slate-200">총 합계</td>
+                                
+                                <td className="px-4 py-3 bg-indigo-50/50 text-indigo-900">{totalExpected.toLocaleString()}</td>
+                                <td className="px-4 py-3 bg-indigo-50/50 text-green-700">{totalReceived.toLocaleString()}</td>
+                                <td className={`px-4 py-3 bg-indigo-50/50 border-r border-slate-200 ${totalBalance > 0 ? 'text-red-600' : 'text-slate-500'}`}>
+                                    {totalBalance > 0 ? totalBalance.toLocaleString() : (totalBalance === 0 && totalExpected > 0) ? '완납' : '-'}
+                                </td>
+                                
+                                <td className="px-4 py-3">{totals.expectedFranchise.toLocaleString()}</td>
+                                <td className="px-4 py-3 border-r border-slate-200">{totals.receivedFranchise.toLocaleString()}</td>
+                                
+                                <td className="px-4 py-3 bg-blue-50/20">{totals.expectedOpen.toLocaleString()}</td>
+                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.deposit.toLocaleString()}</td>
+                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.middle.toLocaleString()}</td>
+                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.balance.toLocaleString()}</td>
+                            </tr>
                             {filteredFranchises.map(f => {
                                 const expectedFranchise = f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000;
                                 const expectedOpen = f.expectedOpenCost || 0;
