@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw, Package, Gift } from 'lucide-react';
+import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw, Package, Gift, Store } from 'lucide-react';
 
 const MOCK_VENDORS = [
     { id: 'v-1', name: '다온디자인', category: '기본 인테리어' },
@@ -67,6 +67,7 @@ const TABS = [
     { id: 'sales', label: '매출/수금 관리', icon: DollarSign },
     { id: 'expense', label: '매입/비용 관리', icon: ShoppingCart },
     { id: 'free_rental', label: '무상 대여 관리', icon: Gift },
+    { id: 'operating', label: '운영점 관리', icon: Store },
     { id: 'accounting', label: '월별 세무/전표', icon: Calculator },
     { id: 'monthly_purchases', label: '월별 매입', icon: Package },
 ];
@@ -129,7 +130,8 @@ const FranchiseDashboard = () => {
         const parsed = saved ? JSON.parse(saved) : MOCK_FRANCHISES;
         return parsed.map(f => ({
             ...f,
-            freeRentals: f.freeRentals || { equipmentItems: [], interiorItems: [] }
+            freeRentals: f.freeRentals || { equipmentItems: [], interiorItems: [] },
+            operating: f.operating || { sales: [], expenses: [], freeRentals: [] }
         }));
     });
 
@@ -187,9 +189,17 @@ const FranchiseDashboard = () => {
     const [matchingFranchise, setMatchingFranchise] = useState(null);
     const [editingEquipmentItems, setEditingEquipmentItems] = useState([]);
     const [editingInteriorItems, setEditingInteriorItems] = useState([]);
-
     // 무상 대여 관리 모달
     const [isFreeRentalModalOpen, setIsFreeRentalModalOpen] = useState(false);
+    const [isOperatingHistoryModalOpen, setIsOperatingHistoryModalOpen] = useState(false);
+    const [selectedOperatingFranchise, setSelectedOperatingFranchise] = useState(null);
+
+    const [isOperatingExpenseModalOpen, setIsOperatingExpenseModalOpen] = useState(false);
+    const [isOperatingFreeRentalModalOpen, setIsOperatingFreeRentalModalOpen] = useState(false);
+    
+    // 추가 거래 내역 모달 공통 상태
+    const [operatingTransactionMonth, setOperatingTransactionMonth] = useState('');
+
     const [freeRentalFranchise, setFreeRentalFranchise] = useState(null);
     const [editingFreeEquipmentItems, setEditingFreeEquipmentItems] = useState([]);
     const [editingFreeInteriorItems, setEditingFreeInteriorItems] = useState([]);
@@ -388,13 +398,24 @@ const FranchiseDashboard = () => {
         const amount = selectedDepositTxn.amount;
         const updatedFranchises = franchises.map(f => {
             if (f.id === franchiseId) {
-                let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
-                if (category === 'franchiseFee') newSales.franchiseFee += amount;
-                else if (category === 'educationFee') newSales.educationFee += amount;
-                else if (category === 'deposit') newSales.open.deposit += amount;
-                else if (category === 'middle') newSales.open.middle += amount;
-                else if (category === 'balance') newSales.open.balance += amount;
-                return { ...f, sales: newSales };
+                if (category === 'operating_sale') {
+                    const newOp = JSON.parse(JSON.stringify(f.operating || { sales: [], expenses: [], freeRentals: [] }));
+                    newOp.sales.push({
+                        id: selectedDepositTxn.id,
+                        date: selectedDepositTxn.date.substring(0, 7), // YYYY-MM
+                        amount: amount,
+                        memo: selectedDepositTxn.sender
+                    });
+                    return { ...f, operating: newOp };
+                } else {
+                    let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
+                    if (category === 'franchiseFee') newSales.franchiseFee += amount;
+                    else if (category === 'educationFee') newSales.educationFee += amount;
+                    else if (category === 'deposit') newSales.open.deposit += amount;
+                    else if (category === 'middle') newSales.open.middle += amount;
+                    else if (category === 'balance') newSales.open.balance += amount;
+                    return { ...f, sales: newSales };
+                }
             }
             return f;
         });
@@ -414,21 +435,27 @@ const FranchiseDashboard = () => {
         const amount = txn.amount;
         const updatedFranchises = franchises.map(f => {
             if (f.id === txn.matchedFranchiseId) {
-                let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
-                if (txn.matchedCategory === 'franchiseFee') newSales.franchiseFee -= amount;
-                else if (txn.matchedCategory === 'educationFee') newSales.educationFee -= amount;
-                else if (txn.matchedCategory === 'deposit') newSales.open.deposit -= amount;
-                else if (txn.matchedCategory === 'middle') newSales.open.middle -= amount;
-                else if (txn.matchedCategory === 'balance') newSales.open.balance -= amount;
-                
-                // 음수 방지 (안전 장치)
-                if (newSales.franchiseFee < 0) newSales.franchiseFee = 0;
-                if (newSales.educationFee < 0) newSales.educationFee = 0;
-                if (newSales.open.deposit < 0) newSales.open.deposit = 0;
-                if (newSales.open.middle < 0) newSales.open.middle = 0;
-                if (newSales.open.balance < 0) newSales.open.balance = 0;
+                if (txn.matchedCategory === 'operating_sale') {
+                    const newOp = JSON.parse(JSON.stringify(f.operating || { sales: [], expenses: [], freeRentals: [] }));
+                    newOp.sales = newOp.sales.filter(s => s.id !== txn.id);
+                    return { ...f, operating: newOp };
+                } else {
+                    let newSales = JSON.parse(JSON.stringify(f.sales)); // deep clone
+                    if (txn.matchedCategory === 'franchiseFee') newSales.franchiseFee -= amount;
+                    else if (txn.matchedCategory === 'educationFee') newSales.educationFee -= amount;
+                    else if (txn.matchedCategory === 'deposit') newSales.open.deposit -= amount;
+                    else if (txn.matchedCategory === 'middle') newSales.open.middle -= amount;
+                    else if (txn.matchedCategory === 'balance') newSales.open.balance -= amount;
+                    
+                    // 음수 방지 (안전 장치)
+                    if (newSales.franchiseFee < 0) newSales.franchiseFee = 0;
+                    if (newSales.educationFee < 0) newSales.educationFee = 0;
+                    if (newSales.open.deposit < 0) newSales.open.deposit = 0;
+                    if (newSales.open.middle < 0) newSales.open.middle = 0;
+                    if (newSales.open.balance < 0) newSales.open.balance = 0;
 
-                return { ...f, sales: newSales };
+                    return { ...f, sales: newSales };
+                }
             }
             return f;
         });
@@ -618,6 +645,36 @@ const FranchiseDashboard = () => {
     };
 
     const calcTotalFreeRentals = (f) => calcFreeEquipmentExpense(f) + calcFreeInteriorExpense(f);
+    
+    // 운영점 추가 거래 합계 계산
+    const calcOperatingSales = (f) => {
+        if (!f.operating?.sales) return 0;
+        return f.operating.sales.reduce((acc, sale) => acc + (Number(sale.amount) || 0), 0);
+    };
+
+    const calcOperatingExpenses = (f) => {
+        if (!f.operating?.expenses) return 0;
+        return f.operating.expenses.reduce((acc, exp) => {
+            const eqSum = (exp.equipmentItems || []).reduce((sum, item) => {
+                const catalogItem = expenseCatalog.find(c => c.id === item.itemId);
+                return sum + (catalogItem ? catalogItem.price * item.qty : 0);
+            }, 0);
+            const intSum = (exp.interiorItems || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+            return acc + eqSum + intSum;
+        }, 0);
+    };
+
+    const calcOperatingFreeRentals = (f) => {
+        if (!f.operating?.freeRentals) return 0;
+        return f.operating.freeRentals.reduce((acc, fr) => {
+            const eqSum = (fr.equipmentItems || []).reduce((sum, item) => {
+                const catalogItem = expenseCatalog.find(c => c.id === item.itemId);
+                return sum + (catalogItem ? catalogItem.price * item.qty : 0);
+            }, 0);
+            const intSum = (fr.interiorItems || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+            return acc + eqSum + intSum;
+        }, 0);
+    };
 
     const filteredFranchises = selectedMonth
         ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
@@ -1001,6 +1058,61 @@ const FranchiseDashboard = () => {
         </div>
     );
 
+    const openOperatingHistoryModal = (f) => {
+        setSelectedOperatingFranchise(f);
+        setIsOperatingHistoryModalOpen(true);
+    };
+
+    const renderOperatingTab = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-emerald-50 text-emerald-900 p-4 rounded-xl flex items-start gap-3 border border-emerald-100 mb-6">
+                <Store className="w-5 h-5 text-emerald-600 mt-0.5" />
+                <div>
+                    <h3 className="font-bold">운영점 추가 거래 관리</h3>
+                    <p className="text-sm mt-1 text-emerald-800">
+                        신규 오픈 시점이 아닌, 기존에 운영 중인 가맹점에서 발생한 기기장비 고장 수리/무상교체, 인테리어 보수, 추가 구매 등의 내역을 기록하고 관리합니다.
+                    </p>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-slate-800">운영점 거래 현황 (오픈월 필터 제외, 전체 표시)</h2>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-4 py-3">가맹점명</th>
+                                <th className="px-4 py-3">오픈일</th>
+                                <th className="px-4 py-3 text-right text-blue-500">누적 추가매출</th>
+                                <th className="px-4 py-3 text-right text-red-500">누적 매입/비용</th>
+                                <th className="px-4 py-3 text-right text-indigo-500">누적 무상대여</th>
+                                <th className="px-4 py-3 text-center">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {franchises.map(f => (
+                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-4 py-3 text-slate-500">{f.openDate || '-'}</td>
+                                    <td className="px-4 py-3 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <button onClick={() => openOperatingHistoryModal(f)} className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 font-medium">
+                                            내역 관리
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderExpenseTab = () => (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4">
@@ -1082,8 +1194,10 @@ const FranchiseDashboard = () => {
                                 <tr>
                                     <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">가맹점명</th>
                                     <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">사업자번호</th>
+                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">구분</th>
                                     <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (입금총액 기준)</th>
                                     <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (입금총액 기준)</th>
+                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">운영점 추가매출 (입금총액 기준)</th>
                                 </tr>
                                 <tr>
                                     <th className="px-4 py-2 text-right border-l border-slate-200 bg-indigo-50/50">합계(총액)</th>
@@ -1092,31 +1206,61 @@ const FranchiseDashboard = () => {
                                     <th className="px-4 py-2 text-right border-l border-slate-200 bg-orange-50/50">합계(총액)</th>
                                     <th className="px-4 py-2 text-right bg-orange-50/30">공급가액</th>
                                     <th className="px-4 py-2 text-right bg-orange-50/30">부가세</th>
+                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-emerald-50/50">합계(총액)</th>
+                                    <th className="px-4 py-2 text-right bg-emerald-50/30">공급가액</th>
+                                    <th className="px-4 py-2 text-right bg-emerald-50/30">부가세</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredFranchisesForTax.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
-                                            선택하신 월에 오픈하는 가맹점이 없습니다.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredFranchisesForTax.map(f => {
-                                        // 가맹+교육비 역산
-                                        const basicTotal = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
+                                {(() => {
+                                    // 1. 신규 오픈 가맹점
+                                    const newOpens = filteredFranchisesForTax.map(f => ({ f, isNewOpen: true }));
+                                    
+                                    // 2. 운영점 추가매출이 있는 가맹점
+                                    const operatingSalesFranchises = franchises
+                                        .filter(f => selectedMonth && f.operating?.sales?.some(s => s.date === selectedMonth))
+                                        .filter(f => !newOpens.some(no => no.f.id === f.id)) // 중복 제거
+                                        .map(f => ({ f, isNewOpen: false }));
+                                    
+                                    const combinedForTax = [...newOpens, ...operatingSalesFranchises];
+
+                                    if (combinedForTax.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan="12" className="px-4 py-8 text-center text-slate-500">
+                                                    선택하신 월에 오픈하거나 추가매출이 발생한 가맹점이 없습니다.
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    return combinedForTax.map(({ f, isNewOpen }) => {
+                                        // 가맹+교육비 역산 (신규오픈인 경우만)
+                                        const basicTotal = isNewOpen ? ((f.sales.franchiseFee || 0) + (f.sales.educationFee || 0)) : 0;
                                         const basicSupply = Math.round(basicTotal / 1.1);
                                         const basicVat = basicTotal - basicSupply;
 
-                                        // 오픈비용 역산
-                                        const openTotal = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+                                        // 오픈비용 역산 (신규오픈인 경우만)
+                                        const openTotal = isNewOpen ? ((f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0)) : 0;
                                         const openSupply = Math.round(openTotal / 1.1);
                                         const openVat = openTotal - openSupply;
+
+                                        // 운영점 추가매출 역산
+                                        const opTotal = (f.operating?.sales || [])
+                                            .filter(s => s.date === selectedMonth)
+                                            .reduce((sum, s) => sum + s.amount, 0);
+                                        const opSupply = Math.round(opTotal / 1.1);
+                                        const opVat = opTotal - opSupply;
 
                                         return (
                                             <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                                 <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{f.name}</td>
                                                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{f.bizNumber || '-'}</td>
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isNewOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                        {isNewOpen ? '신규오픈' : '추가매출'}
+                                                    </span>
+                                                </td>
                                                 
                                                 <td className="px-4 py-3 text-right font-bold text-indigo-700 border-l border-slate-100 bg-indigo-50/30">{basicTotal.toLocaleString()}</td>
                                                 <td className="px-4 py-3 text-right text-slate-600 bg-indigo-50/10">{basicSupply.toLocaleString()}</td>
@@ -1125,10 +1269,14 @@ const FranchiseDashboard = () => {
                                                 <td className="px-4 py-3 text-right font-bold text-orange-700 border-l border-slate-100 bg-orange-50/30">{openTotal.toLocaleString()}</td>
                                                 <td className="px-4 py-3 text-right text-slate-600 bg-orange-50/10">{openSupply.toLocaleString()}</td>
                                                 <td className="px-4 py-3 text-right text-slate-500 bg-orange-50/10">{openVat.toLocaleString()}</td>
+
+                                                <td className="px-4 py-3 text-right font-bold text-emerald-700 border-l border-slate-100 bg-emerald-50/30">{opTotal.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-600 bg-emerald-50/10">{opSupply.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-500 bg-emerald-50/10">{opVat.toLocaleString()}</td>
                                             </tr>
                                         );
-                                    })
-                                )}
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -1173,7 +1321,8 @@ const FranchiseDashboard = () => {
                                             'educationFee': '교육비',
                                             'deposit': '계약금',
                                             'middle': '중도금',
-                                            'balance': '잔금'
+                                            'balance': '잔금',
+                                            'operating_sale': '추가매출(운영)'
                                         };
                                         const catLabel = catMap[txn.matchedCategory] || txn.matchedCategory;
 
@@ -1258,11 +1407,19 @@ const FranchiseDashboard = () => {
                             <tbody>
                                 {(() => {
                                     const interiorDetails = filteredFranchisesForTax.flatMap(f => {
-                                        const expenses = (f.expenses?.interiorItems || []).map(item => ({ f, item, type: '판매분' }));
-                                        const freeRentals = (f.freeRentals?.interiorItems || []).map(item => ({ f, item, type: '무상대여' }));
+                                        const expenses = (f.expenses?.interiorItems || []).map(item => ({ f, item, type: '판매분', openType: '신규오픈' }));
+                                        const freeRentals = (f.freeRentals?.interiorItems || []).map(item => ({ f, item, type: '무상대여', openType: '신규오픈' }));
                                         return [...expenses, ...freeRentals];
                                     });
-                                    if (interiorDetails.length === 0) {
+
+                                    const operatingInteriorDetails = franchises.flatMap(f => {
+                                        const opsExpenses = (f.operating?.expenses || []).filter(e => e.date === selectedMonth).flatMap(e => e.interiorItems.map(item => ({ f, item, type: '판매분', openType: '운영점추가' })));
+                                        const opsFreeRentals = (f.operating?.freeRentals || []).filter(e => e.date === selectedMonth).flatMap(e => e.interiorItems.map(item => ({ f, item, type: '무상대여', openType: '운영점추가' })));
+                                        return [...opsExpenses, ...opsFreeRentals];
+                                    });
+
+                                    const combinedInteriorDetails = [...interiorDetails, ...operatingInteriorDetails];
+                                    if (combinedInteriorDetails.length === 0) {
                                         return (
                                             <tr>
                                                 <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
@@ -1272,7 +1429,7 @@ const FranchiseDashboard = () => {
                                         );
                                     }
                                     
-                                    const grouped = interiorDetails.reduce((acc, curr) => {
+                                    const grouped = combinedInteriorDetails.reduce((acc, curr) => {
                                         const vId = curr.item.vendorId;
                                         if (!acc[vId]) acc[vId] = { vendor: vendorCatalog.find(v => v.id === vId), items: [], total: 0 };
                                         acc[vId].items.push(curr);
@@ -1300,7 +1457,10 @@ const FranchiseDashboard = () => {
                                                         <td className="px-4 py-2 border-l-2 border-red-300"></td>
                                                         <td className="px-4 py-2 text-slate-700" colSpan="2">
                                                             ↳ {detail.f.name} {detail.f.bizNumber ? `(${detail.f.bizNumber})` : ''}
-                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.type === '무상대여' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.openType === '신규오픈' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-orange-100 text-orange-700 border-orange-200'} border`}>
+                                                                {detail.openType}
+                                                            </span>
+                                                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.type === '무상대여' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                                                                 {detail.type}
                                                             </span>
                                                         </td>
@@ -1340,11 +1500,19 @@ const FranchiseDashboard = () => {
                             <tbody>
                                 {(() => {
                                     const equipmentDetails = filteredFranchisesForTax.flatMap(f => {
-                                        const expenses = (f.expenses?.equipmentItems || []).map(item => ({ f, item, type: '판매분' }));
-                                        const freeRentals = (f.freeRentals?.equipmentItems || []).map(item => ({ f, item, type: '무상대여' }));
+                                        const expenses = (f.expenses?.equipmentItems || []).map(item => ({ f, item, type: '판매분', openType: '신규오픈' }));
+                                        const freeRentals = (f.freeRentals?.equipmentItems || []).map(item => ({ f, item, type: '무상대여', openType: '신규오픈' }));
                                         return [...expenses, ...freeRentals];
                                     });
-                                    if (equipmentDetails.length === 0) {
+
+                                    const operatingEquipmentDetails = franchises.flatMap(f => {
+                                        const opsExpenses = (f.operating?.expenses || []).filter(e => e.date === selectedMonth).flatMap(e => e.equipmentItems.map(item => ({ f, item, type: '판매분', openType: '운영점추가' })));
+                                        const opsFreeRentals = (f.operating?.freeRentals || []).filter(e => e.date === selectedMonth).flatMap(e => e.equipmentItems.map(item => ({ f, item, type: '무상대여', openType: '운영점추가' })));
+                                        return [...opsExpenses, ...opsFreeRentals];
+                                    });
+
+                                    const combinedEquipmentDetails = [...equipmentDetails, ...operatingEquipmentDetails];
+                                    if (combinedEquipmentDetails.length === 0) {
                                         return (
                                             <tr>
                                                 <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
@@ -1354,7 +1522,7 @@ const FranchiseDashboard = () => {
                                         );
                                     }
                                     
-                                    const grouped = equipmentDetails.reduce((acc, curr) => {
+                                    const grouped = combinedEquipmentDetails.reduce((acc, curr) => {
                                         const eqId = curr.item.itemId;
                                         if (!acc[eqId]) {
                                             acc[eqId] = { eq: expenseCatalog.find(c => c.id === eqId), items: [], totalQty: 0, totalPrice: 0 };
@@ -1386,7 +1554,10 @@ const FranchiseDashboard = () => {
                                                         <td className="px-4 py-2 border-l-2 border-purple-300"></td>
                                                         <td className="px-4 py-2 text-slate-700" colSpan="2">
                                                             ↳ {detail.f.name} {detail.f.bizNumber ? `(${detail.f.bizNumber})` : ''}
-                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.type === '무상대여' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.openType === '신규오픈' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-orange-100 text-orange-700 border-orange-200'} border`}>
+                                                                {detail.openType}
+                                                            </span>
+                                                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${detail.type === '무상대여' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                                                                 {detail.type}
                                                             </span>
                                                         </td>
@@ -1483,6 +1654,7 @@ const FranchiseDashboard = () => {
                 {activeTab === 'sales' && renderSalesTab()}
                 {activeTab === 'expense' && renderExpenseTab()}
                 {activeTab === 'free_rental' && renderFreeRentalTab()}
+                {activeTab === 'operating' && renderOperatingTab()}
                 {activeTab === 'accounting' && renderAccountingTab()}
                 {activeTab === 'monthly_purchases' && renderMonthlyPurchasesTab()}
             </div>
@@ -1708,6 +1880,7 @@ const FranchiseDashboard = () => {
                                         <option value="deposit">계약금 (85804 계좌 권장)</option>
                                         <option value="middle">중도금 (85804 계좌 권장)</option>
                                         <option value="balance">잔금 (85804 계좌 권장)</option>
+                                        <option value="operating_sale">추가 매출 (운영점)</option>
                                     </select>
                                 </div>
                             </form>
@@ -2177,6 +2350,481 @@ const FranchiseDashboard = () => {
                 </div>
             )}
 
+            {/* 운영점 내역 관리 모달 */}
+            {isOperatingHistoryModalOpen && selectedOperatingFranchise && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
+                            <div>
+                                <h3 className="text-lg font-bold text-emerald-900">{selectedOperatingFranchise.name} 추가 거래 내역</h3>
+                                <p className="text-sm text-emerald-700 mt-1">오픈 이후에 발생한 매출, 비용, 무상교체 내역을 관리합니다.</p>
+                            </div>
+                            <button onClick={() => setIsOperatingHistoryModalOpen(false)} className="text-emerald-500 hover:text-emerald-700">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                            <div className="flex gap-2 mb-6">
+                                <button 
+                                    onClick={() => {
+                                        setOperatingTransactionMonth(getCurrentMonth());
+                                        setEditingEquipmentItems([]);
+                                        setEditingInteriorItems([]);
+                                        setIsOperatingExpenseModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg border border-red-200 hover:bg-red-100 flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> 매입/비용 등록
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setOperatingTransactionMonth(getCurrentMonth());
+                                        setEditingFreeEquipmentItems([]);
+                                        setEditingFreeInteriorItems([]);
+                                        setIsOperatingFreeRentalModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-lg border border-indigo-200 hover:bg-indigo-100 flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> 무상 교체/대여 등록
+                                </button>
+                                <div className="ml-auto text-sm text-slate-500 flex items-center">
+                                    추가 매출은 [매출/수금 관리] 탭에서 입금내역 매칭을 통해 등록하세요.
+                                </div>
+                            </div>
+
+                            {/* 매출 내역 */}
+                            <div className="mb-8">
+                                <h4 className="text-md font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-blue-500" /> 추가 매출 (수금) 내역
+                                </h4>
+                                <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2">입금일자</th>
+                                                <th className="px-4 py-2">적요(입금자)</th>
+                                                <th className="px-4 py-2 text-right">금액</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedOperatingFranchise.operating?.sales?.length > 0 ? (
+                                                selectedOperatingFranchise.operating.sales.map((sale, idx) => (
+                                                    <tr key={idx} className="border-b border-slate-100">
+                                                        <td className="px-4 py-2">{sale.date}</td>
+                                                        <td className="px-4 py-2">{sale.memo || '-'}</td>
+                                                        <td className="px-4 py-2 text-right font-medium text-blue-600">{Number(sale.amount).toLocaleString()}원</td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr><td colSpan="3" className="px-4 py-4 text-center text-slate-400">내역이 없습니다.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* 매입/비용 내역 */}
+                            <div className="mb-8">
+                                <h4 className="text-md font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <ShoppingCart className="w-4 h-4 text-red-500" /> 추가 매입/비용 내역
+                                </h4>
+                                <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2">귀속월</th>
+                                                <th className="px-4 py-2">내역 요약</th>
+                                                <th className="px-4 py-2 text-right">금액</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedOperatingFranchise.operating?.expenses?.length > 0 ? (
+                                                selectedOperatingFranchise.operating.expenses.map((exp, idx) => {
+                                                    const eqCount = exp.equipmentItems?.length || 0;
+                                                    const intCount = exp.interiorItems?.length || 0;
+                                                    const eqSum = (exp.equipmentItems || []).reduce((sum, i) => sum + ((expenseCatalog.find(c => c.id === i.itemId)?.price || 0) * i.qty), 0);
+                                                    const intSum = (exp.interiorItems || []).reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+                                                    
+                                                    return (
+                                                        <tr key={idx} className="border-b border-slate-100">
+                                                            <td className="px-4 py-2 font-medium">{exp.date}</td>
+                                                            <td className="px-4 py-2 text-slate-600">장비 {eqCount}건, 인테리어 {intCount}건</td>
+                                                            <td className="px-4 py-2 text-right font-medium text-red-600">{(eqSum + intSum).toLocaleString()}원</td>
+                                                        </tr>
+                                                    )
+                                                })
+                                            ) : (
+                                                <tr><td colSpan="3" className="px-4 py-4 text-center text-slate-400">내역이 없습니다.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* 무상 대여 내역 */}
+                            <div className="mb-4">
+                                <h4 className="text-md font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <Gift className="w-4 h-4 text-indigo-500" /> 추가 무상교체/대여 내역
+                                </h4>
+                                <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2">귀속월</th>
+                                                <th className="px-4 py-2">내역 요약</th>
+                                                <th className="px-4 py-2 text-right">가액 합계</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedOperatingFranchise.operating?.freeRentals?.length > 0 ? (
+                                                selectedOperatingFranchise.operating.freeRentals.map((fr, idx) => {
+                                                    const eqCount = fr.equipmentItems?.length || 0;
+                                                    const intCount = fr.interiorItems?.length || 0;
+                                                    const eqSum = (fr.equipmentItems || []).reduce((sum, i) => sum + ((expenseCatalog.find(c => c.id === i.itemId)?.price || 0) * i.qty), 0);
+                                                    const intSum = (fr.interiorItems || []).reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+                                                    
+                                                    return (
+                                                        <tr key={idx} className="border-b border-slate-100">
+                                                            <td className="px-4 py-2 font-medium">{fr.date}</td>
+                                                            <td className="px-4 py-2 text-slate-600">장비 {eqCount}건, 인테리어 {intCount}건</td>
+                                                            <td className="px-4 py-2 text-right font-medium text-indigo-600">{(eqSum + intSum).toLocaleString()}원</td>
+                                                        </tr>
+                                                    )
+                                                })
+                                            ) : (
+                                                <tr><td colSpan="3" className="px-4 py-4 text-center text-slate-400">내역이 없습니다.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* 운영점 추가 매입/비용 등록 모달 */}
+            {isOperatingExpenseModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
+                            <h3 className="text-lg font-bold text-red-900">운영점 추가 매입/비용 등록</h3>
+                            <button onClick={() => setIsOperatingExpenseModalOpen(false)} className="text-red-400 hover:text-red-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">거래 귀속월 (필수)</label>
+                                <input 
+                                    type="month" 
+                                    required
+                                    className="w-full max-w-[200px] px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                    value={operatingTransactionMonth}
+                                    onChange={e => setOperatingTransactionMonth(e.target.value)}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">이 내역이 어느 달의 월별 매입으로 정산될지 선택하세요.</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* 장비 추가 */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-slate-800 text-sm">기기장비 불출 내역 추가</h4>
+                                        <button 
+                                            onClick={() => setEditingEquipmentItems([...editingEquipmentItems, { itemId: '', qty: 1 }])}
+                                            className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-200 flex items-center gap-1"
+                                        >
+                                            <Plus className="w-3 h-3" /> 장비 항목 추가
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {editingEquipmentItems.map((item, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <select 
+                                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.itemId}
+                                                    onChange={e => {
+                                                        const newArr = [...editingEquipmentItems];
+                                                        newArr[idx].itemId = e.target.value;
+                                                        setEditingEquipmentItems(newArr);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>장비 선택</option>
+                                                    {expenseCatalog.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name} ({c.price.toLocaleString()}원)</option>
+                                                    ))}
+                                                </select>
+                                                <input 
+                                                    type="number" min="1"
+                                                    className="w-20 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.qty}
+                                                    onChange={e => {
+                                                        const newArr = [...editingEquipmentItems];
+                                                        newArr[idx].qty = Number(e.target.value);
+                                                        setEditingEquipmentItems(newArr);
+                                                    }}
+                                                />
+                                                <button 
+                                                    onClick={() => setEditingEquipmentItems(editingEquipmentItems.filter((_, i) => i !== idx))}
+                                                    className="p-2 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 인테리어 추가 */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-slate-800 text-sm">인테리어/설치비/기타 매입 추가</h4>
+                                        <button 
+                                            onClick={() => setEditingInteriorItems([...editingInteriorItems, { id: `int-new-${Date.now()}`, vendorId: '', price: 0 }])}
+                                            className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-200 flex items-center gap-1"
+                                        >
+                                            <Plus className="w-3 h-3" /> 매입 항목 추가
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {editingInteriorItems.map((item, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <select 
+                                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.vendorId}
+                                                    onChange={e => {
+                                                        const newArr = [...editingInteriorItems];
+                                                        newArr[idx].vendorId = e.target.value;
+                                                        setEditingInteriorItems(newArr);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>협력업체 선택</option>
+                                                    {vendorCatalog.map(v => (
+                                                        <option key={v.id} value={v.id}>[{v.category}] {v.name}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" min="0" placeholder="금액"
+                                                        className="w-32 px-3 py-2 border border-slate-300 rounded-lg text-sm text-right pr-6"
+                                                        value={item.price || ''}
+                                                        onChange={e => {
+                                                            const newArr = [...editingInteriorItems];
+                                                            newArr[idx].price = Number(e.target.value);
+                                                            setEditingInteriorItems(newArr);
+                                                        }}
+                                                    />
+                                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setEditingInteriorItems(editingInteriorItems.filter((_, i) => i !== idx))}
+                                                    className="p-2 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                            <button onClick={() => setIsOperatingExpenseModalOpen(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">
+                                취소
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if(!operatingTransactionMonth) {
+                                        alert("거래 귀속월을 선택해주세요.");
+                                        return;
+                                    }
+                                    const updated = [...franchises];
+                                    const idx = updated.findIndex(f => f.id === selectedOperatingFranchise.id);
+                                    if(idx > -1) {
+                                        if(!updated[idx].operating) updated[idx].operating = { sales: [], expenses: [], freeRentals: [] };
+                                        if(!updated[idx].operating.expenses) updated[idx].operating.expenses = [];
+                                        
+                                        updated[idx].operating.expenses.push({
+                                            id: `op_exp_${Date.now()}`,
+                                            date: operatingTransactionMonth,
+                                            equipmentItems: editingEquipmentItems.filter(i => i.itemId && i.qty > 0),
+                                            interiorItems: editingInteriorItems.filter(i => i.vendorId && i.price > 0)
+                                        });
+                                        setFranchises(updated);
+                                        setSelectedOperatingFranchise(updated[idx]);
+                                    }
+                                    setIsOperatingExpenseModalOpen(false);
+                                }}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                            >
+                                저장하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 운영점 무상대여 등록 모달 */}
+            {isOperatingFreeRentalModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 shrink-0">
+                            <h3 className="text-lg font-bold text-indigo-900">운영점 추가 무상교체/대여 등록</h3>
+                            <button onClick={() => setIsOperatingFreeRentalModalOpen(false)} className="text-indigo-400 hover:text-indigo-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">거래 귀속월 (필수)</label>
+                                <input 
+                                    type="month" 
+                                    required
+                                    className="w-full max-w-[200px] px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                    value={operatingTransactionMonth}
+                                    onChange={e => setOperatingTransactionMonth(e.target.value)}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">이 내역이 어느 달의 무상대여 매입으로 정산될지 선택하세요.</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* 장비 추가 */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-slate-800 text-sm">무상 기기장비 내역 추가</h4>
+                                        <button 
+                                            onClick={() => setEditingFreeEquipmentItems([...editingFreeEquipmentItems, { itemId: '', qty: 1 }])}
+                                            className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-200 flex items-center gap-1"
+                                        >
+                                            <Plus className="w-3 h-3" /> 장비 항목 추가
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {editingFreeEquipmentItems.map((item, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <select 
+                                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.itemId}
+                                                    onChange={e => {
+                                                        const newArr = [...editingFreeEquipmentItems];
+                                                        newArr[idx].itemId = e.target.value;
+                                                        setEditingFreeEquipmentItems(newArr);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>장비 선택</option>
+                                                    {expenseCatalog.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name} ({c.price.toLocaleString()}원)</option>
+                                                    ))}
+                                                </select>
+                                                <input 
+                                                    type="number" min="1"
+                                                    className="w-20 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.qty}
+                                                    onChange={e => {
+                                                        const newArr = [...editingFreeEquipmentItems];
+                                                        newArr[idx].qty = Number(e.target.value);
+                                                        setEditingFreeEquipmentItems(newArr);
+                                                    }}
+                                                />
+                                                <button 
+                                                    onClick={() => setEditingFreeEquipmentItems(editingFreeEquipmentItems.filter((_, i) => i !== idx))}
+                                                    className="p-2 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 인테리어 추가 */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-slate-800 text-sm">무상 인테리어/설치비 추가</h4>
+                                        <button 
+                                            onClick={() => setEditingFreeInteriorItems([...editingFreeInteriorItems, { id: `int-new-${Date.now()}`, vendorId: '', price: 0 }])}
+                                            className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-200 flex items-center gap-1"
+                                        >
+                                            <Plus className="w-3 h-3" /> 무상 매입 항목 추가
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {editingFreeInteriorItems.map((item, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <select 
+                                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    value={item.vendorId}
+                                                    onChange={e => {
+                                                        const newArr = [...editingFreeInteriorItems];
+                                                        newArr[idx].vendorId = e.target.value;
+                                                        setEditingFreeInteriorItems(newArr);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>협력업체 선택</option>
+                                                    {vendorCatalog.map(v => (
+                                                        <option key={v.id} value={v.id}>[{v.category}] {v.name}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" min="0" placeholder="금액"
+                                                        className="w-32 px-3 py-2 border border-slate-300 rounded-lg text-sm text-right pr-6"
+                                                        value={item.price || ''}
+                                                        onChange={e => {
+                                                            const newArr = [...editingFreeInteriorItems];
+                                                            newArr[idx].price = Number(e.target.value);
+                                                            setEditingFreeInteriorItems(newArr);
+                                                        }}
+                                                    />
+                                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setEditingFreeInteriorItems(editingFreeInteriorItems.filter((_, i) => i !== idx))}
+                                                    className="p-2 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                            <button onClick={() => setIsOperatingFreeRentalModalOpen(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">
+                                취소
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if(!operatingTransactionMonth) {
+                                        alert("거래 귀속월을 선택해주세요.");
+                                        return;
+                                    }
+                                    const updated = [...franchises];
+                                    const idx = updated.findIndex(f => f.id === selectedOperatingFranchise.id);
+                                    if(idx > -1) {
+                                        if(!updated[idx].operating) updated[idx].operating = { sales: [], expenses: [], freeRentals: [] };
+                                        if(!updated[idx].operating.freeRentals) updated[idx].operating.freeRentals = [];
+                                        
+                                        updated[idx].operating.freeRentals.push({
+                                            id: `op_fr_${Date.now()}`,
+                                            date: operatingTransactionMonth,
+                                            equipmentItems: editingFreeEquipmentItems.filter(i => i.itemId && i.qty > 0),
+                                            interiorItems: editingFreeInteriorItems.filter(i => i.vendorId && i.price > 0)
+                                        });
+                                        setFranchises(updated);
+                                        setSelectedOperatingFranchise(updated[idx]);
+                                    }
+                                    setIsOperatingFreeRentalModalOpen(false);
+                                }}
+                                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                            >
+                                저장하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* 기본정보 수정 모달 */}
             {isEditModalOpen && editFranchise && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
