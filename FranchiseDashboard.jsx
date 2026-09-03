@@ -175,7 +175,7 @@ const FranchiseDashboard = () => {
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', expectedFranchiseFee: 0, expectedOpenCost: 0 });
+    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
 
     // 단가표 관리 모달 (기기장비 전용)
     const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
@@ -237,6 +237,9 @@ const FranchiseDashboard = () => {
     const handleAddSubmit = (e) => {
         e.preventDefault();
         const id = 'F' + new Date().toISOString().replace(/\D/g, '').slice(0, 8) + Math.floor(Math.random() * 1000);
+        
+        const expectedFranchiseFee = (newFranchise.isFranchiseFeeCharged ? 5500000 : 0) + (newFranchise.isEducationFeeCharged ? 2200000 : 0);
+        
         const newEntry = {
             id,
             name: newFranchise.name,
@@ -245,7 +248,9 @@ const FranchiseDashboard = () => {
             bizType: newFranchise.bizType,
             contractDate: newFranchise.contractDate,
             openDate: newFranchise.openDate,
-            expectedFranchiseFee: Number(newFranchise.expectedFranchiseFee) || 0,
+            isFranchiseFeeCharged: newFranchise.isFranchiseFeeCharged,
+            isEducationFeeCharged: newFranchise.isEducationFeeCharged,
+            expectedFranchiseFee: expectedFranchiseFee,
             expectedOpenCost: Number(newFranchise.expectedOpenCost) || 0,
             status: '계약완료',
             sales: { franchiseFee: 0, educationFee: 0, open: { deposit: 0, middle: 0, balance: 0 } },
@@ -254,7 +259,7 @@ const FranchiseDashboard = () => {
         };
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
-        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', expectedFranchiseFee: 0, expectedOpenCost: 0 });
+        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
         setActiveTab('basic');
     };
 
@@ -268,7 +273,14 @@ const FranchiseDashboard = () => {
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
-        setFranchises(franchises.map(f => f.id === editFranchise.id ? editFranchise : f));
+        
+        const expectedFranchiseFee = (editFranchise.isFranchiseFeeCharged ? 5500000 : 0) + (editFranchise.isEducationFeeCharged ? 2200000 : 0);
+        const updatedFranchise = {
+            ...editFranchise,
+            expectedFranchiseFee
+        };
+        
+        setFranchises(franchises.map(f => f.id === editFranchise.id ? updatedFranchise : f));
         setIsEditModalOpen(false);
         setEditFranchise(null);
     };
@@ -1179,7 +1191,7 @@ const FranchiseDashboard = () => {
                         </thead>
                         <tbody>
                             {filteredFranchises.map(f => {
-                                const expectedFranchise = f.expectedFranchiseFee || 0;
+                                const expectedFranchise = f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000;
                                 const expectedOpen = f.expectedOpenCost || 0;
                                 const totalExpected = expectedFranchise + expectedOpen;
                                 
@@ -2693,16 +2705,28 @@ const FranchiseDashboard = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">가맹/교육비 견적금액</label>
-                                    <input 
-                                        type="number" 
-                                        min="0" step="1000"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
-                                        placeholder="면제시 0원"
-                                        value={newFranchise.expectedFranchiseFee}
-                                        onChange={e => setNewFranchise({...newFranchise, expectedFranchiseFee: e.target.value})}
-                                    />
-                                    <p className="text-[11px] text-slate-500 mt-1">청구 예정인 가맹/교육비 총액</p>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">가맹/교육비 기본 청구</label>
+                                    <div className="flex flex-col gap-2 mt-1">
+                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                checked={newFranchise.isFranchiseFeeCharged}
+                                                onChange={e => setNewFranchise({...newFranchise, isFranchiseFeeCharged: e.target.checked})}
+                                            />
+                                            가맹비 청구 (5,500,000원)
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                checked={newFranchise.isEducationFeeCharged}
+                                                onChange={e => setNewFranchise({...newFranchise, isEducationFeeCharged: e.target.checked})}
+                                            />
+                                            교육비 청구 (2,200,000원)
+                                        </label>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-2">체크 해제 시 면제로 처리됩니다.</p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-1">오픈비용 견적금액</label>
@@ -3318,16 +3342,28 @@ const FranchiseDashboard = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">가맹/교육비 견적금액</label>
-                                    <input 
-                                        type="number" 
-                                        min="0" step="1000"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
-                                        placeholder="면제시 0원"
-                                        value={editFranchise.expectedFranchiseFee || ''}
-                                        onChange={e => setEditFranchise({...editFranchise, expectedFranchiseFee: Number(e.target.value) || 0})}
-                                    />
-                                    <p className="text-[11px] text-slate-500 mt-1">청구 예정인 가맹/교육비 총액</p>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">가맹/교육비 기본 청구</label>
+                                    <div className="flex flex-col gap-2 mt-1">
+                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                checked={editFranchise.isFranchiseFeeCharged !== false}
+                                                onChange={e => setEditFranchise({...editFranchise, isFranchiseFeeCharged: e.target.checked})}
+                                            />
+                                            가맹비 청구 (5,500,000원)
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                checked={editFranchise.isEducationFeeCharged !== false}
+                                                onChange={e => setEditFranchise({...editFranchise, isEducationFeeCharged: e.target.checked})}
+                                            />
+                                            교육비 청구 (2,200,000원)
+                                        </label>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-2">체크 해제 시 면제로 처리됩니다.</p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-1">오픈비용 견적금액</label>
