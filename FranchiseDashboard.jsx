@@ -685,6 +685,18 @@ const FranchiseDashboard = () => {
         }, 0);
     };
 
+    const filteredFranchises = selectedMonth
+        ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
+        : franchises;
+
+    const activeOperatingFranchises = React.useMemo(() => {
+        return franchises.filter(f => 
+            calcOperatingSales(f) > 0 || 
+            calcOperatingExpenses(f) > 0 || 
+            calcOperatingFreeRentals(f) > 0
+        );
+    }, [franchises]);
+
     const renderDashboard = () => {
         const dashboardStats = React.useMemo(() => {
             let totalNewSales = 0;
