@@ -1624,7 +1624,7 @@ const FranchiseDashboard = () => {
             );
         }
 
-        const filteredFranchisesForTax = franchises.filter(f => f.openDate.startsWith(selectedMonth));
+        const filteredFranchisesForTax = franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth));
 
         return (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
