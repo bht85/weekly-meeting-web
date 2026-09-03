@@ -1051,7 +1051,7 @@ const FranchiseDashboard = () => {
                             onClick={() => { setUploadingAccount('85804'); fileInputRef.current.click(); }}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                         >
-                            <Plus className="w-4 h-4" /> 계약/중도/잔금 (85804계좌)
+                            <Plus className="w-4 h-4" /> 계약/착수/잔금 (85804계좌)
                         </button>
                     </div>
                 </div>
@@ -1069,7 +1069,7 @@ const FranchiseDashboard = () => {
                                 >
                                     <option value="ALL">전체 계좌</option>
                                     <option value="17104">17104 (가맹비/교육비)</option>
-                                    <option value="85804">85804 (계약/중도/잔금)</option>
+                                    <option value="85804">85804 (계약/착수/잔금)</option>
                                     <option value="">미지정</option>
                                 </select>
                                 <input 
@@ -1160,7 +1160,7 @@ const FranchiseDashboard = () => {
                                 <th className="px-4 py-3 text-right">총 수금액</th>
                                 <th className="px-4 py-3 text-right text-slate-400">가맹/교육비</th>
                                 <th className="px-4 py-3 text-right text-blue-500">계약금</th>
-                                <th className="px-4 py-3 text-right text-blue-500">중도금</th>
+                                <th className="px-4 py-3 text-right text-blue-500">착수금</th>
                                 <th className="px-4 py-3 text-right text-blue-500">잔금</th>
                             </tr>
                         </thead>
@@ -1481,7 +1481,7 @@ const FranchiseDashboard = () => {
                     <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
                         <h2 className="text-lg font-bold text-slate-800">1. 월별 매출 확정 내역 (세금계산서 발행용)</h2>
                         <p className="text-sm text-slate-500 mt-1">
-                            오픈일자 기준으로 해당 월에 확정된 가맹점별 매출입니다. (오픈비용: 계약금+중도금+잔금 합계)
+                            오픈일자 기준으로 해당 월에 확정된 가맹점별 매출입니다. (오픈비용: 계약금+착수금+잔금 합계)
                         </p>
                     </div>
                     <div className="overflow-x-auto">
@@ -1616,7 +1616,7 @@ const FranchiseDashboard = () => {
                                             'franchiseFee': '가맹/교육비',
                                             'educationFee': '가맹/교육비',
                                             'deposit': '계약금',
-                                            'middle': '중도금',
+                                            'middle': '착수금',
                                             'balance': '잔금',
                                             'operating_sale': '추가매출(운영)'
                                         };
@@ -2186,7 +2186,7 @@ const FranchiseDashboard = () => {
                                         <option value="" disabled>항목을 선택하세요</option>
                                         <option value="franchiseFee">가맹/교육비 (17104 계좌 권장)</option>
                                         <option value="deposit">계약금 (85804 계좌 권장)</option>
-                                        <option value="middle">중도금 (85804 계좌 권장)</option>
+                                        <option value="middle">착수금 (85804 계좌 권장)</option>
                                         <option value="balance">잔금 (85804 계좌 권장)</option>
                                         <option value="operating_sale">추가 매출 (운영점)</option>
                                     </select>
