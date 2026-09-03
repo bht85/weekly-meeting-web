@@ -1336,19 +1336,36 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredFranchises.map(f => (
-                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                    <td className="px-4 py-3 text-right font-bold text-indigo-600">{calcTotalFreeRentals(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-orange-600">{calcFreeInteriorExpense(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-purple-600">{calcFreeEquipmentExpense(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <button onClick={() => openFreeRentalModal(f)} className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 font-medium">
-                                            내역 입력
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {(() => {
+                                const totalFreeRentals = filteredFranchises.reduce((sum, f) => sum + calcTotalFreeRentals(f), 0);
+                                const totalInterior = filteredFranchises.reduce((sum, f) => sum + calcFreeInteriorExpense(f), 0);
+                                const totalEquipment = filteredFranchises.reduce((sum, f) => sum + calcFreeEquipmentExpense(f), 0);
+
+                                return (
+                                    <>
+                                        <tr className="border-b-2 border-slate-300 bg-slate-100 font-bold text-slate-800">
+                                            <td className="px-4 py-3 text-center border-r border-slate-200">총 합계</td>
+                                            <td className="px-4 py-3 text-right text-indigo-700 bg-indigo-50/50">{totalFreeRentals.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-orange-700 bg-orange-50/30">{totalInterior.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-purple-700 bg-purple-50/30">{totalEquipment.toLocaleString()}</td>
+                                            <td className="px-4 py-3"></td>
+                                        </tr>
+                                        {filteredFranchises.map(f => (
+                                            <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-bold text-slate-800 border-r border-slate-100">{f.name}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 bg-indigo-50/10">{calcTotalFreeRentals(f).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-orange-600 bg-orange-50/10">{calcFreeInteriorExpense(f).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-purple-600 bg-purple-50/10">{calcFreeEquipmentExpense(f).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-center border-l border-slate-100">
+                                                    <button onClick={() => openFreeRentalModal(f)} className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 font-medium">
+                                                        내역 입력
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </>
+                                );
+                            })()}
                         </tbody>
                     </table>
                 </div>
