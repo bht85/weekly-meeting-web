@@ -1120,8 +1120,7 @@ const FranchiseDashboard = () => {
                             <tr>
                                 <th className="px-4 py-3">가맹점명</th>
                                 <th className="px-4 py-3 text-right">총 수금액</th>
-                                <th className="px-4 py-3 text-right text-slate-400">가맹비</th>
-                                <th className="px-4 py-3 text-right text-slate-400">교육비</th>
+                                <th className="px-4 py-3 text-right text-slate-400">가맹/교육비</th>
                                 <th className="px-4 py-3 text-right text-blue-500">계약금</th>
                                 <th className="px-4 py-3 text-right text-blue-500">중도금</th>
                                 <th className="px-4 py-3 text-right text-blue-500">잔금</th>
@@ -1132,8 +1131,7 @@ const FranchiseDashboard = () => {
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
                                     <td className="px-4 py-3 text-right font-bold text-green-600">{calcTotalSales(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-slate-600">{f.sales.franchiseFee.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-slate-600">{f.sales.educationFee.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-slate-600">{(f.sales.franchiseFee + f.sales.educationFee).toLocaleString()}</td>
                                     <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.deposit.toLocaleString()}</td>
                                     <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.middle.toLocaleString()}</td>
                                     <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.balance.toLocaleString()}</td>
@@ -1416,9 +1414,20 @@ const FranchiseDashboard = () => {
             : franchises;
 
         // 2. 입금 내역별 전표 발행 내역 (입금일자 기준)
-        const filteredBankTxnsForVoucher = selectedMonth
-            ? bankTransactions.filter(t => t.matchedFranchiseId && t.date && t.date.startsWith(selectedMonth))
-            : bankTransactions.filter(t => t.matchedFranchiseId);
+        const extractYearMonth = (dateStr) => {
+            if (!dateStr) return '';
+            const match = String(dateStr).match(/(\d{4})[^\d]*(\d{1,2})/);
+            if (match) {
+                return `${match[1]}-${match[2].padStart(2, '0')}`;
+            }
+            return '';
+        };
+
+        const filteredBankTxnsForVoucher = bankTransactions.filter(t => {
+            if (!t.matchedFranchiseId) return false;
+            if (!selectedMonth) return true;
+            return extractYearMonth(t.date) === selectedMonth;
+        });
 
         return (
             <div className="space-y-8">
@@ -1566,8 +1575,8 @@ const FranchiseDashboard = () => {
                                         const fBizNum = matchedFranchise ? matchedFranchise.bizNumber : '-';
                                         
                                         const catMap = {
-                                            'franchiseFee': '가맹비',
-                                            'educationFee': '교육비',
+                                            'franchiseFee': '가맹/교육비',
+                                            'educationFee': '가맹/교육비',
                                             'deposit': '계약금',
                                             'middle': '중도금',
                                             'balance': '잔금',
@@ -2137,8 +2146,7 @@ const FranchiseDashboard = () => {
                                         onChange={e => setDepositMatchForm({...depositMatchForm, category: e.target.value})}
                                     >
                                         <option value="" disabled>항목을 선택하세요</option>
-                                        <option value="franchiseFee">가맹비 (17104 계좌 권장)</option>
-                                        <option value="educationFee">교육비 (17104 계좌 권장)</option>
+                                        <option value="franchiseFee">가맹/교육비 (17104 계좌 권장)</option>
                                         <option value="deposit">계약금 (85804 계좌 권장)</option>
                                         <option value="middle">중도금 (85804 계좌 권장)</option>
                                         <option value="balance">잔금 (85804 계좌 권장)</option>
