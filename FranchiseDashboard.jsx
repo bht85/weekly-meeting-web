@@ -81,75 +81,6 @@ const DateInlineEditor = ({ value, onSave }) => {
         setEditValue(value || '');
     }, [value]);
 
-    const renderOperatingSearchModal = () => {
-        if (!isOperatingSearchModalOpen) return null;
-
-        const filtered = franchises.filter(f => 
-            f.name.includes(operatingSearchKeyword) || 
-            (f.owner && f.owner.includes(operatingSearchKeyword))
-        );
-
-        return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-emerald-50/30">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Search className="w-5 h-5 text-emerald-600" />
-                                가맹점 검색 (내역 등록)
-                            </h3>
-                            <p className="text-sm text-slate-500 mt-1">추가 거래를 등록할 가맹점 이름이나 점주명을 검색하세요.</p>
-                        </div>
-                        <button onClick={() => setIsOperatingSearchModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors">
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    <div className="p-6 border-b border-slate-100">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="가맹점명 또는 점주명 검색..."
-                                value={operatingSearchKeyword}
-                                onChange={(e) => setOperatingSearchKeyword(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all text-base"
-                                autoFocus
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-2">
-                        {filtered.length === 0 ? (
-                            <div className="py-12 text-center text-slate-500">
-                                검색 결과가 없습니다.
-                            </div>
-                        ) : (
-                            <div className="space-y-1 p-2">
-                                {filtered.map(f => (
-                                    <button
-                                        key={f.id}
-                                        onClick={() => {
-                                            setIsOperatingSearchModalOpen(false);
-                                            openOperatingHistoryModal(f);
-                                            setOperatingSearchKeyword('');
-                                        }}
-                                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-between group"
-                                    >
-                                        <div>
-                                            <div className="font-bold text-slate-800 group-hover:text-emerald-700">{f.name}</div>
-                                            <div className="text-sm text-slate-500 mt-0.5">{f.owner || '점주미상'} • 오픈일: {f.openDate || '미정'}</div>
-                                        </div>
-                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500" />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="flex items-center gap-1">
@@ -1133,6 +1064,76 @@ const FranchiseDashboard = () => {
     const openOperatingHistoryModal = (f) => {
         setSelectedOperatingFranchise(f);
         setIsOperatingHistoryModalOpen(true);
+    };
+
+    const renderOperatingSearchModal = () => {
+        if (!isOperatingSearchModalOpen) return null;
+
+        const filtered = franchises.filter(f => 
+            f.name.includes(operatingSearchKeyword) || 
+            (f.owner && f.owner.includes(operatingSearchKeyword))
+        );
+
+        return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-emerald-50/30">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Search className="w-5 h-5 text-emerald-600" />
+                                가맹점 검색 (내역 등록)
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">추가 거래를 등록할 가맹점 이름이나 점주명을 검색하세요.</p>
+                        </div>
+                        <button onClick={() => setIsOperatingSearchModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="p-6 border-b border-slate-100">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="가맹점명 또는 점주명 검색..."
+                                value={operatingSearchKeyword}
+                                onChange={(e) => setOperatingSearchKeyword(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all text-base"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2">
+                        {filtered.length === 0 ? (
+                            <div className="py-12 text-center text-slate-500">
+                                검색 결과가 없습니다.
+                            </div>
+                        ) : (
+                            <div className="space-y-1 p-2">
+                                {filtered.map(f => (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => {
+                                            setIsOperatingSearchModalOpen(false);
+                                            openOperatingHistoryModal(f);
+                                            setOperatingSearchKeyword('');
+                                        }}
+                                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-between group"
+                                    >
+                                        <div>
+                                            <div className="font-bold text-slate-800 group-hover:text-emerald-700">{f.name}</div>
+                                            <div className="text-sm text-slate-500 mt-0.5">{f.owner || '점주미상'} • 오픈일: {f.openDate || '미정'}</div>
+                                        </div>
+                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const renderOperatingTab = () => {
