@@ -366,7 +366,12 @@ const FranchiseDashboard = () => {
         if (txn.account === '17104') defaultCategory = 'franchiseFee';
         else if (txn.account === '85804') defaultCategory = 'deposit';
         
-        setDepositMatchForm({ franchiseId: '', category: defaultCategory });
+        setDepositMatchForm({ 
+            franchiseId: '', 
+            category: defaultCategory,
+            searchKeyword: '',
+            attributionMonth: txn.date ? txn.date.substring(0, 7) : getCurrentMonth()
+        });
         setIsDepositMatchModalOpen(true);
     };
 
@@ -405,7 +410,8 @@ const FranchiseDashboard = () => {
                     const newOp = JSON.parse(JSON.stringify(f.operating || { sales: [], expenses: [], freeRentals: [] }));
                     newOp.sales.push({
                         id: selectedDepositTxn.id,
-                        date: selectedDepositTxn.date.substring(0, 7), // YYYY-MM
+                        date: depositMatchForm.attributionMonth || selectedDepositTxn.date.substring(0, 7), // 귀속월 (기본값: 입금월)
+                        originalDate: selectedDepositTxn.date, // 실제 입금일자
                         amount: amount,
                         memo: selectedDepositTxn.sender
                     });
@@ -1179,7 +1185,7 @@ const FranchiseDashboard = () => {
                             <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     <th className="px-4 py-3">가맹점명</th>
-                                    <th className="px-4 py-3">오픈일</th>
+                                    <th className="px-4 py-3">최근 거래월</th>
                                     <th className="px-4 py-3 text-right text-blue-500">누적 추가매출</th>
                                     <th className="px-4 py-3 text-right text-red-500">누적 매입/비용</th>
                                     <th className="px-4 py-3 text-right text-indigo-500">누적 무상대여</th>
@@ -1195,10 +1201,19 @@ const FranchiseDashboard = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    activeOperatingFranchises.map(f => (
+                                    activeOperatingFranchises.map(f => {
+                                        const allDates = [
+                                            ...(f.operating?.sales?.map(s => s.date) || []),
+                                            ...(f.operating?.expenses?.map(e => e.date) || []),
+                                            ...(f.operating?.freeRentals?.map(fr => fr.date) || [])
+                                        ].filter(Boolean);
+                                        allDates.sort((a, b) => b.localeCompare(a));
+                                        const latestMonth = allDates[0] || '-';
+
+                                        return (
                                         <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                             <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                            <td className="px-4 py-3 text-slate-500">{f.openDate || '-'}</td>
+                                            <td className="px-4 py-3 text-slate-500 font-medium">{latestMonth}</td>
                                             <td className="px-4 py-3 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
@@ -1208,7 +1223,8 @@ const FranchiseDashboard = () => {
                                                 </button>
                                             </td>
                                         </tr>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -1958,16 +1974,29 @@ const FranchiseDashboard = () => {
                             
                             <form id="depositMatchForm" onSubmit={handleMatchDeposit} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">대상 가맹점 선택</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">대상 가맹점 검색/선택</label>
+                                    <div className="relative mb-2">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input 
+                                            type="text"
+                                            placeholder="지점명 또는 대표자명 검색..."
+                                            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                            value={depositMatchForm.searchKeyword || ''}
+                                            onChange={e => setDepositMatchForm({...depositMatchForm, searchKeyword: e.target.value})}
+                                        />
+                                    </div>
                                     <select 
                                         required
+                                        size="4"
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
                                         value={depositMatchForm.franchiseId}
                                         onChange={e => setDepositMatchForm({...depositMatchForm, franchiseId: e.target.value})}
                                     >
-                                        <option value="" disabled>가맹점을 선택하세요</option>
-                                        {franchises.map(f => (
-                                            <option key={f.id} value={f.id}>{f.name} ({f.owner})</option>
+                                        <option value="" disabled>검색 후 선택하세요</option>
+                                        {franchises
+                                            .filter(f => depositMatchForm.searchKeyword ? (f.name.includes(depositMatchForm.searchKeyword) || (f.owner && f.owner.includes(depositMatchForm.searchKeyword))) : true)
+                                            .map(f => (
+                                            <option key={f.id} value={f.id}>{f.name} ({f.owner || '대표자미상'})</option>
                                         ))}
                                     </select>
                                 </div>
@@ -1988,6 +2017,19 @@ const FranchiseDashboard = () => {
                                         <option value="operating_sale">추가 매출 (운영점)</option>
                                     </select>
                                 </div>
+                                {depositMatchForm.category === 'operating_sale' && (
+                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                        <label className="block text-sm font-bold text-indigo-900 mb-1">거래 귀속월 (필수)</label>
+                                        <input 
+                                            type="month" 
+                                            required
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                            value={depositMatchForm.attributionMonth}
+                                            onChange={e => setDepositMatchForm({...depositMatchForm, attributionMonth: e.target.value})}
+                                        />
+                                        <p className="text-xs text-indigo-700 mt-1">이 수금 내역이 어느 달의 추가매출로 정산될지 선택하세요.</p>
+                                    </div>
+                                )}
                             </form>
                         </div>
                         <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
@@ -2507,6 +2549,7 @@ const FranchiseDashboard = () => {
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-slate-50 border-b border-slate-200">
                                             <tr>
+                                                <th className="px-4 py-2">귀속월</th>
                                                 <th className="px-4 py-2">입금일자</th>
                                                 <th className="px-4 py-2">적요(입금자)</th>
                                                 <th className="px-4 py-2 text-right">금액</th>
@@ -2516,7 +2559,8 @@ const FranchiseDashboard = () => {
                                             {selectedOperatingFranchise.operating?.sales?.length > 0 ? (
                                                 selectedOperatingFranchise.operating.sales.map((sale, idx) => (
                                                     <tr key={idx} className="border-b border-slate-100">
-                                                        <td className="px-4 py-2">{sale.date}</td>
+                                                        <td className="px-4 py-2 font-medium text-indigo-600">{sale.date}</td>
+                                                        <td className="px-4 py-2 text-slate-500">{sale.originalDate || sale.date}</td>
                                                         <td className="px-4 py-2">{sale.memo || '-'}</td>
                                                         <td className="px-4 py-2 text-right font-medium text-blue-600">{Number(sale.amount).toLocaleString()}원</td>
                                                     </tr>
