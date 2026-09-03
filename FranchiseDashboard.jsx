@@ -366,10 +366,20 @@ const FranchiseDashboard = () => {
         if (txn.account === '17104') defaultCategory = 'franchiseFee';
         else if (txn.account === '85804') defaultCategory = 'deposit';
         
+        const searchKeyword = txn.sender || '';
+        
+        // 입금자명으로 가맹점 또는 대표자명 검색
+        const matchedFranchises = franchises.filter(f => 
+            searchKeyword ? (f.name.includes(searchKeyword) || (f.owner && f.owner.includes(searchKeyword))) : true
+        );
+        
+        // 검색 결과가 딱 1개라면 자동으로 가맹점 선택
+        const autoFranchiseId = matchedFranchises.length === 1 ? matchedFranchises[0].id : '';
+
         setDepositMatchForm({ 
-            franchiseId: '', 
+            franchiseId: autoFranchiseId, 
             category: defaultCategory,
-            searchKeyword: '',
+            searchKeyword: searchKeyword,
             attributionMonth: txn.date ? txn.date.substring(0, 7) : getCurrentMonth()
         });
         setIsDepositMatchModalOpen(true);
