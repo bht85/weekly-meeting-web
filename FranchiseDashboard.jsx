@@ -1063,55 +1063,89 @@ const FranchiseDashboard = () => {
         setIsOperatingHistoryModalOpen(true);
     };
 
-    const renderOperatingTab = () => (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="bg-emerald-50 text-emerald-900 p-4 rounded-xl flex items-start gap-3 border border-emerald-100 mb-6">
-                <Store className="w-5 h-5 text-emerald-600 mt-0.5" />
-                <div>
-                    <h3 className="font-bold">운영점 추가 거래 관리</h3>
-                    <p className="text-sm mt-1 text-emerald-800">
-                        신규 오픈 시점이 아닌, 기존에 운영 중인 가맹점에서 발생한 기기장비 고장 수리/무상교체, 인테리어 보수, 추가 구매 등의 내역을 기록하고 관리합니다.
-                    </p>
-                </div>
-            </div>
+    const renderOperatingTab = () => {
+        const activeOperatingFranchises = franchises.filter(f => 
+            calcOperatingSales(f) > 0 || 
+            calcOperatingExpenses(f) > 0 || 
+            calcOperatingFreeRentals(f) > 0
+        );
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-slate-800">운영점 거래 현황 (오픈월 필터 제외, 전체 표시)</h2>
+        return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-emerald-50 text-emerald-900 p-4 rounded-xl flex items-start gap-3 border border-emerald-100 mb-6">
+                    <Store className="w-5 h-5 text-emerald-600 mt-0.5" />
+                    <div>
+                        <h3 className="font-bold">운영점 추가 거래 관리</h3>
+                        <p className="text-sm mt-1 text-emerald-800">
+                            신규 오픈 시점이 아닌, 기존에 운영 중인 가맹점에서 발생한 기기장비 고장 수리/무상교체, 인테리어 보수, 추가 구매 등의 내역을 기록하고 관리합니다.
+                        </p>
+                    </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-4 py-3">가맹점명</th>
-                                <th className="px-4 py-3">오픈일</th>
-                                <th className="px-4 py-3 text-right text-blue-500">누적 추가매출</th>
-                                <th className="px-4 py-3 text-right text-red-500">누적 매입/비용</th>
-                                <th className="px-4 py-3 text-right text-indigo-500">누적 무상대여</th>
-                                <th className="px-4 py-3 text-center">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {franchises.map(f => (
-                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                    <td className="px-4 py-3 text-slate-500">{f.openDate || '-'}</td>
-                                    <td className="px-4 py-3 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <button onClick={() => openOperatingHistoryModal(f)} className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 font-medium">
-                                            내역 관리
-                                        </button>
-                                    </td>
+
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-800">운영점 거래 현황 (발생 내역이 있는 가맹점만 표시)</h2>
+                        
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-500 font-medium">새로운 내역 등록:</span>
+                            <select 
+                                onChange={(e) => {
+                                    const f = franchises.find(x => x.id === e.target.value);
+                                    if(f) openOperatingHistoryModal(f);
+                                    e.target.value = '';
+                                }}
+                                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-emerald-500 font-medium bg-white w-64"
+                            >
+                                <option value="">가맹점 선택 (검색가능)</option>
+                                {franchises.map(f => (
+                                    <option key={f.id} value={f.id}>{f.name} ({f.owner})</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3">가맹점명</th>
+                                    <th className="px-4 py-3">오픈일</th>
+                                    <th className="px-4 py-3 text-right text-blue-500">누적 추가매출</th>
+                                    <th className="px-4 py-3 text-right text-red-500">누적 매입/비용</th>
+                                    <th className="px-4 py-3 text-right text-indigo-500">누적 무상대여</th>
+                                    <th className="px-4 py-3 text-center">관리</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {activeOperatingFranchises.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-4 py-8 text-center text-slate-500">
+                                            운영점 추가 거래 내역이 발생한 가맹점이 없습니다.<br/>
+                                            우측 상단의 "가맹점 선택"을 통해 새로운 내역을 등록해보세요.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    activeOperatingFranchises.map(f => (
+                                        <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
+                                            <td className="px-4 py-3 text-slate-500">{f.openDate || '-'}</td>
+                                            <td className="px-4 py-3 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                <button onClick={() => openOperatingHistoryModal(f)} className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 font-medium">
+                                                    내역 관리
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderExpenseTab = () => (
         <div className="space-y-6">
