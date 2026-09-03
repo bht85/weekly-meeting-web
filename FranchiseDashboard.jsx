@@ -1202,45 +1202,45 @@ const FranchiseDashboard = () => {
                         <h3 className="font-bold text-slate-700">가맹점별 수금 현황</h3>
                     </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                         <thead className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-200 text-center">
                             <tr>
-                                <th rowSpan="2" className="px-4 py-3 text-left border-r border-slate-200">가맹점명</th>
-                                <th colSpan="3" className="px-4 py-2 border-b border-slate-200 border-r border-slate-200 bg-indigo-50/50 text-indigo-800">전체 합계 (채권 관리)</th>
-                                <th colSpan="2" className="px-4 py-2 border-b border-slate-200 border-r border-slate-200 text-slate-600">가맹/교육비</th>
-                                <th colSpan="4" className="px-4 py-2 border-b border-slate-200 bg-blue-50/30 text-blue-800">오픈비용 (인테리어/장비 등)</th>
+                                <th rowSpan="2" className="px-2 py-1.5 text-left border-r border-slate-200">가맹점명</th>
+                                <th colSpan="3" className="px-2 py-1.5 border-b border-slate-200 border-r border-slate-200 bg-indigo-50/50 text-indigo-800">전체 합계 (채권 관리)</th>
+                                <th colSpan="2" className="px-2 py-1.5 border-b border-slate-200 border-r border-slate-200 text-slate-600">가맹/교육비</th>
+                                <th colSpan="4" className="px-2 py-1.5 border-b border-slate-200 bg-blue-50/30 text-blue-800">오픈비용 (인테리어/장비 등)</th>
                             </tr>
                             <tr>
-                                <th className="px-4 py-2 bg-indigo-50/50 font-bold">총 견적(청구)</th>
-                                <th className="px-4 py-2 bg-indigo-50/50 font-bold text-green-600">총 수납</th>
-                                <th className="px-4 py-2 bg-indigo-50/50 font-bold text-red-500 border-r border-slate-200">미수잔액</th>
+                                <th className="px-2 py-1.5 bg-indigo-50/50 font-bold">총 견적(청구)</th>
+                                <th className="px-2 py-1.5 bg-indigo-50/50 font-bold text-green-600">총 수납</th>
+                                <th className="px-2 py-1.5 bg-indigo-50/50 font-bold text-red-500 border-r border-slate-200">미수잔액</th>
                                 
-                                <th className="px-4 py-2 bg-slate-50">견적</th>
-                                <th className="px-4 py-2 bg-slate-50 border-r border-slate-200">수납</th>
+                                <th className="px-2 py-1.5 bg-slate-50">견적</th>
+                                <th className="px-2 py-1.5 bg-slate-50 border-r border-slate-200">수납</th>
                                 
-                                <th className="px-4 py-2 bg-blue-50/30">견적</th>
-                                <th className="px-4 py-2 bg-blue-50/30">계약금(수납)</th>
-                                <th className="px-4 py-2 bg-blue-50/30">착수금(수납)</th>
-                                <th className="px-4 py-2 bg-blue-50/30">잔금(수납)</th>
+                                <th className="px-2 py-1.5 bg-blue-50/30">견적</th>
+                                <th className="px-2 py-1.5 bg-blue-50/30">계약금(수납)</th>
+                                <th className="px-2 py-1.5 bg-blue-50/30">착수금(수납)</th>
+                                <th className="px-2 py-1.5 bg-blue-50/30">잔금(수납)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="border-b-2 border-slate-300 bg-slate-100 text-right font-bold text-slate-800">
-                                <td className="px-4 py-3 text-left border-r border-slate-200">총 합계</td>
+                                <td className="px-2 py-1.5 text-left border-r border-slate-200">총 합계</td>
                                 
-                                <td className="px-4 py-3 bg-indigo-50/50 text-indigo-900">{totalExpected.toLocaleString()}</td>
-                                <td className="px-4 py-3 bg-indigo-50/50 text-green-700">{totalReceived.toLocaleString()}</td>
-                                <td className={`px-4 py-3 bg-indigo-50/50 border-r border-slate-200 ${totalBalance > 0 ? 'text-red-600' : 'text-slate-500'}`}>
+                                <td className="px-2 py-1.5 bg-indigo-50/50 text-indigo-900">{totalExpected.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 bg-indigo-50/50 text-green-700">{totalReceived.toLocaleString()}</td>
+                                <td className={`px-2 py-1.5 bg-indigo-50/50 border-r border-slate-200 ${totalBalance > 0 ? 'text-red-600' : 'text-slate-500'}`}>
                                     {totalBalance > 0 ? totalBalance.toLocaleString() : (totalBalance === 0 && totalExpected > 0) ? '완납' : '-'}
                                 </td>
                                 
-                                <td className="px-4 py-3">{totals.expectedFranchise.toLocaleString()}</td>
-                                <td className="px-4 py-3 border-r border-slate-200">{totals.receivedFranchise.toLocaleString()}</td>
+                                <td className="px-2 py-1.5">{totals.expectedFranchise.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 border-r border-slate-200">{totals.receivedFranchise.toLocaleString()}</td>
                                 
-                                <td className="px-4 py-3 bg-blue-50/20">{totals.expectedOpen.toLocaleString()}</td>
-                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.deposit.toLocaleString()}</td>
-                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.middle.toLocaleString()}</td>
-                                <td className="px-4 py-3 bg-blue-50/20 text-blue-700">{totals.balance.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 bg-blue-50/20">{totals.expectedOpen.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 bg-blue-50/20 text-blue-700">{totals.deposit.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 bg-blue-50/20 text-blue-700">{totals.middle.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 bg-blue-50/20 text-blue-700">{totals.balance.toLocaleString()}</td>
                             </tr>
                             {filteredFranchises.map(f => {
                                 const expectedFranchise = f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000;
@@ -1255,11 +1255,11 @@ const FranchiseDashboard = () => {
                                 
                                 return (
                                     <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50 text-right">
-                                        <td className="px-4 py-3 font-bold text-slate-800 text-left border-r border-slate-100">{f.name}</td>
+                                        <td className="px-2 py-1.5 font-bold text-slate-800 text-left border-r border-slate-100">{f.name}</td>
                                         
-                                        <td className="px-4 py-3 bg-indigo-50/20">{totalExpected.toLocaleString()}</td>
-                                        <td className="px-4 py-3 font-bold text-green-600 bg-indigo-50/20">{totalReceived.toLocaleString()}</td>
-                                        <td className={`px-4 py-3 font-bold bg-indigo-50/20 border-r border-slate-100 ${balance > 0 ? 'text-red-500' : balance < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
+                                        <td className="px-2 py-1.5 bg-indigo-50/20">{totalExpected.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 font-bold text-green-600 bg-indigo-50/20">{totalReceived.toLocaleString()}</td>
+                                        <td className={`px-2 py-1.5 font-bold bg-indigo-50/20 border-r border-slate-100 ${balance > 0 ? 'text-red-500' : balance < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
                                             {balance > 0 ? balance.toLocaleString() : (balance === 0 && totalExpected > 0) ? '완납' : (balance < 0 ? '초과납' : '-')}
                                         </td>
                                         
@@ -1275,7 +1275,7 @@ const FranchiseDashboard = () => {
                                                 <option value="0">전액면제</option>
                                             </select>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-600 border-r border-slate-100">{receivedFranchise.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-slate-600 border-r border-slate-100">{receivedFranchise.toLocaleString()}</td>
                                         
                                         <td className="px-2 py-2 text-slate-400 bg-blue-50/10">
                                             <input 
@@ -1286,9 +1286,9 @@ const FranchiseDashboard = () => {
                                                 onChange={e => handleUpdateExpectedOpenCost(f.id, e.target.value)}
                                             />
                                         </td>
-                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.middle.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.balance.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.middle.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.balance.toLocaleString()}</td>
                                     </tr>
                                 )
                             })}
