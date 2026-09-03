@@ -690,99 +690,98 @@ const FranchiseDashboard = () => {
         : franchises;
 
     const activeOperatingFranchises = React.useMemo(() => {
-        return franchises.filter(f => 
-            calcOperatingSales(f) > 0 || 
-            calcOperatingExpenses(f) > 0 || 
+        return franchises.filter(f =>
+            calcOperatingSales(f) > 0 ||
+            calcOperatingExpenses(f) > 0 ||
             calcOperatingFreeRentals(f) > 0
         );
-    }, [franchises]);
+    }, [franchises, expenseCatalog]);
 
-    const renderDashboard = () => {
-        const dashboardStats = React.useMemo(() => {
-            let totalNewSales = 0;
-            let totalNewExpenses = 0;
-            let totalOpSales = 0;
-            let totalOpExpenses = 0;
-            
-            const tableData = [];
+    const dashboardStats = React.useMemo(() => {
+        let totalNewSales = 0;
+        let totalNewExpenses = 0;
+        let totalOpSales = 0;
+        let totalOpExpenses = 0;
+        
+        const tableData = [];
 
-            franchises.forEach(f => {
-                let fNewSales = 0;
-                let fNewExpenses = 0;
-                let fOpSales = 0;
-                let fOpExpenses = 0;
-                let isIncluded = false;
+        franchises.forEach(f => {
+            let fNewSales = 0;
+            let fNewExpenses = 0;
+            let fOpSales = 0;
+            let fOpExpenses = 0;
+            let isIncluded = false;
 
-                // 1. 신규 오픈 (New Open)
-                if (!selectedMonth || (f.openDate && f.openDate.startsWith(selectedMonth))) {
-                    fNewSales = calcTotalSales(f);
-                    fNewExpenses = calcTotalExpenses(f);
-                    totalNewSales += fNewSales;
-                    totalNewExpenses += fNewExpenses;
-                    if (fNewSales > 0 || fNewExpenses > 0 || f.openDate) {
-                        isIncluded = true;
-                    }
+            // 1. 신규 오픈 (New Open)
+            if (!selectedMonth || (f.openDate && f.openDate.startsWith(selectedMonth))) {
+                fNewSales = calcTotalSales(f);
+                fNewExpenses = calcTotalExpenses(f);
+                totalNewSales += fNewSales;
+                totalNewExpenses += fNewExpenses;
+                if (fNewSales > 0 || fNewExpenses > 0 || f.openDate) {
+                    isIncluded = true;
                 }
+            }
 
-                // 2. 운영점 (Operating)
-                const opSales = f.operating?.sales || [];
-                const opExps = f.operating?.expenses || [];
-                const opFree = f.operating?.freeRentals || [];
+            // 2. 운영점 (Operating)
+            const opSales = f.operating?.sales || [];
+            const opExps = f.operating?.expenses || [];
+            const opFree = f.operating?.freeRentals || [];
 
-                opSales.forEach(s => {
-                    if (!selectedMonth || s.date === selectedMonth) {
-                        fOpSales += Number(s.amount) || 0;
-                        totalOpSales += Number(s.amount) || 0;
-                        isIncluded = true;
-                    }
-                });
-
-                const sumOpItems = (arr) => {
-                    arr.forEach(e => {
-                        if (!selectedMonth || e.date === selectedMonth) {
-                            const eqSum = (e.equipmentItems || []).reduce((sum, item) => {
-                                const catalogItem = expenseCatalog.find(c => c.id === item.itemId);
-                                return sum + ((catalogItem ? catalogItem.price : 0) * (item.qty || 1));
-                            }, 0);
-                            const intSum = (e.interiorItems || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
-                            fOpExpenses += (eqSum + intSum);
-                            totalOpExpenses += (eqSum + intSum);
-                            isIncluded = true;
-                        }
-                    });
-                };
-                sumOpItems(opExps);
-                sumOpItems(opFree); // 무상대여도 매입(원가)에 포함됨
-
-                if (isIncluded) {
-                    tableData.push({
-                        ...f,
-                        _dashNewSales: fNewSales,
-                        _dashNewExpenses: fNewExpenses,
-                        _dashOpSales: fOpSales,
-                        _dashOpExpenses: fOpExpenses,
-                        _dashTotalSales: fNewSales + fOpSales,
-                        _dashTotalExpenses: fNewExpenses + fOpExpenses,
-                        _dashMargin: (fNewSales + fOpSales) - (fNewExpenses + fOpExpenses)
-                    });
+            opSales.forEach(s => {
+                if (!selectedMonth || s.date === selectedMonth) {
+                    fOpSales += Number(s.amount) || 0;
+                    totalOpSales += Number(s.amount) || 0;
+                    isIncluded = true;
                 }
             });
 
-            // 마진율 높은 순으로 정렬 (동일하면 매출순)
-            tableData.sort((a, b) => b._dashMargin - a._dashMargin || b._dashTotalSales - a._dashTotalSales);
-
-            return {
-                totalNewSales,
-                totalNewExpenses,
-                totalOpSales,
-                totalOpExpenses,
-                totalSales: totalNewSales + totalOpSales,
-                totalExpenses: totalNewExpenses + totalOpExpenses,
-                margin: (totalNewSales + totalOpSales) - (totalNewExpenses + totalOpExpenses),
-                tableData
+            const sumOpItems = (arr) => {
+                arr.forEach(e => {
+                    if (!selectedMonth || e.date === selectedMonth) {
+                        const eqSum = (e.equipmentItems || []).reduce((sum, item) => {
+                            const catalogItem = expenseCatalog.find(c => c.id === item.itemId);
+                            return sum + ((catalogItem ? catalogItem.price : 0) * (item.qty || 1));
+                        }, 0);
+                        const intSum = (e.interiorItems || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+                        fOpExpenses += (eqSum + intSum);
+                        totalOpExpenses += (eqSum + intSum);
+                        isIncluded = true;
+                    }
+                });
             };
-        }, [franchises, selectedMonth, expenseCatalog]);
+            sumOpItems(opExps);
+            sumOpItems(opFree);
 
+            if (isIncluded) {
+                tableData.push({
+                    ...f,
+                    _dashNewSales: fNewSales,
+                    _dashNewExpenses: fNewExpenses,
+                    _dashOpSales: fOpSales,
+                    _dashOpExpenses: fOpExpenses,
+                    _dashTotalSales: fNewSales + fOpSales,
+                    _dashTotalExpenses: fNewExpenses + fOpExpenses,
+                    _dashMargin: (fNewSales + fOpSales) - (fNewExpenses + fOpExpenses)
+                });
+            }
+        });
+
+        tableData.sort((a, b) => b._dashMargin - a._dashMargin || b._dashTotalSales - a._dashTotalSales);
+
+        return {
+            totalNewSales,
+            totalNewExpenses,
+            totalOpSales,
+            totalOpExpenses,
+            totalSales: totalNewSales + totalOpSales,
+            totalExpenses: totalNewExpenses + totalOpExpenses,
+            margin: (totalNewSales + totalOpSales) - (totalNewExpenses + totalOpExpenses),
+            tableData
+        };
+    }, [franchises, selectedMonth, expenseCatalog]);
+
+    const renderDashboard = () => {
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -911,7 +910,7 @@ const FranchiseDashboard = () => {
                 </div>
             </div>
         </div>
-    );
+        );
     };
 
     const renderBasicInfoTab = () => (
