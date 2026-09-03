@@ -289,6 +289,19 @@ const FranchiseDashboard = () => {
         setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
     };
 
+    const handleUpdateExpectedFranchiseFee = (id, expectedFee) => {
+        setFranchises(franchises.map(f => f.id === id ? { 
+            ...f, 
+            expectedFranchiseFee: expectedFee,
+            isFranchiseFeeCharged: expectedFee >= 5500000,
+            isEducationFeeCharged: expectedFee === 7700000 || expectedFee === 2200000
+        } : f));
+    };
+
+    const handleUpdateExpectedOpenCost = (id, expectedCost) => {
+        setFranchises(franchises.map(f => f.id === id ? { ...f, expectedOpenCost: Number(expectedCost) || 0 } : f));
+    };
+
     // 엑셀 파일 파싱
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -1211,10 +1224,29 @@ const FranchiseDashboard = () => {
                                             {balance > 0 ? balance.toLocaleString() : (balance === 0 && totalExpected > 0) ? '완납' : (balance < 0 ? '초과납' : '-')}
                                         </td>
                                         
-                                        <td className="px-4 py-3 text-slate-400">{expectedFranchise.toLocaleString()}</td>
+                                        <td className="px-2 py-2 text-slate-400">
+                                            <select 
+                                                className="w-[90px] px-1 py-1 border border-slate-200 rounded text-[11px] outline-none focus:ring-1 focus:ring-indigo-500 bg-white cursor-pointer hover:border-indigo-300 transition-colors"
+                                                value={expectedFranchise}
+                                                onChange={e => handleUpdateExpectedFranchiseFee(f.id, Number(e.target.value))}
+                                            >
+                                                <option value="7700000">가맹+교육</option>
+                                                <option value="5500000">가맹비만</option>
+                                                <option value="2200000">교육비만</option>
+                                                <option value="0">전액면제</option>
+                                            </select>
+                                        </td>
                                         <td className="px-4 py-3 text-slate-600 border-r border-slate-100">{receivedFranchise.toLocaleString()}</td>
                                         
-                                        <td className="px-4 py-3 text-slate-400 bg-blue-50/10">{expectedOpen.toLocaleString()}</td>
+                                        <td className="px-2 py-2 text-slate-400 bg-blue-50/10">
+                                            <input 
+                                                type="number"
+                                                className="w-24 px-2 py-1 text-right text-[11px] border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 bg-white hover:border-blue-300 transition-colors"
+                                                placeholder="0"
+                                                value={f.expectedOpenCost || ''}
+                                                onChange={e => handleUpdateExpectedOpenCost(f.id, e.target.value)}
+                                            />
+                                        </td>
                                         <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.middle.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.balance.toLocaleString()}</td>
