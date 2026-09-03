@@ -175,7 +175,7 @@ const FranchiseDashboard = () => {
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '' });
+    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', expectedFranchiseFee: 0, expectedOpenCost: 0 });
 
     // 단가표 관리 모달 (기기장비 전용)
     const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
@@ -245,6 +245,8 @@ const FranchiseDashboard = () => {
             bizType: newFranchise.bizType,
             contractDate: newFranchise.contractDate,
             openDate: newFranchise.openDate,
+            expectedFranchiseFee: Number(newFranchise.expectedFranchiseFee) || 0,
+            expectedOpenCost: Number(newFranchise.expectedOpenCost) || 0,
             status: '계약완료',
             sales: { franchiseFee: 0, educationFee: 0, open: { deposit: 0, middle: 0, balance: 0 } },
             expenses: { equipmentItems: [], interiorItems: [] },
@@ -252,7 +254,7 @@ const FranchiseDashboard = () => {
         };
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
-        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '' });
+        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', expectedFranchiseFee: 0, expectedOpenCost: 0 });
         setActiveTab('basic');
     };
 
@@ -1154,27 +1156,59 @@ const FranchiseDashboard = () => {
                     </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
+                        <thead className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-200 text-center">
                             <tr>
-                                <th className="px-4 py-3">가맹점명</th>
-                                <th className="px-4 py-3 text-right">총 수금액</th>
-                                <th className="px-4 py-3 text-right text-slate-400">가맹/교육비</th>
-                                <th className="px-4 py-3 text-right text-blue-500">계약금</th>
-                                <th className="px-4 py-3 text-right text-blue-500">착수금</th>
-                                <th className="px-4 py-3 text-right text-blue-500">잔금</th>
+                                <th rowSpan="2" className="px-4 py-3 text-left border-r border-slate-200">가맹점명</th>
+                                <th colSpan="3" className="px-4 py-2 border-b border-slate-200 border-r border-slate-200 bg-indigo-50/50 text-indigo-800">전체 합계 (채권 관리)</th>
+                                <th colSpan="2" className="px-4 py-2 border-b border-slate-200 border-r border-slate-200 text-slate-600">가맹/교육비</th>
+                                <th colSpan="4" className="px-4 py-2 border-b border-slate-200 bg-blue-50/30 text-blue-800">오픈비용 (인테리어/장비 등)</th>
+                            </tr>
+                            <tr>
+                                <th className="px-4 py-2 bg-indigo-50/50 font-bold">총 견적(청구)</th>
+                                <th className="px-4 py-2 bg-indigo-50/50 font-bold text-green-600">총 수납</th>
+                                <th className="px-4 py-2 bg-indigo-50/50 font-bold text-red-500 border-r border-slate-200">미수잔액</th>
+                                
+                                <th className="px-4 py-2 bg-slate-50">견적</th>
+                                <th className="px-4 py-2 bg-slate-50 border-r border-slate-200">수납</th>
+                                
+                                <th className="px-4 py-2 bg-blue-50/30">견적</th>
+                                <th className="px-4 py-2 bg-blue-50/30">계약금(수납)</th>
+                                <th className="px-4 py-2 bg-blue-50/30">착수금(수납)</th>
+                                <th className="px-4 py-2 bg-blue-50/30">잔금(수납)</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredFranchises.map(f => (
-                                <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                    <td className="px-4 py-3 text-right font-bold text-green-600">{calcTotalSales(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-slate-600">{(f.sales.franchiseFee + f.sales.educationFee).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.deposit.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.middle.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-blue-600">{f.sales.open.balance.toLocaleString()}</td>
-                                </tr>
-                            ))}
+                            {filteredFranchises.map(f => {
+                                const expectedFranchise = f.expectedFranchiseFee || 0;
+                                const expectedOpen = f.expectedOpenCost || 0;
+                                const totalExpected = expectedFranchise + expectedOpen;
+                                
+                                const receivedFranchise = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
+                                const receivedOpen = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+                                const totalReceived = receivedFranchise + receivedOpen;
+                                
+                                const balance = totalExpected - totalReceived;
+                                
+                                return (
+                                    <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50 text-right">
+                                        <td className="px-4 py-3 font-bold text-slate-800 text-left border-r border-slate-100">{f.name}</td>
+                                        
+                                        <td className="px-4 py-3 bg-indigo-50/20">{totalExpected.toLocaleString()}</td>
+                                        <td className="px-4 py-3 font-bold text-green-600 bg-indigo-50/20">{totalReceived.toLocaleString()}</td>
+                                        <td className={`px-4 py-3 font-bold bg-indigo-50/20 border-r border-slate-100 ${balance > 0 ? 'text-red-500' : balance < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
+                                            {balance > 0 ? balance.toLocaleString() : (balance === 0 && totalExpected > 0) ? '완납' : (balance < 0 ? '초과납' : '-')}
+                                        </td>
+                                        
+                                        <td className="px-4 py-3 text-slate-400">{expectedFranchise.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-slate-600 border-r border-slate-100">{receivedFranchise.toLocaleString()}</td>
+                                        
+                                        <td className="px-4 py-3 text-slate-400 bg-blue-50/10">{expectedOpen.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.middle.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-blue-600 bg-blue-50/10">{f.sales.open.balance.toLocaleString()}</td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -2657,6 +2691,32 @@ const FranchiseDashboard = () => {
                                     />
                                 </div>
                             </div>
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">가맹/교육비 견적금액</label>
+                                    <input 
+                                        type="number" 
+                                        min="0" step="1000"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
+                                        placeholder="면제시 0원"
+                                        value={newFranchise.expectedFranchiseFee}
+                                        onChange={e => setNewFranchise({...newFranchise, expectedFranchiseFee: e.target.value})}
+                                    />
+                                    <p className="text-[11px] text-slate-500 mt-1">청구 예정인 가맹/교육비 총액</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">오픈비용 견적금액</label>
+                                    <input 
+                                        type="number" 
+                                        min="0" step="1000"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
+                                        placeholder="예: 50000000"
+                                        value={newFranchise.expectedOpenCost}
+                                        onChange={e => setNewFranchise({...newFranchise, expectedOpenCost: e.target.value})}
+                                    />
+                                    <p className="text-[11px] text-slate-500 mt-1">인테리어/장비 등 전체 오픈비용 총액</p>
+                                </div>
+                            </div>
                         </form>
                         </div>
                         <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
@@ -3254,6 +3314,32 @@ const FranchiseDashboard = () => {
                                         <option value="잔금대기">잔금대기</option>
                                         <option value="오픈완료">오픈완료</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">가맹/교육비 견적금액</label>
+                                    <input 
+                                        type="number" 
+                                        min="0" step="1000"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
+                                        placeholder="면제시 0원"
+                                        value={editFranchise.expectedFranchiseFee || ''}
+                                        onChange={e => setEditFranchise({...editFranchise, expectedFranchiseFee: Number(e.target.value) || 0})}
+                                    />
+                                    <p className="text-[11px] text-slate-500 mt-1">청구 예정인 가맹/교육비 총액</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">오픈비용 견적금액</label>
+                                    <input 
+                                        type="number" 
+                                        min="0" step="1000"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-right font-medium"
+                                        placeholder="예: 50000000"
+                                        value={editFranchise.expectedOpenCost || ''}
+                                        onChange={e => setEditFranchise({...editFranchise, expectedOpenCost: Number(e.target.value) || 0})}
+                                    />
+                                    <p className="text-[11px] text-slate-500 mt-1">인테리어/장비 등 전체 오픈비용 총액</p>
                                 </div>
                             </div>
                         </form>
