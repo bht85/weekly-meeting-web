@@ -685,49 +685,134 @@ const FranchiseDashboard = () => {
         }, 0);
     };
 
-    const filteredFranchises = selectedMonth
-        ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
-        : franchises;
+    const renderDashboard = () => {
+        const dashboardStats = React.useMemo(() => {
+            let totalNewSales = 0;
+            let totalNewExpenses = 0;
+            let totalOpSales = 0;
+            let totalOpExpenses = 0;
+            
+            const tableData = [];
 
-    const activeOperatingFranchises = React.useMemo(() => {
-        return franchises.filter(f => 
-            calcOperatingSales(f) > 0 || 
-            calcOperatingExpenses(f) > 0 || 
-            calcOperatingFreeRentals(f) > 0
-        );
-    }, [franchises]);
+            franchises.forEach(f => {
+                let fNewSales = 0;
+                let fNewExpenses = 0;
+                let fOpSales = 0;
+                let fOpExpenses = 0;
+                let isIncluded = false;
 
-    const renderDashboard = () => (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">총 오픈/진행 가맹점</div>
-                    <div className="text-2xl font-bold">{filteredFranchises.length}개</div>
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">총 예상 매출액</div>
-                    <div className="text-2xl font-bold text-green-600">
-                        {(filteredFranchises.reduce((acc, f) => acc + calcTotalSales(f), 0)).toLocaleString()}원
+                // 1. 신규 오픈 (New Open)
+                if (!selectedMonth || (f.openDate && f.openDate.startsWith(selectedMonth))) {
+                    fNewSales = calcTotalSales(f);
+                    fNewExpenses = calcTotalExpenses(f);
+                    totalNewSales += fNewSales;
+                    totalNewExpenses += fNewExpenses;
+                    if (fNewSales > 0 || fNewExpenses > 0 || f.openDate) {
+                        isIncluded = true;
+                    }
+                }
+
+                // 2. 운영점 (Operating)
+                const opSales = f.operating?.sales || [];
+                const opExps = f.operating?.expenses || [];
+                const opFree = f.operating?.freeRentals || [];
+
+                opSales.forEach(s => {
+                    if (!selectedMonth || s.date === selectedMonth) {
+                        fOpSales += Number(s.amount) || 0;
+                        totalOpSales += Number(s.amount) || 0;
+                        isIncluded = true;
+                    }
+                });
+
+                const sumOpItems = (arr) => {
+                    arr.forEach(e => {
+                        if (!selectedMonth || e.date === selectedMonth) {
+                            const eqSum = (e.equipmentItems || []).reduce((sum, item) => {
+                                const catalogItem = expenseCatalog.find(c => c.id === item.itemId);
+                                return sum + ((catalogItem ? catalogItem.price : 0) * (item.qty || 1));
+                            }, 0);
+                            const intSum = (e.interiorItems || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+                            fOpExpenses += (eqSum + intSum);
+                            totalOpExpenses += (eqSum + intSum);
+                            isIncluded = true;
+                        }
+                    });
+                };
+                sumOpItems(opExps);
+                sumOpItems(opFree); // 무상대여도 매입(원가)에 포함됨
+
+                if (isIncluded) {
+                    tableData.push({
+                        ...f,
+                        _dashNewSales: fNewSales,
+                        _dashNewExpenses: fNewExpenses,
+                        _dashOpSales: fOpSales,
+                        _dashOpExpenses: fOpExpenses,
+                        _dashTotalSales: fNewSales + fOpSales,
+                        _dashTotalExpenses: fNewExpenses + fOpExpenses,
+                        _dashMargin: (fNewSales + fOpSales) - (fNewExpenses + fOpExpenses)
+                    });
+                }
+            });
+
+            // 마진율 높은 순으로 정렬 (동일하면 매출순)
+            tableData.sort((a, b) => b._dashMargin - a._dashMargin || b._dashTotalSales - a._dashTotalSales);
+
+            return {
+                totalNewSales,
+                totalNewExpenses,
+                totalOpSales,
+                totalOpExpenses,
+                totalSales: totalNewSales + totalOpSales,
+                totalExpenses: totalNewExpenses + totalOpExpenses,
+                margin: (totalNewSales + totalOpSales) - (totalNewExpenses + totalOpExpenses),
+                tableData
+            };
+        }, [franchises, selectedMonth, expenseCatalog]);
+
+        return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <div className="text-sm text-slate-500 mb-1">집계된 가맹점 수</div>
+                        <div className="text-2xl font-bold text-slate-800">{dashboardStats.tableData.length}개</div>
+                        <div className="text-[11px] text-slate-400 mt-1">선택월 기준 발생건 한정</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <div className="text-sm text-slate-500 mb-1">총 예상 매출액</div>
+                        <div className="text-2xl font-bold text-green-600">
+                            {dashboardStats.totalSales.toLocaleString()}원
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1.5 flex justify-between">
+                            <span>신규: {dashboardStats.totalNewSales.toLocaleString()}</span>
+                            <span>추가: {dashboardStats.totalOpSales.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <div className="text-sm text-slate-500 mb-1">총 매입/비용</div>
+                        <div className="text-2xl font-bold text-red-600">
+                            {dashboardStats.totalExpenses.toLocaleString()}원
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1.5 flex justify-between">
+                            <span>신규: {dashboardStats.totalNewExpenses.toLocaleString()}</span>
+                            <span>추가(무상포함): {dashboardStats.totalOpExpenses.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <div className="text-sm text-slate-500 mb-1">예상 누적 마진</div>
+                        <div className="text-2xl font-bold text-indigo-600">
+                            {dashboardStats.margin.toLocaleString()}원
+                        </div>
+                        <div className="text-[11px] text-indigo-400 mt-1.5">
+                            마진율: {dashboardStats.totalSales > 0 ? Math.round((dashboardStats.margin / dashboardStats.totalSales) * 100) : 0}%
+                        </div>
                     </div>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">총 매입/비용</div>
-                    <div className="text-2xl font-bold text-red-600">
-                        {(filteredFranchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0)).toLocaleString()}원
-                    </div>
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">예상 누적 마진</div>
-                    <div className="text-2xl font-bold text-indigo-600">
-                        {((filteredFranchises.reduce((acc, f) => acc + calcTotalSales(f), 0)) - 
-                          (filteredFranchises.reduce((acc, f) => acc + calcTotalExpenses(f), 0))).toLocaleString()}원
-                    </div>
-                </div>
-            </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800">가맹점별 정산 현황</h3>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-800">가맹점별 정산 현황 (선택월 기준)</h3>
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" placeholder="가맹점 검색..." className="pl-9 pr-4 py-1.5 border border-slate-300 rounded-md text-sm" />
@@ -746,11 +831,12 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredFranchises.map(f => {
-                                const totalSales = calcTotalSales(f);
-                                const totalExpenses = calcTotalExpenses(f);
-                                const margin = totalSales - totalExpenses;
-                                return (
+                            {dashboardStats.tableData.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-4 py-8 text-center text-slate-500">해당 월에 정산할 내역이 있는 가맹점이 없습니다.</td>
+                                </tr>
+                            ) : (
+                                dashboardStats.tableData.map(f => (
                                     <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-slate-800">{f.name}</div>
@@ -762,7 +848,11 @@ const FranchiseDashboard = () => {
                                             )}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(f.status)}`}>
+                                            <span className={`inline-block px-2 py-1 text-[10px] font-bold rounded-full border mb-1 ${f._dashNewSales > 0 || f._dashNewExpenses > 0 ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                                                {f._dashNewSales > 0 || f._dashNewExpenses > 0 ? '신규오픈 포함' : '운영점 단독'}
+                                            </span>
+                                            <br/>
+                                            <span className={`px-2 py-1 text-[10px] rounded-full border ${getStatusColor(f.status)}`}>
                                                 {f.status}
                                             </span>
                                         </td>
@@ -772,18 +862,29 @@ const FranchiseDashboard = () => {
                                                 onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                                             />
                                         </td>
-                                        <td className="px-4 py-3 text-right text-green-600 font-medium">{totalSales.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right text-red-600 font-medium">{totalExpenses.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right text-indigo-600 font-bold">{margin.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="font-bold text-green-600">{f._dashTotalSales.toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-400 mt-1">신규: {f._dashNewSales.toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-400">추가: {f._dashOpSales.toLocaleString()}</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="font-bold text-red-600">{f._dashTotalExpenses.toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-400 mt-1">신규: {f._dashNewExpenses.toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-400">추가: {f._dashOpExpenses.toLocaleString()}</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                                            {f._dashMargin.toLocaleString()}
+                                        </td>
                                     </tr>
-                                );
-                            })}
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     );
+    };
 
     const renderBasicInfoTab = () => (
         <div className="space-y-6">
