@@ -1277,11 +1277,14 @@ const FranchiseDashboard = () => {
                                         
                                         <td className="px-2 py-2 text-slate-400 bg-blue-50/10">
                                             <input 
-                                                type="number"
+                                                type="text"
                                                 className="w-24 px-2 py-1 text-right text-[11px] border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 bg-white hover:border-blue-300 transition-colors"
                                                 placeholder="0"
-                                                value={f.expectedOpenCost || ''}
-                                                onChange={e => handleUpdateExpectedOpenCost(f.id, e.target.value)}
+                                                value={f.expectedOpenCost ? f.expectedOpenCost.toLocaleString() : ''}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/[^\d]/g, '');
+                                                    handleUpdateExpectedOpenCost(f.id, val);
+                                                }}
                                             />
                                         </td>
                                         <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
@@ -1595,7 +1598,7 @@ const FranchiseDashboard = () => {
                     <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
                         <h2 className="text-lg font-bold text-slate-800">1. 월별 매출 확정 내역 (세금계산서 발행용)</h2>
                         <p className="text-sm text-slate-500 mt-1">
-                            오픈일자 기준으로 해당 월에 확정된 가맹점별 매출입니다. (오픈비용: 계약금+착수금+잔금 합계)
+                            오픈일자 기준으로 해당 월에 확정된 가맹점별 매출입니다. (매출 산정은 수납액이 아닌 견적액 기준입니다.)
                         </p>
                     </div>
                     <div className="overflow-x-auto">
@@ -1605,9 +1608,9 @@ const FranchiseDashboard = () => {
                                     <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">가맹점명</th>
                                     <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">사업자번호</th>
                                     <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">구분</th>
-                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (입금총액 기준)</th>
-                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (입금총액 기준)</th>
-                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">운영점 추가매출 (입금총액 기준)</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (견적액 기준)</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (견적액 기준)</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">운영점 추가매출 (발생액 기준)</th>
                                 </tr>
                                 <tr>
                                     <th className="px-2 py-1.5 text-right border-l border-slate-200 bg-indigo-50/50">합계(총액)</th>
@@ -1645,8 +1648,8 @@ const FranchiseDashboard = () => {
                                     }
 
                                     const totals = combinedForTax.reduce((acc, { f, isNewOpen }) => {
-                                        const basicTotal = isNewOpen ? ((f.sales.franchiseFee || 0) + (f.sales.educationFee || 0)) : 0;
-                                        const openTotal = isNewOpen ? ((f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0)) : 0;
+                                        const basicTotal = isNewOpen ? (f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000) : 0;
+                                        const openTotal = isNewOpen ? (f.expectedOpenCost || 0) : 0;
                                         const opTotal = (f.operating?.sales || [])
                                             .filter(s => s.date === selectedMonth)
                                             .reduce((sum, s) => sum + s.amount, 0);
@@ -1682,13 +1685,13 @@ const FranchiseDashboard = () => {
                                                 <td className="px-2 py-1.5 text-right text-emerald-600 bg-emerald-50/50">{opVat.toLocaleString()}</td>
                                             </tr>
                                             {combinedForTax.map(({ f, isNewOpen }) => {
-                                                // 가맹+교육비 역산 (신규오픈인 경우만)
-                                                const basicTotal = isNewOpen ? ((f.sales.franchiseFee || 0) + (f.sales.educationFee || 0)) : 0;
+                                                // 가맹+교육비 역산 (신규오픈인 경우만 - 견적액 기준)
+                                                const basicTotal = isNewOpen ? (f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000) : 0;
                                                 const basicSupply = Math.round(basicTotal / 1.1);
                                                 const basicVat = basicTotal - basicSupply;
 
-                                                // 오픈비용 역산 (신규오픈인 경우만)
-                                                const openTotal = isNewOpen ? ((f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0)) : 0;
+                                                // 오픈비용 역산 (신규오픈인 경우만 - 견적액 기준)
+                                                const openTotal = isNewOpen ? (f.expectedOpenCost || 0) : 0;
                                                 const openSupply = Math.round(openTotal / 1.1);
                                                 const openVat = openTotal - openSupply;
 
