@@ -1602,26 +1602,26 @@ const FranchiseDashboard = () => {
                         </p>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">가맹점명</th>
-                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">사업자번호</th>
-                                    <th className="px-4 py-3 border-b border-slate-200" rowSpan="2">구분</th>
-                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (입금총액 기준)</th>
-                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (입금총액 기준)</th>
-                                    <th className="px-4 py-2 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">운영점 추가매출 (입금총액 기준)</th>
+                                    <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">가맹점명</th>
+                                    <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">사업자번호</th>
+                                    <th className="px-2 py-1.5 border-b border-slate-200" rowSpan="2">구분</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">가맹비+교육비 (입금총액 기준)</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">오픈비용 (입금총액 기준)</th>
+                                    <th className="px-2 py-1.5 text-center border-l border-slate-200 border-b border-slate-200" colSpan="3">운영점 추가매출 (입금총액 기준)</th>
                                 </tr>
                                 <tr>
-                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-indigo-50/50">합계(총액)</th>
-                                    <th className="px-4 py-2 text-right bg-indigo-50/30">공급가액</th>
-                                    <th className="px-4 py-2 text-right bg-indigo-50/30">부가세</th>
-                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-orange-50/50">합계(총액)</th>
-                                    <th className="px-4 py-2 text-right bg-orange-50/30">공급가액</th>
-                                    <th className="px-4 py-2 text-right bg-orange-50/30">부가세</th>
-                                    <th className="px-4 py-2 text-right border-l border-slate-200 bg-emerald-50/50">합계(총액)</th>
-                                    <th className="px-4 py-2 text-right bg-emerald-50/30">공급가액</th>
-                                    <th className="px-4 py-2 text-right bg-emerald-50/30">부가세</th>
+                                    <th className="px-2 py-1.5 text-right border-l border-slate-200 bg-indigo-50/50">합계(총액)</th>
+                                    <th className="px-2 py-1.5 text-right bg-indigo-50/30">공급가액</th>
+                                    <th className="px-2 py-1.5 text-right bg-indigo-50/30">부가세</th>
+                                    <th className="px-2 py-1.5 text-right border-l border-slate-200 bg-orange-50/50">합계(총액)</th>
+                                    <th className="px-2 py-1.5 text-right bg-orange-50/30">공급가액</th>
+                                    <th className="px-2 py-1.5 text-right bg-orange-50/30">부가세</th>
+                                    <th className="px-2 py-1.5 text-right border-l border-slate-200 bg-emerald-50/50">합계(총액)</th>
+                                    <th className="px-2 py-1.5 text-right bg-emerald-50/30">공급가액</th>
+                                    <th className="px-2 py-1.5 text-right bg-emerald-50/30">부가세</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1647,48 +1647,87 @@ const FranchiseDashboard = () => {
                                         );
                                     }
 
-                                    return combinedForTax.map(({ f, isNewOpen }) => {
-                                        // 가맹+교육비 역산 (신규오픈인 경우만)
+                                    const totals = combinedForTax.reduce((acc, { f, isNewOpen }) => {
                                         const basicTotal = isNewOpen ? ((f.sales.franchiseFee || 0) + (f.sales.educationFee || 0)) : 0;
-                                        const basicSupply = Math.round(basicTotal / 1.1);
-                                        const basicVat = basicTotal - basicSupply;
-
-                                        // 오픈비용 역산 (신규오픈인 경우만)
                                         const openTotal = isNewOpen ? ((f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0)) : 0;
-                                        const openSupply = Math.round(openTotal / 1.1);
-                                        const openVat = openTotal - openSupply;
-
-                                        // 운영점 추가매출 역산
                                         const opTotal = (f.operating?.sales || [])
                                             .filter(s => s.date === selectedMonth)
                                             .reduce((sum, s) => sum + s.amount, 0);
-                                        const opSupply = Math.round(opTotal / 1.1);
-                                        const opVat = opTotal - opSupply;
 
-                                        return (
-                                            <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{f.name}</td>
-                                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{f.bizNumber || '-'}</td>
-                                                <td className="px-4 py-3 text-center whitespace-nowrap">
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isNewOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                        {isNewOpen ? '신규오픈' : '추가매출'}
-                                                    </span>
-                                                </td>
-                                                
-                                                <td className="px-4 py-3 text-right font-bold text-indigo-700 border-l border-slate-100 bg-indigo-50/30">{basicTotal.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-600 bg-indigo-50/10">{basicSupply.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-500 bg-indigo-50/10">{basicVat.toLocaleString()}</td>
-                                                
-                                                <td className="px-4 py-3 text-right font-bold text-orange-700 border-l border-slate-100 bg-orange-50/30">{openTotal.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-600 bg-orange-50/10">{openSupply.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-500 bg-orange-50/10">{openVat.toLocaleString()}</td>
+                                        acc.basicTotal += basicTotal;
+                                        acc.openTotal += openTotal;
+                                        acc.opTotal += opTotal;
+                                        return acc;
+                                    }, { basicTotal: 0, openTotal: 0, opTotal: 0 });
 
-                                                <td className="px-4 py-3 text-right font-bold text-emerald-700 border-l border-slate-100 bg-emerald-50/30">{opTotal.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-600 bg-emerald-50/10">{opSupply.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-500 bg-emerald-50/10">{opVat.toLocaleString()}</td>
+                                    const basicSupply = Math.round(totals.basicTotal / 1.1);
+                                    const basicVat = totals.basicTotal - basicSupply;
+                                    const openSupply = Math.round(totals.openTotal / 1.1);
+                                    const openVat = totals.openTotal - openSupply;
+                                    const opSupply = Math.round(totals.opTotal / 1.1);
+                                    const opVat = totals.opTotal - opSupply;
+
+                                    return (
+                                        <>
+                                            <tr className="border-b-2 border-slate-300 bg-slate-100 font-bold text-slate-800">
+                                                <td colSpan="3" className="px-2 py-1.5 text-center border-r border-slate-200">총 합계</td>
+                                                
+                                                <td className="px-2 py-1.5 text-right text-indigo-800 bg-indigo-50 border-l border-slate-200">{totals.basicTotal.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-indigo-700 bg-indigo-50/50">{basicSupply.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-indigo-600 bg-indigo-50/50">{basicVat.toLocaleString()}</td>
+                                                
+                                                <td className="px-2 py-1.5 text-right text-orange-800 border-l border-slate-200 bg-orange-50">{totals.openTotal.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-orange-700 bg-orange-50/50">{openSupply.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-orange-600 bg-orange-50/50">{openVat.toLocaleString()}</td>
+
+                                                <td className="px-2 py-1.5 text-right text-emerald-800 border-l border-slate-200 bg-emerald-50">{totals.opTotal.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-emerald-700 bg-emerald-50/50">{opSupply.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-emerald-600 bg-emerald-50/50">{opVat.toLocaleString()}</td>
                                             </tr>
-                                        );
-                                    });
+                                            {combinedForTax.map(({ f, isNewOpen }) => {
+                                                // 가맹+교육비 역산 (신규오픈인 경우만)
+                                                const basicTotal = isNewOpen ? ((f.sales.franchiseFee || 0) + (f.sales.educationFee || 0)) : 0;
+                                                const basicSupply = Math.round(basicTotal / 1.1);
+                                                const basicVat = basicTotal - basicSupply;
+
+                                                // 오픈비용 역산 (신규오픈인 경우만)
+                                                const openTotal = isNewOpen ? ((f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0)) : 0;
+                                                const openSupply = Math.round(openTotal / 1.1);
+                                                const openVat = openTotal - openSupply;
+
+                                                // 운영점 추가매출 역산
+                                                const opTotal = (f.operating?.sales || [])
+                                                    .filter(s => s.date === selectedMonth)
+                                                    .reduce((sum, s) => sum + s.amount, 0);
+                                                const opSupply = Math.round(opTotal / 1.1);
+                                                const opVat = opTotal - opSupply;
+
+                                                return (
+                                                    <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                        <td className="px-2 py-1.5 font-medium text-slate-800 whitespace-nowrap">{f.name}</td>
+                                                        <td className="px-2 py-1.5 font-mono text-slate-600 whitespace-nowrap">{f.bizNumber || '-'}</td>
+                                                        <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isNewOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                                {isNewOpen ? '신규오픈' : '추가매출'}
+                                                            </span>
+                                                        </td>
+                                                        
+                                                        <td className="px-2 py-1.5 text-right font-bold text-indigo-700 border-l border-slate-100 bg-indigo-50/30">{basicTotal.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-600 bg-indigo-50/10">{basicSupply.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-500 bg-indigo-50/10">{basicVat.toLocaleString()}</td>
+                                                        
+                                                        <td className="px-2 py-1.5 text-right font-bold text-orange-700 border-l border-slate-100 bg-orange-50/30">{openTotal.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-600 bg-orange-50/10">{openSupply.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-500 bg-orange-50/10">{openVat.toLocaleString()}</td>
+
+                                                        <td className="px-2 py-1.5 text-right font-bold text-emerald-700 border-l border-slate-100 bg-emerald-50/30">{opTotal.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-600 bg-emerald-50/10">{opSupply.toLocaleString()}</td>
+                                                        <td className="px-2 py-1.5 text-right text-slate-500 bg-emerald-50/10">{opVat.toLocaleString()}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </>
+                                    );
                                 })()}
                             </tbody>
                         </table>
