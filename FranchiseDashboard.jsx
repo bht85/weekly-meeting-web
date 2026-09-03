@@ -683,6 +683,14 @@ const FranchiseDashboard = () => {
         ? franchises.filter(f => f.openDate && f.openDate.startsWith(selectedMonth))
         : franchises;
 
+    const activeOperatingFranchises = React.useMemo(() => {
+        return franchises.filter(f => 
+            calcOperatingSales(f) > 0 || 
+            calcOperatingExpenses(f) > 0 || 
+            calcOperatingFreeRentals(f) > 0
+        );
+    }, [franchises]);
+
     const renderDashboard = () => (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1137,12 +1145,6 @@ const FranchiseDashboard = () => {
     };
 
     const renderOperatingTab = () => {
-        const activeOperatingFranchises = franchises.filter(f => 
-            calcOperatingSales(f) > 0 || 
-            calcOperatingExpenses(f) > 0 || 
-            calcOperatingFreeRentals(f) > 0
-        );
-
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="bg-emerald-50 text-emerald-900 p-4 rounded-xl flex items-start gap-3 border border-emerald-100 mb-6">
