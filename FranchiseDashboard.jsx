@@ -1000,6 +1000,13 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
+                            <tr className="bg-slate-100 border-b-2 border-slate-300 font-bold text-slate-800 text-right">
+                                <td className="px-4 py-3 text-left">총 합계</td>
+                                <td className="px-4 py-3 text-red-600">{totalAllExpenses.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-orange-600">{totalAllInterior.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
+                                <td className="px-4 py-3"></td>
+                            </tr>
                             {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 font-medium text-slate-500">{f.id}</td>
@@ -1026,7 +1033,8 @@ const FranchiseDashboard = () => {
                 </div>
             </div>
         </div>
-    );
+        );
+    };
     const renderSalesTab = () => {
         const totalUnmatchedTxns = bankTransactions.filter(t => !t.matchedFranchiseId);
         
@@ -1532,7 +1540,12 @@ const FranchiseDashboard = () => {
         );
     };
 
-    const renderExpenseTab = () => (
+    const renderExpenseTab = () => {
+        const totalAllExpenses = filteredFranchises.reduce((sum, f) => sum + calcTotalExpenses(f), 0);
+        const totalAllInterior = filteredFranchises.reduce((sum, f) => sum + calcInteriorExpense(f), 0);
+        const totalAllEquipment = filteredFranchises.reduce((sum, f) => sum + calcEquipmentExpense(f), 0);
+
+        return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-slate-800">매입/비용 내역</h2>
@@ -2441,7 +2454,11 @@ const FranchiseDashboard = () => {
                                                         <td className="px-4 py-3">
                                                             <div className="font-medium text-slate-700">{t.account}</div>
                                                         </td>
-                                                        <td className="px-4 py-3 font-medium text-slate-800">{t.description}</td>
+                                                        <td className="px-4 py-3 text-xs">
+                                                            <div className="font-medium text-slate-800">{t.summary}</div>
+                                                            <div className="text-slate-500">{t.memo}</div>
+                                                            <div className="text-indigo-600 font-bold">{t.sender}</div>
+                                                        </td>
                                                         <td className="px-4 py-3 text-right font-bold text-indigo-600">
                                                             {t.amount.toLocaleString()}원
                                                         </td>
