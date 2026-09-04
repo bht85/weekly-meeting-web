@@ -536,6 +536,12 @@ const FranchiseDashboard = () => {
         setExpenseCatalog(expenseCatalog.filter(item => item.id !== id));
     };
 
+    const handleUpdateCatalogItem = (id, field, value) => {
+        setExpenseCatalog(expenseCatalog.map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+        ));
+    };
+
     // 협력업체 마스터 추가
     const handleAddVendorItem = (e) => {
         e.preventDefault();
@@ -552,6 +558,12 @@ const FranchiseDashboard = () => {
 
     const handleDeleteVendorItem = (id) => {
         setVendorCatalog(vendorCatalog.filter(item => item.id !== id));
+    };
+
+    const handleUpdateVendorItem = (id, field, value) => {
+        setVendorCatalog(vendorCatalog.map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+        ));
     };
 
     // 비용 상세 모달 열기
@@ -2184,7 +2196,7 @@ const FranchiseDashboard = () => {
                                 <table className="w-full text-sm">
                                     <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-2 text-left">분류</th>
+                                            <th className="px-4 py-2 text-left w-28">품목코드(분류)</th>
                                             <th className="px-4 py-2 text-left">장비명</th>
                                             <th className="px-4 py-2 text-right">단가(원)</th>
                                             <th className="px-4 py-2 text-center w-16">삭제</th>
@@ -2192,14 +2204,34 @@ const FranchiseDashboard = () => {
                                     </thead>
                                     <tbody>
                                         {expenseCatalog.map(item => (
-                                            <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                                            <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0 group transition-colors">
                                                 <td className="px-4 py-2">
-                                                    <span className="px-2 py-1 text-[10px] rounded-md border bg-purple-50 text-purple-700 border-purple-200">
+                                                    <span className="font-mono text-[10px] text-slate-400 block mb-0.5">{item.id}</span>
+                                                    <span className="px-2 py-0.5 text-[10px] rounded-md border bg-purple-50 text-purple-700 border-purple-200 inline-block">
                                                         기기장비
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2 text-slate-800 font-medium">{item.name}</td>
-                                                <td className="px-4 py-2 text-right text-slate-600">{item.price.toLocaleString()}</td>
+                                                <td className="px-4 py-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={item.name}
+                                                        onChange={(e) => handleUpdateCatalogItem(item.id, 'name', e.target.value)}
+                                                        className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-sm outline-none transition-colors font-medium text-slate-800"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    <div className="flex items-center justify-end">
+                                                        <input 
+                                                            type="text"
+                                                            value={item.price.toLocaleString()}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value.replace(/[^\d]/g, '');
+                                                                handleUpdateCatalogItem(item.id, 'price', val ? Number(val) : 0);
+                                                            }}
+                                                            className="w-32 text-right bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-sm outline-none transition-colors text-slate-600 font-bold"
+                                                        />
+                                                    </div>
+                                                </td>
                                                 <td className="px-4 py-2 text-center">
                                                     <button onClick={() => handleDeleteCatalogItem(item.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
                                                         <Trash2 className="w-4 h-4 mx-auto" />
@@ -2265,20 +2297,34 @@ const FranchiseDashboard = () => {
                                 <table className="w-full text-sm">
                                     <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-2 text-left">취급분야</th>
+                                            <th className="px-4 py-2 text-left w-32">업체코드</th>
+                                            <th className="px-4 py-2 text-left w-32">취급분야</th>
                                             <th className="px-4 py-2 text-left">업체명</th>
                                             <th className="px-4 py-2 text-center w-16">삭제</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {vendorCatalog.map(item => (
-                                            <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                                            <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0 group transition-colors">
                                                 <td className="px-4 py-2">
-                                                    <span className="px-2 py-1 text-[10px] rounded-md border bg-orange-50 text-orange-700 border-orange-200">
-                                                        {item.category}
-                                                    </span>
+                                                    <span className="font-mono text-[10px] text-slate-400 block">{item.id}</span>
                                                 </td>
-                                                <td className="px-4 py-2 text-slate-800 font-medium">{item.name}</td>
+                                                <td className="px-4 py-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={item.category}
+                                                        onChange={(e) => handleUpdateVendorItem(item.id, 'category', e.target.value)}
+                                                        className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-[11px] outline-none transition-colors text-orange-700 font-bold"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={item.name}
+                                                        onChange={(e) => handleUpdateVendorItem(item.id, 'name', e.target.value)}
+                                                        className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-sm outline-none transition-colors font-medium text-slate-800"
+                                                    />
+                                                </td>
                                                 <td className="px-4 py-2 text-center">
                                                     <button onClick={() => handleDeleteVendorItem(item.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
                                                         <Trash2 className="w-4 h-4 mx-auto" />
