@@ -188,6 +188,8 @@ const FranchiseDashboard = () => {
     // 비용 매칭 모달
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
     const [matchingFranchise, setMatchingFranchise] = useState(null);
+    // 매칭된 입금내역 확인 모달
+    const [matchedTxnModalFranchise, setMatchedTxnModalFranchise] = useState(null);
     const [editingEquipmentItems, setEditingEquipmentItems] = useState([]);
     const [editingInteriorItems, setEditingInteriorItems] = useState([]);
     // 무상 대여 관리 모달
@@ -1194,7 +1196,7 @@ const FranchiseDashboard = () => {
                     <table className="w-full text-[11px] whitespace-nowrap text-left">
                         <thead className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-200 text-center">
                             <tr>
-                                <th rowSpan="2" className="px-2 py-1.5 text-left border-r border-slate-200">가맹점명</th>
+                                <th rowSpan="2" className="px-2 py-1.5 text-left border-r border-slate-200">가맹점명(대표자)</th>
                                 <th colSpan="3" className="px-2 py-1.5 border-b border-slate-200 border-r border-slate-200 bg-indigo-50/50 text-indigo-800">전체 합계 (채권 관리)</th>
                                 <th colSpan="2" className="px-2 py-1.5 border-b border-slate-200 border-r border-slate-200 text-slate-600">가맹/교육비</th>
                                 <th colSpan="3" className="px-2 py-1.5 border-b border-slate-200 bg-blue-50/30 text-blue-800">오픈비용 (인테리어/장비 등)</th>
@@ -1242,7 +1244,16 @@ const FranchiseDashboard = () => {
                                 
                                 return (
                                     <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50 text-right">
-                                        <td className="px-2 py-1.5 font-bold text-slate-800 text-left border-r border-slate-100">{f.name}</td>
+                                        <td 
+                                            className="px-2 py-1.5 text-left border-r border-slate-100 cursor-pointer hover:bg-slate-200 transition-colors"
+                                            onClick={() => setMatchedTxnModalFranchise(f)}
+                                            title="클릭하여 매칭된 입금 내역 확인"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-bold text-slate-800">{f.name}</span>
+                                                <span className="text-[10px] text-slate-500 ml-2">{f.owner}</span>
+                                            </div>
+                                        </td>
                                         
                                         <td className="px-2 py-1.5 bg-indigo-50/20">{totalExpected.toLocaleString()}</td>
                                         <td className="px-2 py-1.5 font-bold text-green-600 bg-indigo-50/20">{totalReceived.toLocaleString()}</td>
@@ -2374,6 +2385,100 @@ const FranchiseDashboard = () => {
                             </button>
                             <button type="submit" form="depositMatchForm" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
                                 매칭 완료 (금액 합산)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 매칭된 입금내역 확인 모달 */}
+            {matchedTxnModalFranchise && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span className="text-indigo-600">{matchedTxnModalFranchise.name}</span> 매칭된 입금 내역
+                                </h3>
+                                <div className="text-sm text-slate-500 mt-1">이 가맹점과 매칭된 통장 입금 내역을 확인하고 취소할 수 있습니다.</div>
+                            </div>
+                            <button 
+                                onClick={() => setMatchedTxnModalFranchise(null)}
+                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-slate-500 bg-slate-50 border-y border-slate-200">
+                                        <tr>
+                                            <th className="px-4 py-3">거래일시</th>
+                                            <th className="px-4 py-3">계좌/은행</th>
+                                            <th className="px-4 py-3">적요/보낸분</th>
+                                            <th className="px-4 py-3 text-right">입금액</th>
+                                            <th className="px-4 py-3">매칭 항목</th>
+                                            <th className="px-4 py-3 text-center">관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bankTransactions.filter(t => t.matchedFranchiseId === matchedTxnModalFranchise.id).length === 0 ? (
+                                            <tr>
+                                                <td colSpan="6" className="px-4 py-8 text-center text-slate-500">
+                                                    매칭된 입금 내역이 없습니다.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            bankTransactions
+                                                .filter(t => t.matchedFranchiseId === matchedTxnModalFranchise.id)
+                                                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                                .map(t => (
+                                                    <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                        <td className="px-4 py-3 text-slate-600">
+                                                            {t.date} <span className="text-xs text-slate-400">{t.time}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-medium text-slate-700">{t.account}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3 font-medium text-slate-800">{t.description}</td>
+                                                        <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                                                            {t.amount.toLocaleString()}원
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">
+                                                                {t.matchedCategory === 'franchiseFee' ? '가맹/교육비' :
+                                                                 t.matchedCategory === 'openDeposit' ? '오픈 계약금' :
+                                                                 t.matchedCategory === 'openMiddle' ? '오픈 착수금' :
+                                                                 t.matchedCategory === 'openBalance' ? '오픈 잔금' :
+                                                                 t.matchedCategory === 'opRoyalty' ? '운영 로열티' :
+                                                                 t.matchedCategory === 'opAs' ? '운영 A/S' :
+                                                                 t.matchedCategory === 'opIngredient' ? '운영 물류' :
+                                                                 t.matchedCategory === 'opOthers' ? '기타매출' : t.matchedCategory}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button 
+                                                                onClick={() => handleUnmatchDeposit(t.id)}
+                                                                className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+                                                            >
+                                                                매칭취소
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
+                            <button 
+                                type="button" 
+                                onClick={() => setMatchedTxnModalFranchise(null)}
+                                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                            >
+                                닫기
                             </button>
                         </div>
                     </div>
