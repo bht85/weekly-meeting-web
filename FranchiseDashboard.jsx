@@ -855,11 +855,11 @@ const FranchiseDashboard = () => {
         const TableHeader = () => (
             <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                 <tr>
-                    <th className="px-4 py-3 align-middle border-r border-slate-200">코드/가맹점명</th>
-                    <th className="px-4 py-3 align-middle border-r border-slate-200">오픈(예정)일자</th>
-                    <th className="px-4 py-3 align-middle text-right border-r border-slate-200">총 매출액 (A)</th>
-                    <th className="px-4 py-3 align-middle text-right border-r border-slate-200">총 매입/비용 (B)</th>
-                    <th className="px-4 py-3 align-middle text-right text-indigo-700">최종 마진 (A-B)</th>
+                    <th className="px-2 py-1.5 align-middle border-r border-slate-200">코드/가맹점명</th>
+                    <th className="px-2 py-1.5 align-middle border-r border-slate-200">오픈(예정)일자</th>
+                    <th className="px-2 py-1.5 align-middle text-right border-r border-slate-200">총 매출액 (A)</th>
+                    <th className="px-2 py-1.5 align-middle text-right border-r border-slate-200">총 매입/비용 (B)</th>
+                    <th className="px-2 py-1.5 align-middle text-right text-indigo-700">최종 마진 (A-B)</th>
                 </tr>
             </thead>
         );
@@ -877,7 +877,7 @@ const FranchiseDashboard = () => {
 
             return franchises.map(f => (
                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-3 border-r border-slate-200">
+                    <td className="px-2 py-1.5 border-r border-slate-200">
                         <div className="font-medium text-slate-800">{f.name}</div>
                         <div className="text-xs text-slate-500">{f.id} | {f.owner}</div>
                         {f.bizNumber && (
@@ -886,19 +886,19 @@ const FranchiseDashboard = () => {
                             </div>
                         )}
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-200">
+                    <td className="px-2 py-1.5 border-r border-slate-200">
                         <DateInlineEditor 
                             value={f.openDate} 
                             onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                         />
                     </td>
-                    <td className="px-4 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-green-600">
+                    <td className="px-2 py-1.5 text-right border-r border-slate-200 bg-slate-50 font-bold text-green-600">
                         {f._dashTotalSales > 0 ? f._dashTotalSales.toLocaleString() : '-'}
                     </td>
-                    <td className="px-4 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-red-600">
+                    <td className="px-2 py-1.5 text-right border-r border-slate-200 bg-slate-50 font-bold text-red-600">
                         {f._dashTotalExpenses > 0 ? f._dashTotalExpenses.toLocaleString() : '-'}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                    <td className="px-2 py-1.5 text-right font-bold text-indigo-600">
                         {f._dashMargin.toLocaleString()}
                     </td>
                 </tr>
@@ -945,11 +945,11 @@ const FranchiseDashboard = () => {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                    <div className="px-2 py-1.5 border-b border-slate-200 bg-slate-50">
                         <h3 className="font-bold text-slate-800">1. 오픈 정산 (신규가맹점)</h3>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <TableHeader />
                             <tbody>
                                 {renderTableRows(newFranchises, true)}
@@ -959,11 +959,11 @@ const FranchiseDashboard = () => {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                    <div className="px-2 py-1.5 border-b border-slate-200 bg-slate-50">
                         <h3 className="font-bold text-slate-800">2. 가맹 정산 (기존가맹점)</h3>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <TableHeader />
                             <tbody>
                                 {renderTableRows(opFranchises, false)}
@@ -986,42 +986,42 @@ const FranchiseDashboard = () => {
             
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                         <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3">가맹점 코드</th>
-                                <th className="px-4 py-3">가맹점명</th>
-                                <th className="px-4 py-3">대표자</th>
-                                <th className="px-4 py-3">사업자등록번호</th>
-                                <th className="px-4 py-3">업태/종목</th>
-                                <th className="px-4 py-3">계약일자</th>
-                                <th className="px-4 py-3">오픈(예정)일자</th>
-                                <th className="px-4 py-3 text-center">관리</th>
+                                <th className="px-2 py-1.5">가맹점 코드</th>
+                                <th className="px-2 py-1.5">가맹점명</th>
+                                <th className="px-2 py-1.5">대표자</th>
+                                <th className="px-2 py-1.5">사업자등록번호</th>
+                                <th className="px-2 py-1.5">업태/종목</th>
+                                <th className="px-2 py-1.5">계약일자</th>
+                                <th className="px-2 py-1.5">오픈(예정)일자</th>
+                                <th className="px-2 py-1.5 text-center">관리</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="bg-slate-100 border-b-2 border-slate-300 font-bold text-slate-800 text-right">
-                                <td className="px-4 py-3 text-left">총 합계</td>
-                                <td className="px-4 py-3 text-red-600">{totalAllExpenses.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-orange-600">{totalAllInterior.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
-                                <td className="px-4 py-3"></td>
+                                <td className="px-2 py-1.5 text-left">총 합계</td>
+                                <td className="px-2 py-1.5 text-red-600">{totalAllExpenses.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 text-orange-600">{totalAllInterior.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
+                                <td className="px-2 py-1.5"></td>
                             </tr>
                             {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-500">{f.id}</td>
-                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                    <td className="px-4 py-3">{f.owner}</td>
-                                    <td className="px-4 py-3 text-slate-500">{f.bizNumber || '-'}</td>
-                                    <td className="px-4 py-3 text-slate-500">{f.bizType || '-'}</td>
-                                    <td className="px-4 py-3 text-slate-600">{f.contractDate}</td>
-                                    <td className="px-4 py-3 text-indigo-600 font-medium">
+                                    <td className="px-2 py-1.5 font-medium text-slate-500">{f.id}</td>
+                                    <td className="px-2 py-1.5 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-2 py-1.5">{f.owner}</td>
+                                    <td className="px-2 py-1.5 text-slate-500">{f.bizNumber || '-'}</td>
+                                    <td className="px-2 py-1.5 text-slate-500">{f.bizType || '-'}</td>
+                                    <td className="px-2 py-1.5 text-slate-600">{f.contractDate}</td>
+                                    <td className="px-2 py-1.5 text-indigo-600 font-medium">
                                         <DateInlineEditor 
                                             value={f.openDate} 
                                             onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                                         />
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-2 py-1.5 text-center">
                                         <button onClick={() => openEditModal(f)} className="px-2 py-1 text-xs text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50">
                                             수정
                                         </button>
@@ -1107,7 +1107,7 @@ const FranchiseDashboard = () => {
                 {/* 미매칭 입금 내역 */}
                 {totalUnmatchedTxns.length > 0 && (
                     <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden mb-6">
-                        <div className="px-4 py-3 border-b border-orange-200 bg-orange-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="px-2 py-1.5 border-b border-orange-200 bg-orange-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <h3 className="font-bold text-orange-800">미매칭 입금 내역 ({totalUnmatchedTxns.length}건)</h3>
                             <div className="flex gap-2 w-full sm:w-auto">
                                 <select
@@ -1136,7 +1136,7 @@ const FranchiseDashboard = () => {
                             </div>
                         </div>
                         <div className="overflow-x-auto max-h-60 overflow-y-auto">
-                            <table className="w-full text-sm text-left">
+                            <table className="w-full text-[11px] whitespace-nowrap text-left">
                                 <thead className="text-xs text-orange-700 bg-orange-50 border-b border-orange-200 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-2">수신계좌</th>
@@ -1197,7 +1197,7 @@ const FranchiseDashboard = () => {
                 )}
                 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <div className="px-2 py-1.5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                         <h3 className="font-bold text-slate-700">가맹점별 수금 현황</h3>
                     </div>
                 <div className="overflow-x-auto">
@@ -1229,7 +1229,7 @@ const FranchiseDashboard = () => {
                                 <td className="px-2 py-1.5 bg-indigo-50/50 text-indigo-900">{totalExpected.toLocaleString()}</td>
                                 <td className="px-2 py-1.5 bg-indigo-50/50 text-green-700">{totalReceived.toLocaleString()}</td>
                                 <td className={`px-2 py-1.5 bg-indigo-50/50 border-r border-slate-200 ${totalBalance > 0 ? 'text-red-600' : totalBalance < 0 ? 'text-blue-600' : 'text-slate-500'}`}>
-                                    {totalBalance > 0 ? totalBalance.toLocaleString() : (totalBalance === 0 && totalExpected > 0) ? '완납' : (totalBalance < 0 ? `${Math.abs(totalBalance).toLocaleString()} (초과납)` : '-')}
+                                    {totalBalance > 0 ? totalBalance.toLocaleString() : (totalBalance === 0 && totalExpected > 0) ? '완납' : (totalBalance < 0 ? <span className="text-blue-600 font-bold">{Math.abs(totalBalance).toLocaleString()} <span className="text-[10px]">(초과납)</span></span> : '-')}
                                 </td>
                                 
                                 <td className="px-2 py-1.5">{totals.expectedFranchise.toLocaleString()}</td>
@@ -1266,7 +1266,7 @@ const FranchiseDashboard = () => {
                                         <td className="px-2 py-1.5 bg-indigo-50/20">{totalExpected.toLocaleString()}</td>
                                         <td className="px-2 py-1.5 font-bold text-green-600 bg-indigo-50/20">{totalReceived.toLocaleString()}</td>
                                         <td className={`px-2 py-1.5 font-bold bg-indigo-50/20 border-r border-slate-100 ${balance > 0 ? 'text-red-500' : balance < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
-                                            {balance > 0 ? balance.toLocaleString() : (balance === 0 && totalExpected > 0) ? '완납' : (balance < 0 ? `${Math.abs(balance).toLocaleString()} (초과납)` : '-')}
+                                            {balance > 0 ? balance.toLocaleString() : (balance === 0 && totalExpected > 0) ? '완납' : (balance < 0 ? <span className="text-blue-600 font-bold">{Math.abs(balance).toLocaleString()} <span className="text-[10px]">(초과납)</span></span> : '-')}
                                         </td>
                                         
                                         <td className="px-2 py-2 text-slate-400">
@@ -1291,7 +1291,7 @@ const FranchiseDashboard = () => {
                                                 value={f.expectedOpenCost ? f.expectedOpenCost.toLocaleString() : ''}
                                                 onChange={e => {
                                                     const val = e.target.value.replace(/[^\d]/g, '');
-                                                    handleUpdateExpectedOpenCost(f.id, val);
+                                                    handleUpdateExpectedOpenCost(f.id, val ? Number(val) : 0);
                                                 }}
                                             />
                                         </td>
@@ -1333,14 +1333,14 @@ const FranchiseDashboard = () => {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                         <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3">가맹점명</th>
-                                <th className="px-4 py-3 text-right">총 무상대여 가액</th>
-                                <th className="px-4 py-3 text-right text-orange-500">인테리어/설치 합계</th>
-                                <th className="px-4 py-3 text-right text-purple-500">기기장비 합계</th>
-                                <th className="px-4 py-3 text-center">관리</th>
+                                <th className="px-2 py-1.5">가맹점명</th>
+                                <th className="px-2 py-1.5 text-right">총 무상대여 가액</th>
+                                <th className="px-2 py-1.5 text-right text-orange-500">인테리어/설치 합계</th>
+                                <th className="px-2 py-1.5 text-right text-purple-500">기기장비 합계</th>
+                                <th className="px-2 py-1.5 text-center">관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1352,19 +1352,19 @@ const FranchiseDashboard = () => {
                                 return (
                                     <>
                                         <tr className="border-b-2 border-slate-300 bg-slate-100 font-bold text-slate-800">
-                                            <td className="px-4 py-3 text-center border-r border-slate-200">총 합계</td>
-                                            <td className="px-4 py-3 text-right text-indigo-700 bg-indigo-50/50">{totalFreeRentals.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right text-orange-700 bg-orange-50/30">{totalInterior.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right text-purple-700 bg-purple-50/30">{totalEquipment.toLocaleString()}</td>
-                                            <td className="px-4 py-3"></td>
+                                            <td className="px-2 py-1.5 text-center border-r border-slate-200">총 합계</td>
+                                            <td className="px-2 py-1.5 text-right text-indigo-700 bg-indigo-50/50">{totalFreeRentals.toLocaleString()}</td>
+                                            <td className="px-2 py-1.5 text-right text-orange-700 bg-orange-50/30">{totalInterior.toLocaleString()}</td>
+                                            <td className="px-2 py-1.5 text-right text-purple-700 bg-purple-50/30">{totalEquipment.toLocaleString()}</td>
+                                            <td className="px-2 py-1.5"></td>
                                         </tr>
                                         {filteredFranchises.map(f => (
                                             <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="px-4 py-3 font-bold text-slate-800 border-r border-slate-100">{f.name}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 bg-indigo-50/10">{calcTotalFreeRentals(f).toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-orange-600 bg-orange-50/10">{calcFreeInteriorExpense(f).toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-purple-600 bg-purple-50/10">{calcFreeEquipmentExpense(f).toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-center border-l border-slate-100">
+                                                <td className="px-2 py-1.5 font-bold text-slate-800 border-r border-slate-100">{f.name}</td>
+                                                <td className="px-2 py-1.5 text-right font-bold text-indigo-600 bg-indigo-50/10">{calcTotalFreeRentals(f).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-orange-600 bg-orange-50/10">{calcFreeInteriorExpense(f).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-purple-600 bg-purple-50/10">{calcFreeEquipmentExpense(f).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-center border-l border-slate-100">
                                                     <button onClick={() => openFreeRentalModal(f)} className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 font-medium">
                                                         내역 입력
                                                     </button>
@@ -1439,7 +1439,7 @@ const FranchiseDashboard = () => {
                                             openOperatingHistoryModal(f);
                                             setOperatingSearchKeyword('');
                                         }}
-                                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-between group"
+                                        className="w-full text-left px-2 py-1.5 rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-between group"
                                     >
                                         <div>
                                             <div className="font-bold text-slate-800 group-hover:text-emerald-700">{f.name}</div>
@@ -1487,15 +1487,15 @@ const FranchiseDashboard = () => {
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-4 py-3">가맹점명</th>
-                                    <th className="px-4 py-3">최근 거래월</th>
-                                    <th className="px-4 py-3 text-right text-blue-500">누적 추가매출</th>
-                                    <th className="px-4 py-3 text-right text-red-500">누적 매입/비용</th>
-                                    <th className="px-4 py-3 text-right text-indigo-500">누적 무상대여</th>
-                                    <th className="px-4 py-3 text-center">관리</th>
+                                    <th className="px-2 py-1.5">가맹점명</th>
+                                    <th className="px-2 py-1.5">최근 거래월</th>
+                                    <th className="px-2 py-1.5 text-right text-blue-500">누적 추가매출</th>
+                                    <th className="px-2 py-1.5 text-right text-red-500">누적 매입/비용</th>
+                                    <th className="px-2 py-1.5 text-right text-indigo-500">누적 무상대여</th>
+                                    <th className="px-2 py-1.5 text-center">관리</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1518,12 +1518,12 @@ const FranchiseDashboard = () => {
 
                                         return (
                                         <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                            <td className="px-4 py-3 text-slate-500 font-medium">{latestMonth}</td>
-                                            <td className="px-4 py-3 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-center">
+                                            <td className="px-2 py-1.5 font-bold text-slate-800">{f.name}</td>
+                                            <td className="px-2 py-1.5 text-slate-500 font-medium">{latestMonth}</td>
+                                            <td className="px-2 py-1.5 text-right text-blue-600 font-bold">{calcOperatingSales(f).toLocaleString()}</td>
+                                            <td className="px-2 py-1.5 text-right text-red-600 font-bold">{calcOperatingExpenses(f).toLocaleString()}</td>
+                                            <td className="px-2 py-1.5 text-right text-indigo-600 font-bold">{calcOperatingFreeRentals(f).toLocaleString()}</td>
+                                            <td className="px-2 py-1.5 text-center">
                                                 <button onClick={() => openOperatingHistoryModal(f)} className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 font-medium">
                                                     내역 관리
                                                 </button>
@@ -1561,31 +1561,31 @@ const FranchiseDashboard = () => {
             
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                         <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3">가맹점명</th>
-                                <th className="px-4 py-3 text-right">총 매입액</th>
-                                <th className="px-4 py-3 text-right text-orange-500">인테리어 합계</th>
-                                <th className="px-4 py-3 text-right text-purple-500">기기장비 합계</th>
-                                <th className="px-4 py-3 text-center">비용 상세 입력</th>
+                                <th className="px-2 py-1.5">가맹점명</th>
+                                <th className="px-2 py-1.5 text-right">총 매입액</th>
+                                <th className="px-2 py-1.5 text-right text-orange-500">인테리어 합계</th>
+                                <th className="px-2 py-1.5 text-right text-purple-500">기기장비 합계</th>
+                                <th className="px-2 py-1.5 text-center">비용 상세 입력</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="bg-slate-100 border-b-2 border-slate-300 font-bold text-slate-800 text-right">
-                                <td className="px-4 py-3 text-left">총 합계</td>
-                                <td className="px-4 py-3 text-red-600">{totalAllExpenses.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-orange-600">{totalAllInterior.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
-                                <td className="px-4 py-3"></td>
+                                <td className="px-2 py-1.5 text-left">총 합계</td>
+                                <td className="px-2 py-1.5 text-red-600">{totalAllExpenses.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 text-orange-600">{totalAllInterior.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
+                                <td className="px-2 py-1.5"></td>
                             </tr>
                             {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-bold text-slate-800">{f.name}</td>
-                                    <td className="px-4 py-3 text-right font-bold text-red-600">{calcTotalExpenses(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-orange-600">{calcInteriorExpense(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right text-purple-600">{calcEquipmentExpense(f).toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-2 py-1.5 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-2 py-1.5 text-right font-bold text-red-600">{calcTotalExpenses(f).toLocaleString()}</td>
+                                    <td className="px-2 py-1.5 text-right text-orange-600">{calcInteriorExpense(f).toLocaleString()}</td>
+                                    <td className="px-2 py-1.5 text-right text-purple-600">{calcEquipmentExpense(f).toLocaleString()}</td>
+                                    <td className="px-2 py-1.5 text-center">
                                         <button onClick={() => openMatchModal(f)} className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 font-medium">
                                             매입/비용 입력
                                         </button>
@@ -1780,18 +1780,18 @@ const FranchiseDashboard = () => {
                         <p className="text-sm text-slate-500 mt-1">해당 월에 은행으로 입금되어 가맹점과 매칭이 완료된 내역입니다.</p>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3">입금일자</th>
-                                    <th className="px-4 py-3">가맹점(거래처)</th>
-                                    <th className="px-4 py-3">사업자번호</th>
-                                    <th className="px-4 py-3">수신계좌</th>
-                                    <th className="px-4 py-3">의뢰인/수취인</th>
-                                    <th className="px-4 py-3">수금항목</th>
-                                    <th className="px-4 py-3">적요/메모</th>
-                                    <th className="px-4 py-3 text-right">입금액(원)</th>
-                                    <th className="px-4 py-3 text-center">관리</th>
+                                    <th className="px-2 py-1.5">입금일자</th>
+                                    <th className="px-2 py-1.5">가맹점(거래처)</th>
+                                    <th className="px-2 py-1.5">사업자번호</th>
+                                    <th className="px-2 py-1.5">수신계좌</th>
+                                    <th className="px-2 py-1.5">의뢰인/수취인</th>
+                                    <th className="px-2 py-1.5">수금항목</th>
+                                    <th className="px-2 py-1.5">적요/메모</th>
+                                    <th className="px-2 py-1.5 text-right">입금액(원)</th>
+                                    <th className="px-2 py-1.5 text-center">관리</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1819,22 +1819,22 @@ const FranchiseDashboard = () => {
 
                                         return (
                                             <tr key={txn.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="px-4 py-3 whitespace-nowrap">{txn.date}</td>
-                                                <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{fName}</td>
-                                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{fBizNum || '-'}</td>
-                                                <td className="px-4 py-3 text-xs whitespace-nowrap">
+                                                <td className="px-2 py-1.5 whitespace-nowrap">{txn.date}</td>
+                                                <td className="px-2 py-1.5 font-bold text-slate-800 whitespace-nowrap">{fName}</td>
+                                                <td className="px-2 py-1.5 font-mono text-slate-600 whitespace-nowrap">{fBizNum || '-'}</td>
+                                                <td className="px-2 py-1.5 text-xs whitespace-nowrap">
                                                     <span className={`px-2 py-0.5 rounded font-bold ${txn.account === '17104' ? 'bg-indigo-100 text-indigo-800' : txn.account === '85804' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
                                                         {txn.account || '미지정'}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{txn.sender || '-'}</td>
-                                                <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{catLabel}</td>
-                                                <td className="px-4 py-3 text-xs">
+                                                <td className="px-2 py-1.5 font-medium text-slate-700 whitespace-nowrap">{txn.sender || '-'}</td>
+                                                <td className="px-2 py-1.5 font-medium text-slate-700 whitespace-nowrap">{catLabel}</td>
+                                                <td className="px-2 py-1.5 text-xs">
                                                     <div className="font-medium">{txn.summary}</div>
                                                     <div className="text-slate-500">{txn.memo}</div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-bold text-indigo-600 whitespace-nowrap">{txn.amount.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-2 py-1.5 text-right font-bold text-indigo-600 whitespace-nowrap">{txn.amount.toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-center">
                                                     <button 
                                                         onClick={() => handleUnmatchDeposit(txn.id)}
                                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors font-medium border border-rose-200 whitespace-nowrap"
@@ -1886,13 +1886,13 @@ const FranchiseDashboard = () => {
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3 w-8"></th>
-                                    <th className="px-4 py-3">협력업체명</th>
-                                    <th className="px-4 py-3">취급분야</th>
-                                    <th className="px-4 py-3 text-right">총 매입가액(원)</th>
+                                    <th className="px-2 py-1.5 w-8"></th>
+                                    <th className="px-2 py-1.5">협력업체명</th>
+                                    <th className="px-2 py-1.5">취급분야</th>
+                                    <th className="px-2 py-1.5 text-right">총 매입가액(원)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1936,12 +1936,12 @@ const FranchiseDashboard = () => {
                                                     className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                                                     onClick={() => setExpandedVendors(prev => ({...prev, [vId]: !prev[vId]}))}
                                                 >
-                                                    <td className="px-4 py-3 text-slate-400">
+                                                    <td className="px-2 py-1.5 text-slate-400">
                                                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                     </td>
-                                                    <td className="px-4 py-3 font-bold text-slate-800">{group.vendor ? group.vendor.name : '알수없음'}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{group.vendor ? group.vendor.category : '-'}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-red-600">{group.total.toLocaleString()}</td>
+                                                    <td className="px-2 py-1.5 font-bold text-slate-800">{group.vendor ? group.vendor.name : '알수없음'}</td>
+                                                    <td className="px-2 py-1.5 text-slate-600">{group.vendor ? group.vendor.category : '-'}</td>
+                                                    <td className="px-2 py-1.5 text-right font-bold text-red-600">{group.total.toLocaleString()}</td>
                                                 </tr>
                                                 {isExpanded && group.items.map((detail, idx) => (
                                                     <tr key={`${vId}-detail-${idx}`} className="bg-slate-50/50 border-b border-slate-50 text-xs">
@@ -1978,14 +1978,14 @@ const FranchiseDashboard = () => {
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-[11px] whitespace-nowrap text-left">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs whitespace-nowrap">
                                 <tr>
-                                    <th className="px-4 py-3 w-8"></th>
-                                    <th className="px-4 py-3">장비명</th>
-                                    <th className="px-4 py-3 text-right">단가(원)</th>
-                                    <th className="px-4 py-3 text-center">총 수량(개)</th>
-                                    <th className="px-4 py-3 text-right">총 합계(원)</th>
+                                    <th className="px-2 py-1.5 w-8"></th>
+                                    <th className="px-2 py-1.5">장비명</th>
+                                    <th className="px-2 py-1.5 text-right">단가(원)</th>
+                                    <th className="px-2 py-1.5 text-center">총 수량(개)</th>
+                                    <th className="px-2 py-1.5 text-right">총 합계(원)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2032,13 +2032,13 @@ const FranchiseDashboard = () => {
                                                     className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                                                     onClick={() => setExpandedEquipments(prev => ({...prev, [eqId]: !prev[eqId]}))}
                                                 >
-                                                    <td className="px-4 py-3 text-slate-400">
+                                                    <td className="px-2 py-1.5 text-slate-400">
                                                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                     </td>
-                                                    <td className="px-4 py-3 font-bold text-slate-800">{group.eq ? group.eq.name : '알수없음'}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-600">{group.eq ? group.eq.price.toLocaleString() : '0'}</td>
-                                                    <td className="px-4 py-3 text-center font-bold text-slate-800">{group.totalQty}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-purple-600">{group.totalPrice.toLocaleString()}</td>
+                                                    <td className="px-2 py-1.5 font-bold text-slate-800">{group.eq ? group.eq.name : '알수없음'}</td>
+                                                    <td className="px-2 py-1.5 text-right text-slate-600">{group.eq ? group.eq.price.toLocaleString() : '0'}</td>
+                                                    <td className="px-2 py-1.5 text-center font-bold text-slate-800">{group.totalQty}</td>
+                                                    <td className="px-2 py-1.5 text-right font-bold text-purple-600">{group.totalPrice.toLocaleString()}</td>
                                                 </tr>
                                                 {isExpanded && group.items.map((detail, idx) => (
                                                     <tr key={`${eqId}-detail-${idx}`} className="bg-slate-50/50 border-b border-slate-50 text-xs">
@@ -2125,7 +2125,7 @@ const FranchiseDashboard = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                            className={`flex items-center gap-2 px-2 py-1.5 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
                                 activeTab === tab.id 
                                 ? 'border-indigo-600 text-indigo-600' 
                                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -2433,15 +2433,15 @@ const FranchiseDashboard = () => {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
+                                <table className="w-full text-[11px] whitespace-nowrap text-left">
                                     <thead className="text-xs text-slate-500 bg-slate-50 border-y border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-3">거래일시</th>
-                                            <th className="px-4 py-3">계좌/은행</th>
-                                            <th className="px-4 py-3">적요/보낸분</th>
-                                            <th className="px-4 py-3 text-right">입금액</th>
-                                            <th className="px-4 py-3">매칭 항목</th>
-                                            <th className="px-4 py-3 text-center">관리</th>
+                                            <th className="px-2 py-1.5">거래일시</th>
+                                            <th className="px-2 py-1.5">계좌/은행</th>
+                                            <th className="px-2 py-1.5">적요/보낸분</th>
+                                            <th className="px-2 py-1.5 text-right">입금액</th>
+                                            <th className="px-2 py-1.5">매칭 항목</th>
+                                            <th className="px-2 py-1.5 text-center">관리</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2457,21 +2457,21 @@ const FranchiseDashboard = () => {
                                                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                                                 .map(t => (
                                                     <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                        <td className="px-4 py-3 text-slate-600">
+                                                        <td className="px-2 py-1.5 text-slate-600">
                                                             {t.date} <span className="text-xs text-slate-400">{t.time}</span>
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-2 py-1.5">
                                                             <div className="font-medium text-slate-700">{t.account}</div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-xs">
+                                                        <td className="px-2 py-1.5 text-xs">
                                                             <div className="font-medium text-slate-800">{t.summary}</div>
                                                             <div className="text-slate-500">{t.memo}</div>
                                                             <div className="text-indigo-600 font-bold">{t.sender}</div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                                                        <td className="px-2 py-1.5 text-right font-bold text-indigo-600">
                                                             {t.amount.toLocaleString()}원
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-2 py-1.5">
                                                             <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">
                                                                 {t.matchedCategory === 'franchiseFee' ? '가맹/교육비' :
                                                                  t.matchedCategory === 'openDeposit' ? '오픈 계약금' :
@@ -2483,7 +2483,7 @@ const FranchiseDashboard = () => {
                                                                  t.matchedCategory === 'opOthers' ? '기타매출' : t.matchedCategory}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-center">
+                                                        <td className="px-2 py-1.5 text-center">
                                                             <button 
                                                                 onClick={() => handleUnmatchDeposit(t.id)}
                                                                 className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
@@ -3051,7 +3051,7 @@ const FranchiseDashboard = () => {
                                     <DollarSign className="w-4 h-4 text-blue-500" /> 추가 매출 (수금) 내역
                                 </h4>
                                 <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-sm text-left">
+                                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                                         <thead className="bg-slate-50 border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-2">귀속월</th>
@@ -3084,7 +3084,7 @@ const FranchiseDashboard = () => {
                                     <ShoppingCart className="w-4 h-4 text-red-500" /> 추가 매입/비용 내역
                                 </h4>
                                 <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-sm text-left">
+                                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                                         <thead className="bg-slate-50 border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-2">귀속월</th>
@@ -3132,7 +3132,7 @@ const FranchiseDashboard = () => {
                                     <Gift className="w-4 h-4 text-indigo-500" /> 추가 무상교체/대여 내역
                                 </h4>
                                 <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-sm text-left">
+                                    <table className="w-full text-[11px] whitespace-nowrap text-left">
                                         <thead className="bg-slate-50 border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-2">귀속월</th>
