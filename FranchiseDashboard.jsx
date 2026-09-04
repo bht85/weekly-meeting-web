@@ -853,19 +853,11 @@ const FranchiseDashboard = () => {
         const TableHeader = () => (
             <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200">
                 <tr>
-                    <th rowSpan="2" className="px-4 py-3 align-middle border-r border-slate-200">코드/가맹점명</th>
-                    <th rowSpan="2" className="px-4 py-3 align-middle border-r border-slate-200">오픈(예정)일자</th>
-                    <th colSpan="3" className="px-4 py-2 text-center border-b border-r border-slate-200">매출액 (A)</th>
-                    <th colSpan="3" className="px-4 py-2 text-center border-b border-r border-slate-200">매입/비용 (B)</th>
-                    <th rowSpan="2" className="px-4 py-3 align-middle text-right text-indigo-700">최종 마진 (A-B)</th>
-                </tr>
-                <tr>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-white font-normal">신규오픈</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-white font-normal">운영추가</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-slate-100 font-bold">총 매출</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-white font-normal">신규오픈</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-white font-normal">운영추가</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-200 bg-slate-100 font-bold">총 매입</th>
+                    <th className="px-4 py-3 align-middle border-r border-slate-200">코드/가맹점명</th>
+                    <th className="px-4 py-3 align-middle border-r border-slate-200">오픈(예정)일자</th>
+                    <th className="px-4 py-3 align-middle text-right border-r border-slate-200">총 매출액 (A)</th>
+                    <th className="px-4 py-3 align-middle text-right border-r border-slate-200">총 매입/비용 (B)</th>
+                    <th className="px-4 py-3 align-middle text-right text-indigo-700">최종 마진 (A-B)</th>
                 </tr>
             </thead>
         );
@@ -874,7 +866,7 @@ const FranchiseDashboard = () => {
             if (franchises.length === 0) {
                 return (
                     <tr>
-                        <td colSpan="9" className="px-4 py-8 text-center text-slate-500">
+                        <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
                             해당 월에 정산할 내역이 있는 {isNewOpen ? '신규가맹점이' : '기존가맹점이'} 없습니다.
                         </td>
                     </tr>
@@ -898,22 +890,10 @@ const FranchiseDashboard = () => {
                             onSave={(newDate) => handleUpdateOpenDate(f.id, newDate)} 
                         />
                     </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-100 text-slate-600">
-                        {f._dashNewSales > 0 ? f._dashNewSales.toLocaleString() : '-'}
-                    </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-100 text-slate-600">
-                        {f._dashOpSales > 0 ? f._dashOpSales.toLocaleString() : '-'}
-                    </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-green-600">
+                    <td className="px-4 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-green-600">
                         {f._dashTotalSales > 0 ? f._dashTotalSales.toLocaleString() : '-'}
                     </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-100 text-slate-600">
-                        {f._dashNewExpenses > 0 ? f._dashNewExpenses.toLocaleString() : '-'}
-                    </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-100 text-slate-600">
-                        {f._dashOpExpenses > 0 ? f._dashOpExpenses.toLocaleString() : '-'}
-                    </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-red-600">
+                    <td className="px-4 py-3 text-right border-r border-slate-200 bg-slate-50 font-bold text-red-600">
                         {f._dashTotalExpenses > 0 ? f._dashTotalExpenses.toLocaleString() : '-'}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-indigo-600">
