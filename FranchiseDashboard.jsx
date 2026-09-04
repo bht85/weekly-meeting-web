@@ -993,8 +993,6 @@ const FranchiseDashboard = () => {
                                 <th className="px-2 py-1.5">가맹점명</th>
                                 <th className="px-2 py-1.5">대표자</th>
                                 <th className="px-2 py-1.5">사업자등록번호</th>
-                                <th className="px-2 py-1.5">업태/종목</th>
-                                <th className="px-2 py-1.5">계약일자</th>
                                 <th className="px-2 py-1.5">오픈(예정)일자</th>
                                 <th className="px-2 py-1.5 text-center">관리</th>
                             </tr>
@@ -1006,8 +1004,6 @@ const FranchiseDashboard = () => {
                                     <td className="px-2 py-1.5 font-bold text-slate-800">{f.name}</td>
                                     <td className="px-2 py-1.5">{f.owner}</td>
                                     <td className="px-2 py-1.5 text-slate-500">{f.bizNumber || '-'}</td>
-                                    <td className="px-2 py-1.5 text-slate-500">{f.bizType || '-'}</td>
-                                    <td className="px-2 py-1.5 text-slate-600">{f.contractDate}</td>
                                     <td className="px-2 py-1.5 text-indigo-600 font-medium">
                                         <DateInlineEditor 
                                             value={f.openDate} 
@@ -2912,36 +2908,14 @@ const FranchiseDashboard = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">업태/종목</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">예상 오픈일자</label>
                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                    placeholder="예: 커피전문점 / 휴게음식점"
-                                    value={newFranchise.bizType}
-                                    onChange={e => setNewFranchise({...newFranchise, bizType: e.target.value})}
+                                    type="date" 
+                                    required
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                    value={newFranchise.openDate}
+                                    onChange={e => setNewFranchise({...newFranchise, openDate: e.target.value})}
                                 />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">계약일자</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-                                        value={newFranchise.contractDate}
-                                        onChange={e => setNewFranchise({...newFranchise, contractDate: e.target.value})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">예상 오픈일자</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-                                        value={newFranchise.openDate}
-                                        onChange={e => setNewFranchise({...newFranchise, openDate: e.target.value})}
-                                    />
-                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
@@ -3537,35 +3511,14 @@ const FranchiseDashboard = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">업태/종목</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">예상 오픈일자</label>
                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                    value={editFranchise.bizType}
-                                    onChange={e => setEditFranchise({...editFranchise, bizType: e.target.value})}
+                                    type="date" 
+                                    required
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                                    value={editFranchise.openDate}
+                                    onChange={e => setEditFranchise({...editFranchise, openDate: e.target.value})}
                                 />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">계약일자</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-                                        value={editFranchise.contractDate}
-                                        onChange={e => setEditFranchise({...editFranchise, contractDate: e.target.value})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">예상 오픈일자</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-                                        value={editFranchise.openDate}
-                                        onChange={e => setEditFranchise({...editFranchise, openDate: e.target.value})}
-                                    />
-                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
