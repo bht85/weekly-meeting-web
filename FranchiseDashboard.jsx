@@ -662,7 +662,7 @@ const FranchiseDashboard = () => {
         setIsFreeRentalModalOpen(false);
     };
 
-    const calcTotalSales = (f) => f.sales.franchiseFee + f.sales.educationFee + f.sales.open.deposit + f.sales.open.middle + f.sales.open.balance;
+    const calcTotalSales = (f) => f.sales?.franchiseFee + f.sales?.educationFee + f.sales?.open?.deposit + f.sales?.open?.middle + f.sales?.open?.balance;
     
     const calcEquipmentExpense = (f) => {
         if (!f.expenses?.equipmentItems) return 0;
@@ -1000,13 +1000,6 @@ const FranchiseDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr className="bg-slate-100 border-b-2 border-slate-300 font-bold text-slate-800 text-right">
-                                <td className="px-2 py-1.5 text-left">총 합계</td>
-                                <td className="px-2 py-1.5 text-red-600">{totalAllExpenses.toLocaleString()}</td>
-                                <td className="px-2 py-1.5 text-orange-600">{totalAllInterior.toLocaleString()}</td>
-                                <td className="px-2 py-1.5 text-purple-600">{totalAllEquipment.toLocaleString()}</td>
-                                <td className="px-2 py-1.5"></td>
-                            </tr>
                             {filteredFranchises.map(f => (
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-2 py-1.5 font-medium text-slate-500">{f.id}</td>
@@ -1058,15 +1051,15 @@ const FranchiseDashboard = () => {
         const totals = filteredFranchises.reduce((acc, f) => {
             const expectedFranchise = f.expectedFranchiseFee !== undefined ? f.expectedFranchiseFee : 7700000;
             const expectedOpen = f.expectedOpenCost || 0;
-            const receivedFranchise = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
-            const receivedOpen = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+            const receivedFranchise = (f.sales?.franchiseFee || 0) + (f.sales?.educationFee || 0);
+            const receivedOpen = (f.sales?.open?.deposit || 0) + (f.sales?.open?.middle || 0) + (f.sales?.open?.balance || 0);
             
             acc.expectedFranchise += expectedFranchise;
             acc.expectedOpen += expectedOpen;
             acc.receivedFranchise += receivedFranchise;
-            acc.deposit += f.sales.open.deposit || 0;
-            acc.middle += f.sales.open.middle || 0;
-            acc.balance += f.sales.open.balance || 0;
+            acc.deposit += f.sales?.open?.deposit || 0;
+            acc.middle += f.sales?.open?.middle || 0;
+            acc.balance += f.sales?.open?.balance || 0;
             
             return acc;
         }, {
@@ -1244,8 +1237,8 @@ const FranchiseDashboard = () => {
                                 const expectedOpen = f.expectedOpenCost || 0;
                                 const totalExpected = expectedFranchise + expectedOpen;
                                 
-                                const receivedFranchise = (f.sales.franchiseFee || 0) + (f.sales.educationFee || 0);
-                                const receivedOpen = (f.sales.open.deposit || 0) + (f.sales.open.middle || 0) + (f.sales.open.balance || 0);
+                                const receivedFranchise = (f.sales?.franchiseFee || 0) + (f.sales?.educationFee || 0);
+                                const receivedOpen = (f.sales?.open?.deposit || 0) + (f.sales?.open?.middle || 0) + (f.sales?.open?.balance || 0);
                                 const totalReceived = receivedFranchise + receivedOpen;
                                 
                                 const balance = totalExpected - totalReceived;
@@ -1288,15 +1281,15 @@ const FranchiseDashboard = () => {
                                                 type="text"
                                                 className="w-24 px-2 py-1 text-right text-[11px] border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 bg-white hover:border-blue-300 transition-colors"
                                                 placeholder="0"
-                                                value={f.expectedOpenCost ? f.expectedOpenCost.toLocaleString() : ''}
+                                                value={f.expectedOpenCost ? Number(f.expectedOpenCost).toLocaleString() : ''}
                                                 onChange={e => {
                                                     const val = e.target.value.replace(/[^\d]/g, '');
                                                     handleUpdateExpectedOpenCost(f.id, val ? Number(val) : 0);
                                                 }}
                                             />
                                         </td>
-                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.deposit.toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{f.sales.open.middle.toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{(f.sales?.open?.deposit || 0).toLocaleString()}</td>
+                                        <td className="px-2 py-1.5 text-blue-600 bg-blue-50/10">{(f.sales?.open?.middle || 0).toLocaleString()}</td>
                                     </tr>
                                 )
                             })}
