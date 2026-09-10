@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import { ACCOUNT_GUIDE } from './accountGuide';
 
 const CATEGORIES = Object.keys(ACCOUNT_GUIDE);
@@ -34,6 +35,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [loadedFormId, setLoadedFormId] = useState(null);
+
+  // 실적 업로드 관련 상태
+  const uploadInputRef = useRef(null);
+  const [uploadPreview, setUploadPreview] = useState(null); // { rows: [], errors: [] }
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
 
   // 1. Fetch Data
   useEffect(() => {
@@ -194,6 +202,214 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     }
   }, [user, isFinance]);
 
+  // ─── 실적 및 예산 업로드 핸들러들 ───────────────────────────────────────────
+  const handleDownloadTemplate = () => {
+    const wb = XLSX.utils.book_new();
+    const validTeams = departments.filter(d => d && d !== '선택');
+    const validCategories = CATEGORIES;
+
+    const guideData = [
+      ['📌 작성 안내'],
+      [''],
+      ['1. [데이터입력] 시트에 데이터를 입력해 주세요.'],
+      ['2. 조직명은 정확히 입력해야 합니다. 아래 목록을 참고하세요.'],
+      ['3. 계정과목 및 세목도 기준표에 맞게 입력해 주세요.'],
+      ['4. 금액 단위: 천원 / 빈 행은 무시됩니다.'],
+      [''],
+      ['▣ 스마트 반영 규칙'],
+      [' - 2026년 업로드 시: 일반 부서는 9~12월(추정)만 반영되고 1~8월은 무시됩니다.'],
+      [' - 재무팀이 2026년 업로드 시: 1~8월(실적)만 반영되고 9~12월은 무시됩니다.'],
+      [' - 2027/2028년 업로드 시: 1~12월 전체가 반영됩니다.'],
+      [''],
+      ['▣ 등록된 조직 목록'],
+      ...validTeams.map(t => [t]),
+      [''],
+      ['▣ 계정과목 목록'],
+      ...validCategories.map(c => [c]),
+    ];
+    const guideSheet = XLSX.utils.aoa_to_sheet(guideData);
+    guideSheet['!cols'] = [{ wch: 70 }];
+    XLSX.utils.book_append_sheet(wb, guideSheet, '작성안내');
+
+    const headers = ['조직명', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+    const sampleRows = [
+      [user?.department && user.department !== '선택' ? user.department : '재무팀', '직원급여', '직원급여', '', 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000],
+    ];
+    const inputData = [headers, ...sampleRows];
+    const inputSheet = XLSX.utils.aoa_to_sheet(inputData);
+    inputSheet['!cols'] = [
+      { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
+      ...Array(12).fill({ wch: 8 })
+    ];
+    XLSX.utils.book_append_sheet(wb, inputSheet, '데이터입력');
+
+    XLSX.writeFile(wb, `${selectedYear}년도_예산_업로드_템플릿.xlsx`);
+  };
+
+  const handleUploadFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const sheetName = wb.SheetNames.includes('데이터입력') ? '데이터입력' : (wb.SheetNames.includes('실적입력') ? '실적입력' : wb.SheetNames[0]);
+        const ws = wb.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        if (rawRows.length < 2) {
+          alert('데이터가 없습니다. 템플릿 양식을 확인해 주세요.');
+          return;
+        }
+
+        const validTeams = new Set(departments.filter(d => d && d !== '선택'));
+        const validCats = new Set(CATEGORIES);
+        const dataRows = rawRows.slice(1);
+
+        const parsed = [];
+        const errors = [];
+
+        dataRows.forEach((row, idx) => {
+          const team = String(row[0] || '').trim();
+          const category = String(row[1] || '').trim();
+          const detail = String(row[2] || '').trim();
+          const description = String(row[3] || '').trim();
+          // 1~12월 (인덱스 4~15)
+          const months = Array(12).fill(0).map((_, i) => {
+            const n = Number(String(row[4 + i] || '0').replace(/[^0-9.-]/g, ''));
+            return isNaN(n) ? 0 : Math.round(n);
+          });
+
+          if (!team && !category && months.every(m => m === 0)) return;
+
+          const rowErrors = [];
+          if (!team) rowErrors.push('조직명 없음');
+          else if (!validTeams.has(team)) rowErrors.push(`조직명 불일치: "${team}"`);
+          else if (!isFinance && team !== user?.department) rowErrors.push(`타 부서("${team}") 업로드 불가`);
+          
+          if (!category) rowErrors.push('계정과목 없음');
+          else if (!validCats.has(category)) rowErrors.push(`계정과목 불일치: "${category}"`);
+          if (!detail) rowErrors.push('세목 없음');
+
+          parsed.push({
+            rowNum: idx + 2,
+            team, category, detail, description, months,
+            hasError: rowErrors.length > 0,
+            errorMsg: rowErrors.join(', '),
+          });
+          if (rowErrors.length > 0) errors.push({ rowNum: idx + 2, msg: rowErrors.join(', ') });
+        });
+
+        setUploadPreview({ rows: parsed, errors });
+        setIsPreviewModalOpen(true);
+      } catch (err) {
+        console.error(err);
+        alert('파일 파싱 중 오류가 발생했습니다. xlsx 형식인지 확인해 주세요.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!uploadPreview) return;
+    const validRows = uploadPreview.rows.filter(r => !r.hasError);
+    if (validRows.length === 0) {
+      alert('저장할 수 있는 유효한 행이 없습니다.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const byTeam = {};
+      validRows.forEach(row => {
+        if (!byTeam[row.team]) byTeam[row.team] = [];
+        byTeam[row.team].push(row);
+      });
+
+      for (const [team, rows] of Object.entries(byTeam)) {
+        const docId = `${selectedYear}_${team}`;
+        const existing = budgetData.find(d => d.id === docId);
+        
+        const newItems = rows.map(r => {
+          let finalMonths = [...r.months];
+          let isActual = false;
+
+          if (selectedYear === 2026) {
+            if (isFinance) {
+              // 재무팀: 1~8월만 실적으로 반영
+              finalMonths = [...r.months.slice(0, 8), 0, 0, 0, 0];
+              isActual = true;
+            } else {
+              // 일반팀: 9~12월만 추정으로 반영
+              finalMonths = [0, 0, 0, 0, 0, 0, 0, 0, ...r.months.slice(8, 12)];
+              isActual = false;
+            }
+          } else {
+            // 2027/2028: 전 기간 추정치로 반영
+            isActual = false;
+          }
+
+          return {
+            id: `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            category: r.category,
+            detail: r.detail,
+            description: r.description,
+            months: finalMonths,
+            rowTotal: finalMonths.reduce((s, v) => s + v, 0),
+            isActual,
+          };
+        });
+
+        let existingItemsToKeep = [];
+        let hasActualData = existing?.hasActualData || false;
+
+        if (existing?.items) {
+          if (selectedYear === 2026) {
+            if (isFinance) {
+              // 재무팀 업로드 시, 기존 추정 데이터(일반팀 입력분) 보존
+              existingItemsToKeep = existing.items.filter(i => !i.isActual);
+              hasActualData = true; // 재무팀이 올렸으니 실제 데이터 존재함
+            } else {
+              // 일반팀 업로드 시, 기존 실적 데이터(재무팀 입력분) 보존
+              existingItemsToKeep = existing.items.filter(i => i.isActual);
+            }
+          } else {
+            // 2027년 이상은 통째로 덮어쓰기이므로 보존 안 함
+            hasActualData = false;
+          }
+        } else if (selectedYear === 2026 && isFinance) {
+           hasActualData = true;
+        }
+
+        const mergedItems = [...existingItemsToKeep, ...newItems];
+        const totalAmount = mergedItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
+
+        await setDoc(doc(db, 'budget_plans', docId), {
+          year: selectedYear,
+          team,
+          items: mergedItems,
+          totalAmount,
+          hasActualData,
+          updatedBy: user?.email || 'Unknown',
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      setUploadMessage(`✅ ${Object.keys(byTeam).length}개 부서, ${validRows.length}개 항목 저장 완료!`);
+      setTimeout(() => setUploadMessage(''), 5000);
+      setIsPreviewModalOpen(false);
+      setUploadPreview(null);
+    } catch (err) {
+      console.error(err);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  // ────────────────────────────────────────────────────────────────────
+
   const handleExportExcel = () => {
     const headers = ['부서명', '연도', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
@@ -348,7 +564,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           <p className="text-sm text-slate-500 mt-1">각 팀별 월별 판관비 예산을 상세하게 입력하고 취합합니다.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-lg">
-          {[2027, 2028].map(year => (
+          {[2026, 2027, 2028].map(year => (
             <button
               key={year}
               onClick={() => setSelectedYear(year)}
@@ -384,6 +600,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           >
             <Edit3 className="w-4 h-4" />
             부서별 예산 입력
+          </button>
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+              activeTab === 'upload' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Upload className="w-4 h-4" />
+            엑셀 업로드
           </button>
         </div>
         
@@ -452,9 +677,19 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">계정과목</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">세목 (세부항목)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">적요 (상세내역)</th>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-[85px]">{m}월</th>
-                  ))}
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
+                    const isActualMonth = selectedYear === 2026 && m <= 8;
+                    const isEstimateMonth = selectedYear === 2026 && m >= 9;
+                    return (
+                      <th key={m} className={`px-2 py-3 text-right text-xs font-medium uppercase tracking-wider w-[85px] ${
+                        isActualMonth ? 'text-blue-600 bg-blue-50' :
+                        isEstimateMonth ? 'text-orange-500 bg-orange-50' :
+                        'text-slate-500'
+                      }`}>
+                        {m}월{isActualMonth ? '▣' : isEstimateMonth ? '◎' : ''}
+                      </th>
+                    );
+                  })}
                   <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[100px]">합계</th>
                   <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-[50px]">삭제</th>
                 </tr>
@@ -505,28 +740,38 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
                         />
                       </td>
-                      {item.months.map((val, mIndex) => (
-                        <td key={mIndex} className="px-1 py-2 align-top">
-                          <div className="relative group flex items-center">
-                            <input 
-                              type="text" 
-                              value={val ? formatNumber(val) : ''}
-                              onChange={(e) => handleMonthChange(item.id, mIndex, e.target.value)}
-                              className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5 text-right px-1 pr-4"
-                              placeholder="0"
-                            />
-                            {mIndex < 11 && (
-                              <button
-                                onClick={() => handleFillRight(item.id, mIndex, val)}
-                                className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-indigo-500 hover:text-indigo-700 bg-white/80 rounded"
-                                title="이 달의 금액을 12월까지 모두 동일하게 채우기"
-                              >
-                                <ChevronsRight className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      ))}
+                      {item.months.map((val, mIndex) => {
+                        const isActualCell = selectedYear === 2026 && mIndex < 8 && item.isActual;
+                        const isActualColBg = selectedYear === 2026 && mIndex < 8;
+                        const isEstimateColBg = selectedYear === 2026 && mIndex >= 8;
+                        return (
+                          <td key={mIndex} className={`px-1 py-2 align-top ${isActualColBg ? 'bg-blue-50/40' : isEstimateColBg ? 'bg-orange-50/30' : ''}`}>
+                            <div className="relative group flex items-center">
+                              <input 
+                                type="text" 
+                                value={val ? formatNumber(val) : ''}
+                                onChange={(e) => handleMonthChange(item.id, mIndex, e.target.value)}
+                                readOnly={isActualCell && !isFinance}
+                                className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 text-right px-1 pr-4 ${
+                                  isActualCell && !isFinance
+                                    ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-transparent'
+                                    : 'focus:ring-indigo-500 focus:border-indigo-500'
+                                }`}
+                                placeholder="0"
+                              />
+                              {!isActualCell && mIndex < 11 && (
+                                <button
+                                  onClick={() => handleFillRight(item.id, mIndex, val)}
+                                  className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-indigo-500 hover:text-indigo-700 bg-white/80 rounded"
+                                  title="이 달의 금액을 12월까지 모두 동일하게 채우기"
+                                >
+                                  <ChevronsRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
                       <td className="px-4 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3">
                         {formatNumber(rowTotal)}
                       </td>
@@ -700,6 +945,222 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                  </tfoot>
                </table>
              </div>
+          </div>
+        </div>
+      )}
+
+      {/* 엑셀 업로드 탭 */}
+      {activeTab === 'upload' && (
+        <div className="space-y-6">
+          {/* 안내 배너 */}
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+            <FileSpreadsheet className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-bold text-orange-800 text-sm">{selectedYear}년도 예산 및 실적 엑셀 일괄 업로드</p>
+              <p className="text-orange-700 text-xs mt-1">
+                엑셀 템플릿을 다운로드 → 데이터 입력 → 파일 업로드 순서로 진행합니다. (일반 부서는 본인 부서 데이터만 업로드 가능)<br/>
+                <span className="font-semibold text-orange-800 bg-orange-200 px-1 rounded inline-block mt-1">
+                  {selectedYear === 2026 && !isFinance && '일반 부서가 업로드 시 1~8월 칸은 무시되고 9~12월(추정) 데이터만 반영됩니다. (재무팀 실적 데이터 보호)'}
+                  {selectedYear === 2026 && isFinance && '재무팀이 업로드 시 1~8월(실적) 데이터로 덮어쓰기 됩니다.'}
+                  {selectedYear !== 2026 && `선택하신 ${selectedYear}년도 1~12월 데이터로 전체 덮어쓰기 됩니다.`}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* 액션 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* STEP 1: 템플릿 다운로드 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">1</div>
+                <h3 className="font-bold text-slate-800">엑셀 템플릿 다운로드</h3>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">
+                조직명, 계정과목, 세목, 1~8월 금액 입력 양식이 포함된 템플릿입니다.<br/>
+                <span className="text-blue-600 font-medium">작성안내 시트</span>에 조직 목록과 계정과목 기준이 안내되어 있습니다.
+              </p>
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 w-full justify-center bg-blue-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                템플릿 다운로드 (.xlsx)
+              </button>
+            </div>
+
+            {/* STEP 2: 파일 업로드 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-sm">2</div>
+                <h3 className="font-bold text-slate-800">실적 파일 업로드</h3>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">
+                작성한 엑셀 파일(.xlsx)을 업로드하면 내용을 미리보기로 확인한 후 저장됩니다.<br/>
+                <span className="text-orange-600 font-medium">오류 행은 자동 감지</span>되어 정상 행만 저장됩니다.
+              </p>
+              <label className="flex items-center gap-2 w-full justify-center bg-orange-500 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-orange-600 transition-colors cursor-pointer">
+                <Upload className="w-4 h-4" />
+                파일 선택 및 업로드
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleUploadFile}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 업로드 완료 메시지 */}
+          {uploadMessage && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl flex items-center gap-2 font-medium text-sm">
+              <CheckCircle className="w-5 h-5" />
+              {uploadMessage}
+            </div>
+          )}
+
+          {/* 현재 업로드 현황 */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50">
+              <h3 className="font-bold text-slate-800">{selectedYear}년 업로드 현황</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-4 py-3 text-left">조직명</th>
+                    <th className="px-4 py-3 text-center">실적데이터</th>
+                    <th className="px-4 py-3 text-right">항목 수</th>
+                    <th className="px-4 py-3 text-right">1~8월 합계 (천원)</th>
+                    <th className="px-4 py-3 text-left">최종 수정</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {departments.filter(d => d && d !== '선택').map(dept => {
+                    const docData = budgetData.find(d => d.id === `2026_${dept}`);
+                    const actualItems = docData?.items?.filter(i => i.isActual) || [];
+                    const actualTotal = actualItems.reduce((s, i) =>
+                      s + (i.months || []).slice(0, 8).reduce((a, v) => a + (v || 0), 0), 0);
+                    return (
+                      <tr key={dept} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-800">{dept}</td>
+                        <td className="px-4 py-3 text-center">
+                          {docData?.hasActualData
+                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"><CheckCircle className="w-3 h-3"/>업로드완료</span>
+                            : <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full">미업로드</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-600">{actualItems.length > 0 ? `${actualItems.length}건` : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-blue-700">{actualTotal > 0 ? actualTotal.toLocaleString() : '-'}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{docData?.updatedBy || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 미리보기 확인 모달 */}
+      {isPreviewModalOpen && uploadPreview && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-orange-500" />
+                  업로드 미리보기 확인
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  정상 <span className="text-emerald-600 font-bold">{uploadPreview.rows.filter(r => !r.hasError).length}건</span>
+                  {' '} / 오류 <span className="text-red-500 font-bold">{uploadPreview.errors.length}건</span>
+                  {' '} / 전체 {uploadPreview.rows.length}건
+                </p>
+              </div>
+              <button onClick={() => { setIsPreviewModalOpen(false); setUploadPreview(null); }} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {uploadPreview.errors.length > 0 && (
+              <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm font-bold text-red-700 mb-1">⚠️ 오류 항목 — 해당 행은 저장되지 않습니다</p>
+                <ul className="text-xs text-red-600 space-y-0.5">
+                  {uploadPreview.errors.map((e, i) => (
+                    <li key={i}>{e.rowNum}행: {e.msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="overflow-auto flex-1 p-4">
+              <table className="min-w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 uppercase">
+                    <th className="px-3 py-2 text-left w-8">#</th>
+                    <th className="px-3 py-2 text-left">조직명</th>
+                    <th className="px-3 py-2 text-left">계정과목</th>
+                    <th className="px-3 py-2 text-left">세목</th>
+                    <th className="px-3 py-2 text-left">적요</th>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                      <th key={m} className={`px-2 py-2 text-right ${selectedYear === 2026 ? (m <= 8 ? 'text-blue-600' : 'text-orange-500') : 'text-slate-600'}`}>
+                        {m}월
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 text-right font-bold text-indigo-600">합계</th>
+                    <th className="px-3 py-2 text-center">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploadPreview.rows.map((row, i) => (
+                    <tr key={i} className={`border-b border-slate-100 ${row.hasError ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
+                      <td className="px-3 py-1.5 text-slate-400">{row.rowNum}</td>
+                      <td className="px-3 py-1.5 font-medium text-slate-800">{row.team}</td>
+                      <td className="px-3 py-1.5 text-slate-600">{row.category}</td>
+                      <td className="px-3 py-1.5 text-slate-600">{row.detail}</td>
+                      <td className="px-3 py-1.5 text-slate-400">{row.description}</td>
+                      {row.months.map((v, mi) => (
+                        <td key={mi} className="px-2 py-1.5 text-right text-slate-700">{v ? v.toLocaleString() : ''}</td>
+                      ))}
+                      <td className="px-3 py-1.5 text-right font-bold text-indigo-600">
+                        {row.months.reduce((s, v) => s + v, 0).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-1.5 text-center">
+                        {row.hasError
+                          ? <span className="text-red-500 font-bold text-[10px]">오류</span>
+                          : <span className="text-emerald-500 font-bold text-[10px]">✓정상</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex justify-between items-center">
+              <p className="text-sm text-slate-500">
+                정상 <strong className="text-emerald-600">{uploadPreview.rows.filter(r => !r.hasError).length}건</strong>만 저장됩니다.
+                {uploadPreview.errors.length > 0 && <span className="text-red-400 ml-2">(오류 {uploadPreview.errors.length}건 제외)</span>}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setIsPreviewModalOpen(false); setUploadPreview(null); }}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleConfirmUpload}
+                  disabled={isUploading || uploadPreview.rows.filter(r => !r.hasError).length === 0}
+                  className="flex items-center gap-2 px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  {isUploading ? '저장 중...' : '확인 후 저장'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
