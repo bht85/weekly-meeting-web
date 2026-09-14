@@ -1,45 +1,84 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-
 
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getCollectionName } from './utils';
 
+// ─── 최적화된 공유 상태 훅 (Firebase 과부하 방지) ─────────────────────
 const useSharedState = (db, user, docId, defaultState, localStorageKey, parseFn = (v) => v) => {
     const collectionName = getCollectionName('franchise_system', user);
+    const CACHE_KEY = `cache_${collectionName}_${docId}`;
 
-    const [state, setState] = useState(defaultState);
+    // 1) 로컬 캐시에서 초기값 먼저 로드 (서버 응답 대기 없이 즉시 화면 표시)
+    const [state, setState] = useState(() => {
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) return parseFn(JSON.parse(cached));
+        } catch (e) { /* ignore */ }
+        return defaultState;
+    });
+
     const isInitialized = useRef(false);
+    const debounceTimer = useRef(null);
+    const lastWriteId = useRef(null);  // 자기가 방금 쓴 데이터인지 판별용
+    const latestState = useRef(state);  // 디바운스 콜백에서 최신값 접근용
+    latestState.current = state;
 
     useEffect(() => {
         if (!db) return;
         const unsubscribe = onSnapshot(doc(db, collectionName, docId), (docSnap) => {
             if (docSnap.exists()) {
-                const data = docSnap.data().data;
-                setState(parseFn(data));
+                const serverData = docSnap.data();
+
+                // 2) 본인이 방금 쓴 데이터면 setState 생략 (불필요한 리렌더 방지)
+                if (serverData._writeId && serverData._writeId === lastWriteId.current) {
+                    isInitialized.current = true;
+                    return;
+                }
+
+                const data = parseFn(serverData.data);
+                setState(data);
+
+                // 로컬 캐시 갱신 (다음 접속 시 빠른 초기 로딩용)
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify(serverData.data)); } catch (e) { /* ignore */ }
             } else {
-                // Migration from localStorage
+                // Migration from localStorage (최초 1회만 실행됨)
                 const saved = localStorage.getItem(localStorageKey);
                 const parsed = saved ? parseFn(JSON.parse(saved)) : defaultState;
-                setDoc(doc(db, collectionName, docId), { data: parsed });
+                const writeId = `mig_${Date.now()}`;
+                lastWriteId.current = writeId;
+                setDoc(doc(db, collectionName, docId), { data: parsed, _writeId: writeId });
                 setState(parsed);
             }
             isInitialized.current = true;
         });
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        };
     }, [docId]);
 
-    const setSharedState = (newValue) => {
-        const newResolvedValue = typeof newValue === 'function' ? newValue(state) : newValue;
+    // 3) 디바운스 쓰기: 연속 변경 시 마지막 변경 후 1초 뒤에 서버에 한 번만 기록
+    const setSharedState = useCallback((newValue) => {
+        const newResolvedValue = typeof newValue === 'function' ? newValue(latestState.current) : newValue;
         setState(newResolvedValue);
-        
+        latestState.current = newResolvedValue;
+
         if (isInitialized.current && db) {
-            setDoc(doc(db, collectionName, docId), { data: newResolvedValue });
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            debounceTimer.current = setTimeout(() => {
+                const writeId = `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                lastWriteId.current = writeId;
+                setDoc(doc(db, collectionName, docId), { data: latestState.current, _writeId: writeId });
+                // 로컬 캐시도 동시 갱신
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify(latestState.current)); } catch (e) { /* ignore */ }
+            }, 1000);
         }
-    };
+    }, [db, collectionName, docId]);
 
     return [state, setSharedState];
 };
+// ────────────────────────────────────────────────────────────────────
 
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw, Package, Gift, Store } from 'lucide-react';
 
