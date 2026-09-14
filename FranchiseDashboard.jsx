@@ -1,5 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
+
+
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getCollectionName } from './utils';
+
+const useSharedState = (db, user, docId, defaultState, localStorageKey, parseFn = (v) => v) => {
+    const collectionName = getCollectionName('franchise_system', user);
+
+    const [state, setState] = useState(defaultState);
+    const isInitialized = useRef(false);
+
+    useEffect(() => {
+        if (!db) return;
+        const unsubscribe = onSnapshot(doc(db, collectionName, docId), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data().data;
+                setState(parseFn(data));
+            } else {
+                // Migration from localStorage
+                const saved = localStorage.getItem(localStorageKey);
+                const parsed = saved ? parseFn(JSON.parse(saved)) : defaultState;
+                setDoc(doc(db, collectionName, docId), { data: parsed });
+                setState(parsed);
+            }
+            isInitialized.current = true;
+        });
+        return () => unsubscribe();
+    }, [docId]);
+
+    const setSharedState = (newValue) => {
+        const newResolvedValue = typeof newValue === 'function' ? newValue(state) : newValue;
+        setState(newResolvedValue);
+        
+        if (isInitialized.current && db) {
+            setDoc(doc(db, collectionName, docId), { data: newResolvedValue });
+        }
+    };
+
+    return [state, setSharedState];
+};
+
 import { Building2, Search, Plus, DollarSign, ShoppingCart, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, X, Settings, Trash2, Calculator, RotateCcw, Package, Gift, Store } from 'lucide-react';
 
 const MOCK_VENDORS = [
@@ -102,53 +143,26 @@ const DateInlineEditor = ({ value, onSave }) => {
     );
 };
 
-const FranchiseDashboard = () => {
+const FranchiseDashboard = ({ db, user }) => {
     const [activeTab, setActiveTab] = useState('dashboard');
     
     // Catalog State (Equipment only)
-    const [expenseCatalog, setExpenseCatalog] = useState(() => {
-        const saved = localStorage.getItem('expenseCatalogV2');
-        return saved ? JSON.parse(saved) : MOCK_CATALOG;
-    });
-
-    useEffect(() => {
-        localStorage.setItem('expenseCatalogV2', JSON.stringify(expenseCatalog));
-    }, [expenseCatalog]);
+    const [expenseCatalog, setExpenseCatalog] = useSharedState(db, user, 'expenseCatalog', MOCK_CATALOG, 'expenseCatalogV2');
 
     // Vendor State (Interior)
-    const [vendorCatalog, setVendorCatalog] = useState(() => {
-        const saved = localStorage.getItem('vendorCatalogV2');
-        return saved ? JSON.parse(saved) : MOCK_VENDORS;
-    });
-
-    useEffect(() => {
-        localStorage.setItem('vendorCatalogV2', JSON.stringify(vendorCatalog));
-    }, [vendorCatalog]);
+    const [vendorCatalog, setVendorCatalog] = useSharedState(db, user, 'vendorCatalog', MOCK_VENDORS, 'vendorCatalogV2');
 
     // Franchises State
-    const [franchises, setFranchises] = useState(() => {
-        const saved = localStorage.getItem('franchisesV2');
-        const parsed = saved ? JSON.parse(saved) : MOCK_FRANCHISES;
-        return parsed.map(f => ({
+    const [franchises, setFranchises] = useSharedState(db, user, 'franchises', MOCK_FRANCHISES, 'franchisesV2', (data) => {
+        return data.map(f => ({
             ...f,
             freeRentals: f.freeRentals || { equipmentItems: [], interiorItems: [] },
             operating: f.operating || { sales: [], expenses: [], freeRentals: [] }
         }));
     });
 
-    useEffect(() => {
-        localStorage.setItem('franchisesV2', JSON.stringify(franchises));
-    }, [franchises]);
-
     // Bank Transactions State
-    const [bankTransactions, setBankTransactions] = useState(() => {
-        const saved = localStorage.getItem('bankTransactionsV1');
-        return saved ? JSON.parse(saved) : [];
-    });
-
-    useEffect(() => {
-        localStorage.setItem('bankTransactionsV1', JSON.stringify(bankTransactions));
-    }, [bankTransactions]);
+    const [bankTransactions, setBankTransactions] = useSharedState(db, user, 'bankTransactions', [], 'bankTransactionsV1');
 
     const getCurrentMonth = () => {
         const today = new Date();

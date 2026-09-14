@@ -1705,7 +1705,7 @@ function App() {
                 {appMode === 'budget' && <BudgetDashboard db={db} user={user} departments={DEPARTMENTS} />}
 
                 {/* [MODE 11] 오픈가맹 */}
-                {appMode === 'franchise' && <FranchiseDashboard />}
+                {appMode === 'franchise' && <FranchiseDashboard db={db} user={user} />}
 
                 {/* [MODE 4] 협업 요청 */}
                 {appMode === 'collaboration' && (
