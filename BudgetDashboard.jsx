@@ -21,7 +21,7 @@ const FINANCE_EMAILS = [
 ];
 
 const BudgetDashboard = ({ db, user, departments = [] }) => {
-  const isFinance = user && FINANCE_EMAILS.includes(user.email);
+  const isFinance = user && (FINANCE_EMAILS.includes(user.email) || user.department === '재무팀' || user.department === '재무기획팀');
 
   const [activeTab, setActiveTab] = useState(isFinance ? 'dashboard' : 'input');
   const [selectedYear, setSelectedYear] = useState(2027);
@@ -214,7 +214,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       ['1. [데이터입력] 시트에 데이터를 입력해 주세요.'],
       ['2. 조직명은 정확히 입력해야 합니다. 아래 목록을 참고하세요.'],
       ['3. 계정과목 및 세목도 기준표에 맞게 입력해 주세요.'],
-      ['4. 금액 단위: 천원 / 빈 행은 무시됩니다.'],
+      ['4. 금액 단위: 원 / 빈 행은 무시됩니다.'],
       [''],
       ['▣ 스마트 반영 규칙'],
       [' - 2026년 업로드 시: 일반 부서는 9~12월(추정)만 반영되고 1~8월은 무시됩니다.'],
@@ -635,7 +635,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">예산 상세 입력 <span className="text-xs font-normal text-slate-500 ml-1">(단위: 천원)</span></h2>
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">예산 상세 입력 <span className="text-xs font-normal text-slate-500 ml-1">(단위: 원)</span></h2>
               <select 
                 value={selectedTeam} 
                 onChange={(e) => setSelectedTeam(e.target.value)}
@@ -671,7 +671,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-[1650px] min-w-full divide-y divide-slate-200 table-fixed">
+            <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">계정과목</th>
@@ -681,7 +681,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     const isActualMonth = selectedYear === 2026 && m <= 8;
                     const isEstimateMonth = selectedYear === 2026 && m >= 9;
                     return (
-                      <th key={m} className={`px-2 py-3 text-right text-xs font-medium uppercase tracking-wider w-[85px] ${
+                      <th key={m} className={`px-2 py-3 text-right text-xs font-medium uppercase tracking-wider w-[110px] ${
                         isActualMonth ? 'text-blue-600 bg-blue-50' :
                         isEstimateMonth ? 'text-orange-500 bg-orange-50' :
                         'text-slate-500'
@@ -690,7 +690,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       </th>
                     );
                   })}
-                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[100px]">합계</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[130px]">합계</th>
                   <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-[50px]">삭제</th>
                 </tr>
               </thead>
@@ -703,7 +703,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   </tr>
                 ) : items.map((item) => {
                   const rowTotal = item.months.reduce((sum, val) => sum + (val || 0), 0);
-                  const availableDetails = ACCOUNT_GUIDE[item.category] || [];
+                  const availableDetails = [...(ACCOUNT_GUIDE[item.category] || [])];
+                  if (item.category && !availableDetails.find(d => d.name === item.category)) {
+                    availableDetails.unshift({ name: item.category, desc: item.category + ' 기본' });
+                  }
+                  if (item.detail && !availableDetails.find(d => d.name === item.detail)) {
+                    availableDetails.push({ name: item.detail, desc: '직접입력' });
+                  }
                   const selectedDetailInfo = availableDetails.find(d => d.name === item.detail);
                   
                   return (
@@ -826,7 +832,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500">{selectedYear}년 전사 판관비 총액</p>
-                <p className="text-2xl font-bold text-slate-800">{formatNumber(totalSGA)} <span className="text-base font-normal text-slate-500">천원</span></p>
+                <p className="text-2xl font-bold text-slate-800">{formatNumber(totalSGA)} <span className="text-base font-normal text-slate-500">원</span></p>
               </div>
             </div>
             
@@ -849,7 +855,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
              <div className="p-4 border-b border-slate-100 bg-slate-50">
-               <h3 className="font-bold text-slate-800">팀별 세부 현황 (단위: 천원)</h3>
+               <h3 className="font-bold text-slate-800">팀별 세부 현황 (단위: 원)</h3>
              </div>
              <div className="overflow-x-auto">
                <table className="min-w-full divide-y divide-slate-200">
@@ -890,7 +896,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           {/* New Category by Month Summary Table */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-               <h3 className="font-bold text-slate-800">계정과목 및 세목별 월별 합산 현황 (단위: 천원)</h3>
+               <h3 className="font-bold text-slate-800">계정과목 및 세목별 월별 합산 현황 (단위: 원)</h3>
                <button
                  onClick={handleExportSummaryExcel}
                  className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
@@ -900,15 +906,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                </button>
              </div>
              <div className="overflow-x-auto">
-               <table className="w-[1400px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
+               <table className="w-[1700px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
                  <thead className="bg-slate-50">
                    <tr>
                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[140px]">계정과목</th>
                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[160px]">세목 (세부항목)</th>
                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                       <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[75px]">{m}월</th>
+                       <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[100px]">{m}월</th>
                      ))}
-                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase w-[120px]">합계</th>
+                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase w-[150px]">합계</th>
                    </tr>
                  </thead>
                  <tbody className="bg-white divide-y divide-slate-200">
@@ -1033,7 +1039,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     <th className="px-4 py-3 text-left">조직명</th>
                     <th className="px-4 py-3 text-center">실적데이터</th>
                     <th className="px-4 py-3 text-right">항목 수</th>
-                    <th className="px-4 py-3 text-right">1~8월 합계 (천원)</th>
+                    <th className="px-4 py-3 text-right">1~8월 합계 (원)</th>
                     <th className="px-4 py-3 text-left">최종 수정</th>
                   </tr>
                 </thead>
