@@ -213,7 +213,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       [''],
       ['1. [데이터입력] 시트에 데이터를 입력해 주세요.'],
       ['2. 조직명은 정확히 입력해야 합니다. 아래 목록을 참고하세요.'],
-      ['3. 계정과목 및 세목도 기준표에 맞게 입력해 주세요.'],
+      ['3. 계정과목 및 세목(세부항목)도 아래 기준표에 맞게 정확히 입력해 주세요.'],
       ['4. 금액 단위: 원 / 빈 행은 무시됩니다.'],
       [''],
       ['▣ 스마트 반영 규칙'],
@@ -224,11 +224,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       ['▣ 등록된 조직 목록'],
       ...validTeams.map(t => [t]),
       [''],
-      ['▣ 계정과목 목록'],
-      ...validCategories.map(c => [c]),
+      ['▣ 계정과목 및 세목(세부항목) 기준표'],
+      ['계정과목', '세목(세부항목)', '상세 설명'],
     ];
+
+    Object.entries(ACCOUNT_GUIDE).forEach(([category, details]) => {
+      details.forEach(detail => {
+        guideData.push([category, detail.name, detail.desc]);
+      });
+    });
+
     const guideSheet = XLSX.utils.aoa_to_sheet(guideData);
-    guideSheet['!cols'] = [{ wch: 70 }];
+    guideSheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(wb, guideSheet, '작성안내');
 
     const headers = ['조직명', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
