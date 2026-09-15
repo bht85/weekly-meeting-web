@@ -93,11 +93,11 @@ const NAV_ITEMS = [
     
     // --- 관리자(choihy) 전용 메뉴 ---
     { id: 'meeting', label: '주간회의록', icon: FileText },
-    { id: 'collaboration', label: '협업 요청', icon: Share2 },
+    // { id: 'collaboration', label: '협업 요청', icon: Share2 },
     { id: 'todo', label: '업무 관리', icon: CheckCircle2 },
     { id: 'org', label: '조직도', icon: Users },
-    { id: 'hr', label: 'HR 현황판', icon: PieChart },
-    { id: 'kpi', label: 'KPI', icon: BarChart3 },
+    // { id: 'hr', label: 'HR 현황판', icon: PieChart },
+    // { id: 'kpi', label: 'KPI', icon: BarChart3 },
     { id: 'permissions', label: '권한 관리', icon: Shield },
 ];
 
