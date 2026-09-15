@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet, Scissors, HelpCircle } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet, Scissors, HelpCircle, Lock, Unlock } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -18,8 +18,10 @@ const FINANCE_EMAILS = [
     'kth@composecoffee.co.kr',
     'jiin0723@composecoffee.co.kr',
     'smin@composecoffee.co.kr',
-    'daisy@composecoffee.co.kr',
-    'esc913@composecoffee.co.kr'
+    'mj8699@composecoffee.co.kr',
+    'hyeons0908@composecoffee.co.kr',
+    'yhj@composecoffee.co.kr', // 유현지 주임님 추가
+    'bigheadtiger@gmail.com'
 ];
 
 const BudgetDashboard = ({ db, user, departments = [] }) => {
@@ -38,6 +40,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
   const [isPLPreviewOpen, setIsPLPreviewOpen] = useState(false);
+  const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+  const [closedMonthsData, setClosedMonthsData] = useState({});
   const [loadedFormId, setLoadedFormId] = useState(null);
 
   // 실적 업로드 관련 상태
@@ -63,7 +67,17 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBudgetData(data);
     });
-    return () => unsub();
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'budget_closing'), (docSnap) => {
+      if (docSnap.exists()) {
+        setClosedMonthsData(docSnap.data());
+      } else {
+        setClosedMonthsData({});
+      }
+    });
+    return () => {
+      unsub();
+      unsubSettings();
+    };
   }, [db]);
 
   // 2. Load Form Data when Team or Year changes
@@ -825,6 +839,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          {isFinance && (
+            <button 
+              onClick={() => setIsClosingModalOpen(true)}
+              className="flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            >
+              <Lock className="w-4 h-4" />
+              월별 마감 관리
+            </button>
+          )}
           <button
             onClick={handleExportExcel}
             className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
@@ -906,15 +929,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">적요 (상세내역)</th>
                   <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[130px] bg-slate-100/50">합계</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
-                    const isActualMonth = selectedYear === 2026 && m <= 8 && activeTab !== 'deduction';
-                    const isEstimateMonth = selectedYear === 2026 && m >= 9 && activeTab !== 'deduction';
+                    const defaultClosed = selectedYear === 2026 ? [0,1,2,3,4,5,6,7] : [];
+                    const currentYearClosedMonths = closedMonthsData[selectedYear] || defaultClosed;
+                    const isClosedMonth = currentYearClosedMonths.includes(m - 1) && activeTab !== 'deduction';
+                    const isOpenMonth = !isClosedMonth && activeTab !== 'deduction';
+
                     return (
                       <th key={m} className={`px-2 py-3 text-right text-xs font-medium uppercase tracking-wider w-[110px] ${
-                        isActualMonth ? 'text-blue-600 bg-blue-50' :
-                        isEstimateMonth ? 'text-orange-500 bg-orange-50' :
+                        isClosedMonth ? 'text-blue-600 bg-blue-50' :
+                        isOpenMonth ? 'text-orange-500 bg-orange-50' :
                         'text-slate-500'
                       }`}>
-                        {m}월{isActualMonth ? '▣' : isEstimateMonth ? '◎' : ''}
+                        {m}월{isClosedMonth ? '▣' : isOpenMonth ? '◎' : ''}
                       </th>
                     );
                   })}
@@ -1019,9 +1045,16 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         {formatNumber(rowTotal)}
                       </td>
                       {item.months.map((val, mIndex) => {
-                        const isActualCell = selectedYear === 2026 && mIndex < 8 && item.isActual;
-                        const isActualColBg = selectedYear === 2026 && mIndex < 8;
-                        const isEstimateColBg = selectedYear === 2026 && mIndex >= 8;
+                        const defaultClosed = selectedYear === 2026 ? [0,1,2,3,4,5,6,7] : [];
+                        const currentYearClosedMonths = closedMonthsData[selectedYear] || defaultClosed;
+                        const isClosedMonth = currentYearClosedMonths.includes(mIndex);
+                        const isActualCell = isClosedMonth || (selectedYear === 2026 && mIndex < 8 && item.isActual);
+                        
+                        const isActualColBg = isClosedMonth;
+                        const isEstimateColBg = !isClosedMonth;
+                        
+                        const isCellLocked = isActualCell && !isFinance;
+
                         return (
                           <td key={mIndex} className={`px-1 py-2 align-top ${isActualColBg ? 'bg-blue-50/40' : isEstimateColBg ? 'bg-orange-50/30' : ''}`}>
                             <div className="relative group flex items-center">
@@ -1029,15 +1062,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                                 type="text" 
                                 value={val ? formatNumber(val) : ''}
                                 onChange={(e) => handleMonthChange(item.id, mIndex, e.target.value)}
-                                readOnly={isActualCell && !isFinance}
+                                readOnly={isCellLocked}
                                 className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 text-right px-1 pr-4 ${
-                                  isActualCell && !isFinance
+                                  isCellLocked
                                     ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-transparent'
                                     : 'focus:ring-indigo-500 focus:border-indigo-500'
                                 }`}
                                 placeholder="0"
                               />
-                              {!isActualCell && mIndex < 11 && (
+                              {!isCellLocked && mIndex < 11 && (
                                 <button
                                   onClick={() => handleFillRight(item.id, mIndex, val)}
                                   className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-indigo-500 hover:text-indigo-700 bg-white/80 rounded"
@@ -1636,6 +1669,68 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                  <AlertCircle className="w-4 h-4" />
                  매출 데이터는 포함되어 있지 않으며, 입력된 비용 데이터를 PL(손익계산서)의 주요 항목별로 그룹핑한 요약본입니다.
                </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 마감 관리 모달 */}
+      {isClosingModalOpen && isFinance && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-rose-600" />
+                {selectedYear}년도 월별 마감 관리
+              </h2>
+              <button onClick={() => setIsClosingModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-500 mb-6 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                마감된 월은 현업 부서에서 수정할 수 없습니다. (재무팀은 계속 수정 가능)
+              </p>
+              
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                  const defaultClosed = selectedYear === 2026 ? [0,1,2,3,4,5,6,7] : [];
+                  const currentClosed = closedMonthsData[selectedYear] || defaultClosed;
+                  const isClosed = currentClosed.includes(mIndex);
+                  
+                  return (
+                    <button
+                      key={mIndex}
+                      onClick={async () => {
+                        let newClosed = [...currentClosed];
+                        if (isClosed) {
+                          newClosed = newClosed.filter(m => m !== mIndex);
+                        } else {
+                          newClosed.push(mIndex);
+                        }
+                        newClosed.sort((a,b) => a-b);
+                        try {
+                          await setDoc(doc(db, 'settings', 'budget_closing'), {
+                            ...closedMonthsData,
+                            [selectedYear]: newClosed
+                          });
+                        } catch(e) {
+                          alert("마감 설정 저장에 실패했습니다.");
+                        }
+                      }}
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 font-medium transition-all ${
+                        isClosed 
+                          ? 'border-rose-500 bg-rose-50 text-rose-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      {isClosed ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4 text-slate-400" />}
+                      {mIndex + 1}월
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
