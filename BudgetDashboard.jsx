@@ -1083,9 +1083,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
              <div className="p-4 border-b border-slate-100 bg-slate-50">
                <h3 className="font-bold text-slate-800">팀별 세부 현황 (단위: 원)</h3>
              </div>
-             <div className="overflow-x-auto">
-               <table className="min-w-full divide-y divide-slate-200">
-                 <thead className="bg-slate-50">
+             <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+               <table className="min-w-full divide-y divide-slate-200 relative">
+                 <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                    <tr>
                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">팀명</th>
                      <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase">합계</th>
@@ -1131,9 +1131,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                  엑셀 다운로드
                </button>
              </div>
-             <div className="overflow-x-auto">
-                <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
-                  <thead className="bg-slate-50">
+             <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+                <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed border-collapse relative">
+                  <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[140px]">계정과목</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[160px]">세목 (세부항목)</th>
