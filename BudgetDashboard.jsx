@@ -860,6 +860,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">계정과목</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">세목 (세부항목)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">적요 (상세내역)</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[130px] bg-slate-100/50">합계</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
                     const isActualMonth = selectedYear === 2026 && m <= 8 && activeTab !== 'deduction';
                     const isEstimateMonth = selectedYear === 2026 && m >= 9 && activeTab !== 'deduction';
@@ -873,7 +874,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       </th>
                     );
                   })}
-                  <th className="px-4 py-3 text-right text-xs font-bold text-indigo-600 uppercase tracking-wider w-[130px]">합계</th>
                   <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-[50px]">삭제</th>
                 </tr>
               </thead>
@@ -943,6 +943,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
                         />
                       </td>
+                      <td className="px-2 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3 bg-slate-50/50">
+                        {formatNumber(rowTotal)}
+                      </td>
                       {item.months.map((val, mIndex) => {
                         const isActualCell = selectedYear === 2026 && mIndex < 8 && item.isActual;
                         const isActualColBg = selectedYear === 2026 && mIndex < 8;
@@ -975,9 +978,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           </td>
                         );
                       })}
-                      <td className="px-4 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3">
-                        {formatNumber(rowTotal)}
-                      </td>
                       <td className="px-2 py-2 align-top text-center pt-3">
                         <button 
                           onClick={() => handleRemoveRow(item.id)}
@@ -994,6 +994,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 <tfoot className="bg-slate-50 border-t border-slate-200">
                   <tr>
                     <td colSpan={activeTab === 'deduction' ? 4 : 3} className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
+                    <td className="px-4 py-3 text-right font-bold text-indigo-600 text-sm bg-slate-100/50">
+                      {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v === '-' ? 0 : (v || 0)), 0), 0))}
+                    </td>
                     {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
                       const monthTotal = items.reduce((sum, item) => sum + (item.months[mIndex] || 0), 0);
                       return (
@@ -1002,9 +1005,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3 text-right font-bold text-indigo-600 text-sm">
-                      {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v === '-' ? 0 : (v || 0)), 0), 0))}
-                    </td>
                     <td></td>
                   </tr>
                 </tfoot>
