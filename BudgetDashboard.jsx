@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -445,6 +445,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+  const handleDeleteDepartmentData = async (dept) => {
+    if (!window.confirm(`${dept}의 ${selectedYear}년도 데이터를 모두 삭제하시겠습니까?\n삭제 후에는 복구할 수 없으며, 초기(미업로드) 상태로 돌아갑니다.`)) return;
+    
+    try {
+      const docId = `${selectedYear}_${dept}`;
+      await deleteDoc(doc(db, 'budget_plans', docId));
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error(error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
   };
 
   const handleExportSummaryExcel = () => {
@@ -1055,6 +1067,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     <th className="px-4 py-3 text-right">항목 수</th>
                     <th className="px-4 py-3 text-right">{selectedYear === 2026 ? '1~8월 합계 (원)' : '예산 합계 (원)'}</th>
                     <th className="px-4 py-3 text-left">최종 수정</th>
+                    <th className="px-4 py-3 text-center">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1090,6 +1103,16 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <td className="px-4 py-3 text-right text-slate-600">{targetItems.length > 0 ? `${targetItems.length}건` : '-'}</td>
                         <td className="px-4 py-3 text-right font-bold text-blue-700">{targetTotal > 0 ? targetTotal.toLocaleString() : '-'}</td>
                         <td className="px-4 py-3 text-slate-400 text-xs">{docData?.updatedBy || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleDeleteDepartmentData(dept)}
+                            disabled={!isUploaded && !docData?.items?.length}
+                            className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-xs rounded hover:bg-red-50 disabled:opacity-30 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            전체 삭제
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
