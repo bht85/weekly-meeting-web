@@ -1170,7 +1170,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <div className="overflow-auto flex-1 p-4">
               <table className="min-w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-600 uppercase">
+                  <tr className="bg-slate-100 text-slate-600 uppercase whitespace-nowrap">
                     <th className="px-3 py-2 text-left w-8">#</th>
                     <th className="px-3 py-2 text-left">조직명</th>
                     <th className="px-3 py-2 text-left">계정과목</th>
@@ -1187,7 +1187,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 </thead>
                 <tbody>
                   {uploadPreview.rows.map((row, i) => (
-                    <tr key={i} className={`border-b border-slate-100 ${row.hasError ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
+                    <tr key={i} className={`border-b border-slate-100 whitespace-nowrap ${row.hasError ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
                       <td className="px-3 py-1.5 text-slate-400">{row.rowNum}</td>
                       <td className="px-3 py-1.5 font-medium text-slate-800">{row.team}</td>
                       <td className="px-3 py-1.5 text-slate-600">{row.category}</td>
