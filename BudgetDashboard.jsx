@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet, Scissors } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -42,6 +42,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'deduction') {
+      setSelectedTeam('DEDUCTIONS');
+    } else if (selectedTeam === 'DEDUCTIONS') {
+      setSelectedTeam(isFinance ? '' : (user?.department || ''));
+    }
+  };
 
   // 1. Fetch Data
   useEffect(() => {
@@ -174,7 +183,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           description: item.description || '',
           months: (item.months || []).map(v => v || 0),
           rowTotal,
-          ...(item.isActual ? { isActual: true } : {})
+          ...(item.isActual ? { isActual: true } : {}),
+          ...(selectedTeam === 'DEDUCTIONS' ? { targetTeam: item.targetTeam || '' } : {})
         };
       });
 
@@ -444,7 +454,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     exportData.forEach(doc => {
       doc.items.forEach(item => {
         const row = [
-          doc.team,
+          doc.team === 'DEDUCTIONS' ? `[매출차감조정] ${item.targetTeam || '미지정'}` : doc.team,
           doc.year,
           item.category,
           item.detail,
@@ -517,12 +527,21 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   // 5. Dashboard Aggregation
   const currentYearData = useMemo(() => {
-    return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
+    return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택' && d.team !== 'DEDUCTIONS');
   }, [budgetData, selectedYear]);
 
   const totalSGA = useMemo(() => {
     return currentYearData.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0);
   }, [currentYearData]);
+
+  const deductionData = useMemo(() => {
+    const doc = budgetData.find(d => d.id === `${selectedYear}_DEDUCTIONS`);
+    return doc?.items || [];
+  }, [budgetData, selectedYear]);
+
+  const totalDeduction = useMemo(() => {
+    return deductionData.reduce((sum, item) => sum + (item.rowTotal || 0), 0);
+  }, [deductionData]);
 
   const categoryTotals = useMemo(() => {
     const totals = {};
@@ -641,7 +660,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
           {isFinance && (
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleTabChange('dashboard')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
                 activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
@@ -651,7 +670,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             </button>
           )}
           <button
-            onClick={() => setActiveTab('input')}
+            onClick={() => handleTabChange('input')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
               activeTab === 'input' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
@@ -659,8 +678,19 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <Edit3 className="w-4 h-4" />
             부서별 예산 입력
           </button>
+          {isFinance && (
+            <button
+              onClick={() => handleTabChange('deduction')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+                activeTab === 'deduction' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Scissors className="w-4 h-4" />
+              매출 차감 조정 (재무팀)
+            </button>
+          )}
           <button
-            onClick={() => setActiveTab('upload')}
+            onClick={() => handleTabChange('upload')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
               activeTab === 'upload' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
@@ -669,7 +699,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             엑셀 업로드
           </button>
           <button
-            onClick={() => setActiveTab('status')}
+            onClick={() => handleTabChange('status')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
               activeTab === 'status' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
@@ -697,25 +727,30 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         </div>
       </div>
 
-      {/* INPUT TAB */}
-      {activeTab === 'input' && (
+      {/* INPUT OR DEDUCTION TAB */}
+      {(activeTab === 'input' || activeTab === 'deduction') && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">예산 상세 입력 <span className="text-xs font-normal text-slate-500 ml-1">(단위: 원)</span></h2>
-              <select 
-                value={selectedTeam} 
-                onChange={(e) => setSelectedTeam(e.target.value)}
-                disabled={!isFinance}
-                className="border border-slate-200 rounded-lg p-1.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium disabled:bg-slate-100 disabled:text-slate-500"
-              >
-                <option value="">본인 소속 팀을 선택하세요</option>
-                {departments
-                  .filter(dept => dept !== '선택' && (isFinance || dept === user?.department))
-                  .map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                {activeTab === 'deduction' ? '매출 차감 내역 일괄 입력' : '예산 상세 입력'}
+                <span className="text-xs font-normal text-slate-500 ml-1">(단위: 원)</span>
+              </h2>
+              {activeTab === 'input' && (
+                <select 
+                  value={selectedTeam} 
+                  onChange={(e) => setSelectedTeam(e.target.value)}
+                  disabled={!isFinance}
+                  className="border border-slate-200 rounded-lg p-1.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium disabled:bg-slate-100 disabled:text-slate-500"
+                >
+                  <option value="">본인 소속 팀을 선택하세요</option>
+                  {departments
+                    .filter(dept => dept !== '선택' && (isFinance || dept === user?.department))
+                    .map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              )}
             </div>
             
             <div className="flex items-center gap-2">
@@ -741,12 +776,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed">
               <thead className="bg-slate-50">
                 <tr>
+                  {activeTab === 'deduction' && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">대상 부서</th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">계정과목</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">세목 (세부항목)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[170px]">적요 (상세내역)</th>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
-                    const isActualMonth = selectedYear === 2026 && m <= 8;
-                    const isEstimateMonth = selectedYear === 2026 && m >= 9;
+                    const isActualMonth = selectedYear === 2026 && m <= 8 && activeTab !== 'deduction';
+                    const isEstimateMonth = selectedYear === 2026 && m >= 9 && activeTab !== 'deduction';
                     return (
                       <th key={m} className={`px-2 py-3 text-right text-xs font-medium uppercase tracking-wider w-[110px] ${
                         isActualMonth ? 'text-blue-600 bg-blue-50' :
@@ -764,7 +802,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               <tbody className="bg-white divide-y divide-slate-200">
                 {!selectedTeam ? (
                   <tr>
-                    <td colSpan="17" className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={activeTab === 'deduction' ? 18 : 17} className="px-6 py-12 text-center text-slate-500">
                       상단에서 팀을 먼저 선택해 주세요.
                     </td>
                   </tr>
@@ -781,6 +819,20 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50">
+                      {activeTab === 'deduction' && (
+                        <td className="px-2 py-2 align-top">
+                          <select 
+                            value={item.targetTeam || ''}
+                            onChange={(e) => handleItemChange(item.id, 'targetTeam', e.target.value)}
+                            className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                          >
+                            <option value="">부서 선택</option>
+                            {departments.filter(d => d !== '선택').map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
                       <td className="px-2 py-2 align-top">
                         <select 
                           value={item.category}
@@ -863,7 +915,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               {selectedTeam && items.length > 0 && (
                 <tfoot className="bg-slate-50 border-t border-slate-200">
                   <tr>
-                    <td colSpan="3" className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
+                    <td colSpan={activeTab === 'deduction' ? 4 : 3} className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
                     {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
                       const monthTotal = items.reduce((sum, item) => sum + (item.months[mIndex] || 0), 0);
                       return (
@@ -892,25 +944,22 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       {/* DASHBOARD TAB (Finance Only) */}
       {isFinance && activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-              <div className="bg-indigo-100 p-3 rounded-lg text-indigo-600">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500">{selectedYear}년 전사 판관비 총액</p>
-                <p className="text-2xl font-bold text-slate-800">{formatNumber(totalSGA)} <span className="text-base font-normal text-slate-500">원</span></p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
+              <p className="text-xs font-medium text-slate-500 mb-1">{selectedYear}년 취합 총액 (Gross)</p>
+              <p className="text-xl font-bold text-slate-800">{formatNumber(totalSGA)}</p>
             </div>
-            
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-              <div className="bg-emerald-100 p-3 rounded-lg text-emerald-600">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500">제출 완료 팀</p>
-                <p className="text-2xl font-bold text-slate-800">{currentYearData.length} <span className="text-base font-normal text-slate-500">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
-              </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
+              <p className="text-xs font-medium text-slate-500 mb-1">매출 차감 조정액</p>
+              <p className="text-xl font-bold text-rose-600">{formatNumber(totalDeduction)}</p>
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col justify-center">
+              <p className="text-xs font-medium text-indigo-600 mb-1">최종 판관비 (Net)</p>
+              <p className="text-xl font-bold text-indigo-900">{formatNumber(totalSGA + totalDeduction)}</p>
+            </div>
+            <div className="bg-emerald-50 p-4 rounded-xl shadow-sm border border-emerald-100 flex flex-col justify-center">
+              <p className="text-xs font-medium text-emerald-600 mb-1">제출 완료 팀</p>
+              <p className="text-xl font-bold text-emerald-900">{currentYearData.length} <span className="text-sm font-normal text-emerald-700">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
             </div>
           </div>
 
