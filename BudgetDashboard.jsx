@@ -24,7 +24,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const isFinance = user && (FINANCE_EMAILS.includes(user.email) || user.department === '재무팀' || user.department === '재무기획팀');
 
   const [activeTab, setActiveTab] = useState(isFinance ? 'dashboard' : 'input');
-  const [selectedYear, setSelectedYear] = useState(2027);
+  const [selectedYear, setSelectedYear] = useState(2026);
   // 재무팀(관리자)은 기본 선택 없음, 일반 유저는 본인 팀 자동 선택
   const [selectedTeam, setSelectedTeam] = useState(isFinance ? '' : (user?.department || ''));
   
@@ -256,6 +256,11 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const handleUploadFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!window.confirm(`선택된 기준 연도는 [${selectedYear}년] 입니다.\n\n해당 연도에 데이터를 업로드(덮어쓰기) 하시겠습니까?\n(만약 다른 연도의 데이터라면 '취소'를 누르고 우측 상단에서 연도를 먼저 변경해주세요)`)) {
+      e.target.value = ''; // input 초기화
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (evt) => {
