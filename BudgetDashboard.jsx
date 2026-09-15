@@ -173,7 +173,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           detail: item.detail || '',
           description: item.description || '',
           months: (item.months || []).map(v => v || 0),
-          rowTotal
+          rowTotal,
+          ...(item.isActual ? { isActual: true } : {})
         };
       });
 
@@ -183,7 +184,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         items: cleanItems,
         totalAmount,
         updatedBy: user?.email || 'Unknown',
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        hasEstimateData: true
       }, { merge: true });
 
       setSaveMessage('저장되었습니다.');
@@ -398,7 +400,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         const mergedItems = [...existingItemsToKeep, ...newItems];
         const totalAmount = mergedItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
 
-        await setDoc(doc(db, 'budget_plans', docId), {
+        let updatePayload = {
           year: selectedYear,
           team,
           items: mergedItems,
@@ -406,7 +408,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           hasActualData,
           updatedBy: user?.email || 'Unknown',
           updatedAt: serverTimestamp(),
-        }, { merge: true });
+        };
+
+        if (selectedYear !== 2026 || !isFinance) {
+          updatePayload.hasEstimateData = true;
+        }
+
+        await setDoc(doc(db, 'budget_plans', docId), updatePayload, { merge: true });
       }
 
       setUploadMessage(`✅ ${Object.keys(byTeam).length}개 부서, ${validRows.length}개 항목 저장 완료!`);
@@ -1101,9 +1109,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3 text-left">조직명</th>
-                    <th className="px-4 py-3 text-center">{selectedYear === 2026 ? '실적데이터' : '데이터상태'}</th>
+                    {selectedYear === 2026 && <th className="px-4 py-3 text-center">실적(1~8월) 상태</th>}
+                    <th className="px-4 py-3 text-center">{selectedYear === 2026 ? '추정(9~12월) 상태' : '예산(1~12월) 상태'}</th>
                     <th className="px-4 py-3 text-right">항목 수</th>
-                    <th className="px-4 py-3 text-right">{selectedYear === 2026 ? '1~8월 합계 (원)' : '예산 합계 (원)'}</th>
+                    <th className="px-4 py-3 text-right">합계 (원)</th>
                     <th className="px-4 py-3 text-left">최종 수정</th>
                     <th className="px-4 py-3 text-center">관리</th>
                   </tr>
@@ -1116,27 +1125,25 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     const docData = budgetData.find(d => d.id === `${selectedYear}_${dept}`);
                     const is2026 = selectedYear === 2026;
                     
-                    let targetItems = [];
-                    let targetTotal = 0;
-                    let isUploaded = false;
-
-                    if (is2026) {
-                      targetItems = docData?.items?.filter(i => i.isActual) || [];
-                      targetTotal = targetItems.reduce((s, i) => s + (i.months || []).slice(0, 8).reduce((a, v) => a + (v || 0), 0), 0);
-                      isUploaded = docData?.hasActualData;
-                    } else {
-                      targetItems = docData?.items || [];
-                      targetTotal = targetItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
-                      isUploaded = targetItems.length > 0;
-                    }
+                    const targetItems = docData?.items || [];
+                    const targetTotal = targetItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
+                    const isActualUploaded = docData?.hasActualData;
+                    const isEstimateUploaded = docData?.hasEstimateData;
 
                     return (
                       <tr key={dept} className="hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium text-slate-800">{dept}</td>
+                        {is2026 && (
+                          <td className="px-4 py-3 text-center">
+                            {isActualUploaded
+                              ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"><CheckCircle className="w-3 h-3"/>업로드완료</span>
+                              : <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full">미업로드</span>}
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-center">
-                          {isUploaded
-                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"><CheckCircle className="w-3 h-3"/>업로드완료</span>
-                            : <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full">미업로드</span>}
+                          {isEstimateUploaded
+                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium"><CheckCircle className="w-3 h-3"/>제출완료</span>
+                            : <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full">미제출</span>}
                         </td>
                         <td className="px-4 py-3 text-right text-slate-600">{targetItems.length > 0 ? `${targetItems.length}건` : '-'}</td>
                         <td className="px-4 py-3 text-right font-bold text-blue-700">{targetTotal > 0 ? targetTotal.toLocaleString() : '-'}</td>
@@ -1144,7 +1151,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={() => handleDeleteDepartmentData(dept)}
-                            disabled={!isUploaded && !docData?.items?.length}
+                            disabled={!isActualUploaded && !isEstimateUploaded && !targetItems.length}
                             className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-xs rounded hover:bg-red-50 disabled:opacity-30 transition-colors"
                           >
                             <Trash2 className="w-3 h-3" />
