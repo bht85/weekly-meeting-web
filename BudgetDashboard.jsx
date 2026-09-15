@@ -468,24 +468,25 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   const handleExportExcel = () => {
     const headers = ['부서명', '연도', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
-    let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
     let exportData = budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
     
-    let filename = `${selectedYear}년도_전체_판관비_예산취합.csv`;
+    let filename = `${selectedYear}년도_전체_판관비_예산취합.xlsx`;
     
     if (activeTab === 'input' && selectedTeam && selectedTeam !== '선택') {
       exportData = exportData.filter(d => d.team === selectedTeam);
-      filename = `${selectedYear}년도_${selectedTeam}_판관비_예산.csv`;
+      filename = `${selectedYear}년도_${selectedTeam}_판관비_예산.xlsx`;
     } else if (activeTab === 'deduction') {
       exportData = exportData.filter(d => d.team === 'DEDUCTIONS');
-      filename = `${selectedYear}년도_매출차감조정_예산.csv`;
+      filename = `${selectedYear}년도_매출차감조정_예산.xlsx`;
     }
 
     if (exportData.length === 0) {
       alert("해당 연도에 등록된 예산 데이터가 없습니다.");
       return;
     }
+
+    const aoa = [headers];
 
     exportData.forEach(doc => {
       doc.items.forEach(item => {
@@ -494,23 +495,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           doc.year,
           item.category,
           item.detail,
-          `"${(item.description || '').replace(/"/g, '""')}"`,
+          item.description || '',
           ...item.months,
           item.months.reduce((sum, val) => sum + (val === '-' ? 0 : (val || 0)), 0)
         ];
-        csvContent += row.join(',') + '\n';
+        aoa.push(row);
       });
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "예산데이터");
+    XLSX.writeFile(wb, filename);
   };
   const handleDeleteDepartmentData = async (dept) => {
     if (!window.confirm(`${dept}의 ${selectedYear}년도 데이터를 모두 삭제하시겠습니까?\n삭제 후에는 복구할 수 없으며, 초기(미업로드) 상태로 돌아갑니다.`)) return;
@@ -527,12 +523,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   const handleExportSummaryExcel = () => {
     const headers = ['계정과목', '세목(세부항목)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
-    let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
     if (detailMonthlyTotals.length === 0) {
       alert("해당 연도에 등록된 예산 데이터가 없습니다.");
       return;
     }
+
+    const aoa = [headers];
 
     detailMonthlyTotals.forEach(c => {
       const row = [
@@ -541,34 +538,30 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         ...c.months,
         c.total
       ];
-      csvContent += row.join(',') + '\n';
+      aoa.push(row);
     });
     
     // 총계 행 추가
     const monthTotals = Array(12).fill(0).map((_, i) => detailMonthlyTotals.reduce((sum, c) => sum + c.months[i], 0));
     const grandTotal = detailMonthlyTotals.reduce((sum, c) => sum + c.total, 0);
     const totalRow = ['총계', '', ...monthTotals, grandTotal];
-    csvContent += totalRow.join(',') + '\n';
+    aoa.push(totalRow);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedYear}년도_계정과목_월별합산현황.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "월별합산현황");
+    XLSX.writeFile(wb, `${selectedYear}년도_계정과목_월별합산현황.xlsx`);
   };
 
   const handleExportTeamSummaryExcel = () => {
     const headers = ['팀명', '합계', ...categoryTotals.map(c => c.name)];
-    let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
     if (currentYearData.length === 0) {
       alert("해당 연도에 등록된 예산 데이터가 없습니다.");
       return;
     }
+
+    const aoa = [headers];
 
     // 총계 행 추가
     const grandTotal = currentYearData.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0);
@@ -579,7 +572,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       }, 0);
     });
     const totalRow = ['전사 합계', grandTotal, ...catSums];
-    csvContent += totalRow.join(',') + '\n';
+    aoa.push(totalRow);
 
     // 데이터 행 추가
     currentYearData.forEach(doc => {
@@ -592,18 +585,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         doc.totalAmount || 0,
         ...categoryTotals.map(c => docCatTotals[c.name] || 0)
       ];
-      csvContent += row.join(',') + '\n';
+      aoa.push(row);
     });
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedYear}년도_팀별세부현황.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "팀별세부현황");
+    XLSX.writeFile(wb, `${selectedYear}년도_팀별세부현황.xlsx`);
   };
 
   // 5. Dashboard Aggregation
@@ -940,7 +928,31 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       상단에서 팀을 먼저 선택해 주세요.
                     </td>
                   </tr>
-                ) : items.map((item) => {
+                ) : (
+                  <>
+                    {items.length > 0 && (
+                      <tr className="bg-slate-50 border-b-[3px] border-slate-300">
+                        <td colSpan={activeTab === 'deduction' ? 4 : 3} className="px-4 py-3 text-right font-bold text-slate-800">총계</td>
+                        <td className="px-4 py-3 text-right font-bold text-indigo-700 text-sm bg-slate-100/80">
+                          {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v === '-' ? 0 : (v || 0)), 0), 0))}
+                        </td>
+                        {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                          const monthTotal = items.reduce((sum, item) => sum + (item.months[mIndex] || 0), 0);
+                          return (
+                            <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-800 text-xs">
+                              {formatNumber(monthTotal)}
+                            </td>
+                          );
+                        })}
+                        <td></td>
+                      </tr>
+                    )}
+                    {[...items].sort((a, b) => {
+                      const aIdx = CATEGORIES.indexOf(a.category);
+                      const bIdx = CATEGORIES.indexOf(b.category);
+                      if (aIdx !== bIdx) return (aIdx !== -1 ? aIdx : 999) - (bIdx !== -1 ? bIdx : 999);
+                      return (a.detail || '').localeCompare(b.detail || '');
+                    }).map((item) => {
                   const rowTotal = item.months.reduce((sum, val) => sum + (val === '-' ? 0 : (val || 0)), 0);
                   const availableDetails = [...(ACCOUNT_GUIDE[item.category] || [])];
                   if (item.category && !availableDetails.find(d => d.name === item.category)) {
@@ -1050,26 +1062,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     </tr>
                   );
                 })}
+                  </>
+                )}
               </tbody>
-              {selectedTeam && items.length > 0 && (
-                <tfoot className="bg-slate-50 border-t border-slate-200 sticky bottom-0 z-10 shadow-[0_-1px_2px_rgba(0,0,0,0.05)]">
-                  <tr>
-                    <td colSpan={activeTab === 'deduction' ? 4 : 3} className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
-                    <td className="px-4 py-3 text-right font-bold text-indigo-600 text-sm bg-slate-100/50">
-                      {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v === '-' ? 0 : (v || 0)), 0), 0))}
-                    </td>
-                    {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
-                      const monthTotal = items.reduce((sum, item) => sum + (item.months[mIndex] || 0), 0);
-                      return (
-                        <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-xs">
-                          {formatNumber(monthTotal)}
-                        </td>
-                      );
-                    })}
-                    <td></td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
           </div>
           {saveMessage && (
