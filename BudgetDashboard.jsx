@@ -588,14 +588,29 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     return num.toLocaleString();
   };
 
+  const deadlineText = useMemo(() => {
+    const today = new Date();
+    const target = new Date('2026-09-28T23:59:59+09:00');
+    const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+    if (diff > 0) return `D-${diff}`;
+    if (diff === 0) return 'D-Day';
+    return '마감됨';
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 pb-24">
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            사업계획 (판관비) 취합
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              사업계획 (판관비) 취합
+            </h1>
+            <span className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-md text-sm font-bold shadow-sm flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              제출 마감: 9/28 ({deadlineText})
+            </span>
+          </div>
           <p className="text-sm text-slate-500 mt-1">각 팀별 월별 판관비 예산을 상세하게 입력하고 취합합니다.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-lg">
