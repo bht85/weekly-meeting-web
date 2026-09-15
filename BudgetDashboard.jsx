@@ -469,8 +469,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const headers = ['부서명', '연도', '계정과목', '세목(세부항목)', '적요(상세내역)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '합계'];
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
-    const exportData = budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
+    let exportData = budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택');
     
+    let filename = `${selectedYear}년도_전체_판관비_예산취합.csv`;
+    
+    if (activeTab === 'input' && selectedTeam && selectedTeam !== '선택') {
+      exportData = exportData.filter(d => d.team === selectedTeam);
+      filename = `${selectedYear}년도_${selectedTeam}_판관비_예산.csv`;
+    } else if (activeTab === 'deduction') {
+      exportData = exportData.filter(d => d.team === 'DEDUCTIONS');
+      filename = `${selectedYear}년도_매출차감조정_예산.csv`;
+    }
+
     if (exportData.length === 0) {
       alert("해당 연도에 등록된 예산 데이터가 없습니다.");
       return;
@@ -495,7 +505,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedYear}년도_판관비_예산취합.csv`);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
