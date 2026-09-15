@@ -769,8 +769,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           </div>
           <p className="text-sm text-slate-500 mt-1">각 팀별 월별 판관비 예산을 상세하게 입력하고 취합합니다.</p>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-lg">
-          {[2026, 2027, 2028].map(year => (
+        <div className="flex items-center gap-2">
+          {isFinance && (
+            <button 
+              onClick={() => setIsClosingModalOpen(true)}
+              className="flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 px-3 py-2 rounded-lg font-bold text-sm transition-colors"
+            >
+              <Lock className="w-4 h-4" />
+              마감
+            </button>
+          )}
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            {[2026, 2027, 2028].map(year => (
             <button
               key={year}
               onClick={() => setSelectedYear(year)}
@@ -781,6 +791,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               {year}년
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -839,15 +850,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {isFinance && (
-            <button 
-              onClick={() => setIsClosingModalOpen(true)}
-              className="flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-            >
-              <Lock className="w-4 h-4" />
-              월별 마감 관리
-            </button>
-          )}
           <button
             onClick={handleExportExcel}
             className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
