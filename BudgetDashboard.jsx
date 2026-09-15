@@ -1037,28 +1037,41 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3 text-left">조직명</th>
-                    <th className="px-4 py-3 text-center">실적데이터</th>
+                    <th className="px-4 py-3 text-center">{selectedYear === 2026 ? '실적데이터' : '데이터상태'}</th>
                     <th className="px-4 py-3 text-right">항목 수</th>
-                    <th className="px-4 py-3 text-right">1~8월 합계 (원)</th>
+                    <th className="px-4 py-3 text-right">{selectedYear === 2026 ? '1~8월 합계 (원)' : '예산 합계 (원)'}</th>
                     <th className="px-4 py-3 text-left">최종 수정</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {departments.filter(d => d && d !== '선택').map(dept => {
-                    const docData = budgetData.find(d => d.id === `2026_${dept}`);
-                    const actualItems = docData?.items?.filter(i => i.isActual) || [];
-                    const actualTotal = actualItems.reduce((s, i) =>
-                      s + (i.months || []).slice(0, 8).reduce((a, v) => a + (v || 0), 0), 0);
+                    const docData = budgetData.find(d => d.id === `${selectedYear}_${dept}`);
+                    const is2026 = selectedYear === 2026;
+                    
+                    let targetItems = [];
+                    let targetTotal = 0;
+                    let isUploaded = false;
+
+                    if (is2026) {
+                      targetItems = docData?.items?.filter(i => i.isActual) || [];
+                      targetTotal = targetItems.reduce((s, i) => s + (i.months || []).slice(0, 8).reduce((a, v) => a + (v || 0), 0), 0);
+                      isUploaded = docData?.hasActualData;
+                    } else {
+                      targetItems = docData?.items || [];
+                      targetTotal = targetItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
+                      isUploaded = targetItems.length > 0;
+                    }
+
                     return (
                       <tr key={dept} className="hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium text-slate-800">{dept}</td>
                         <td className="px-4 py-3 text-center">
-                          {docData?.hasActualData
+                          {isUploaded
                             ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"><CheckCircle className="w-3 h-3"/>업로드완료</span>
                             : <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full">미업로드</span>}
                         </td>
-                        <td className="px-4 py-3 text-right text-slate-600">{actualItems.length > 0 ? `${actualItems.length}건` : '-'}</td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-700">{actualTotal > 0 ? actualTotal.toLocaleString() : '-'}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{targetItems.length > 0 ? `${targetItems.length}건` : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-blue-700">{targetTotal > 0 ? targetTotal.toLocaleString() : '-'}</td>
                         <td className="px-4 py-3 text-slate-400 text-xs">{docData?.updatedBy || '-'}</td>
                       </tr>
                     );
