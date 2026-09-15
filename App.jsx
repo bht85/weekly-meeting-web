@@ -1732,7 +1732,7 @@ function App() {
 
                 
                 {/* [MODE 12] 권한 관리 */}
-                {appMode === 'permissions' && <PermissionAdmin db={db} user={user} navItems={NAV_ITEMS} />}
+                {appMode === 'permissions' && <PermissionAdmin db={db} user={user} navItems={NAV_ITEMS} departments={DEPARTMENTS} />}
                 
                 {/* [MODE 11] 오픈가맹 */}
                 {appMode === 'franchise' && <FranchiseDashboard db={db} user={user} />}

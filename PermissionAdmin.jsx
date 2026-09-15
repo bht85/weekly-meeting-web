@@ -3,7 +3,7 @@ import { collection, getDocs, doc, onSnapshot, setDoc } from 'firebase/firestore
 import { getCollectionName } from './utils';
 import { Shield, CheckSquare, Square, Plus } from 'lucide-react';
 
-const PermissionAdmin = ({ db, user, navItems }) => {
+const PermissionAdmin = ({ db, user, navItems, departments = [] }) => {
     const [employees, setEmployees] = useState([]);
     const [permissions, setPermissions] = useState({});
     const [newEmail, setNewEmail] = useState('');
@@ -15,7 +15,7 @@ const PermissionAdmin = ({ db, user, navItems }) => {
                 const snap = await getDocs(collection(db, getCollectionName('employees', user)));
                 const emps = snap.docs.map(d => d.data()).filter(e => e.email);
                 
-                // 중복 이메일 제거 및 정렬
+                // 중복 이메일 제거
                 const uniqueEmps = [];
                 const emailSet = new Set();
                 emps.forEach(e => {
@@ -25,14 +25,22 @@ const PermissionAdmin = ({ db, user, navItems }) => {
                     }
                 });
                 
-                uniqueEmps.sort((a, b) => (a.department || '').localeCompare(b.department || ''));
-                setEmployees(uniqueEmps);
+                // 조직도(departments)에 존재하는 부서의 직원만 필터링 (조직도 기준 정렬)
+                const activeEmps = uniqueEmps.filter(e => departments.includes(e.department));
+                activeEmps.sort((a, b) => {
+                    const deptA = departments.indexOf(a.department);
+                    const deptB = departments.indexOf(b.department);
+                    if (deptA !== deptB) return deptA - deptB;
+                    return (a.name || '').localeCompare(b.name || '');
+                });
+                
+                setEmployees(activeEmps);
             } catch (err) {
                 console.error("Error fetching employees:", err);
             }
         };
         fetchEmployees();
-    }, [db, user]);
+    }, [db, user, departments]);
 
     useEffect(() => {
         if (!db) return;
