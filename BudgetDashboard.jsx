@@ -610,6 +610,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <Upload className="w-4 h-4" />
             엑셀 업로드
           </button>
+          <button
+            onClick={() => setActiveTab('status')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+              activeTab === 'status' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <CheckCircle className="w-4 h-4" />
+            업로드 현황
+          </button>
         </div>
         
         <div className="flex gap-2">
@@ -1026,11 +1035,16 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               {uploadMessage}
             </div>
           )}
+        </div>
+      )}
 
-          {/* 현재 업로드 현황 */}
+      {/* 업로드 현황 탭 */}
+      {activeTab === 'status' && (
+        <div className="space-y-6">
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50">
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <h3 className="font-bold text-slate-800">{selectedYear}년 업로드 현황</h3>
+              {!isFinance && <span className="text-xs text-slate-500 font-medium">본인 부서 현황만 표시됩니다.</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -1044,7 +1058,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {departments.filter(d => d && d !== '선택').map(dept => {
+                  {departments
+                    .filter(d => d && d !== '선택')
+                    .filter(d => isFinance || d === user?.department)
+                    .map(dept => {
                     const docData = budgetData.find(d => d.id === `${selectedYear}_${dept}`);
                     const is2026 = selectedYear === 2026;
                     
