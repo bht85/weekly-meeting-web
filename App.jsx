@@ -11,7 +11,7 @@ import {
     DollarSign, Plus, Edit2, Settings, Edit, Building2, Lock, Scale,
     ChevronDown, PieChart, Calculator, Share2, Database, Monitor,
     CheckSquare, Utensils, StickyNote, HelpCircle,
-    ClipboardList, Activity
+    ClipboardList, Activity, Shield
 } from 'lucide-react';
 import LunchDashboard from './LunchDashboard';
 import CollaborationDashboard from './CollaborationDashboard';
