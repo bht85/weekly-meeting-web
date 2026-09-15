@@ -1658,7 +1658,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                    </thead>
                    <tbody className="divide-y divide-slate-200">
                      {/* 1. 매출 차감액 */}
-                     <tr className="bg-rose-50">
+                     <tr className="bg-rose-50 border-t-2 border-rose-200">
                        <td className="px-4 py-3 font-bold text-rose-800">1. 매출 차감 조정액</td>
                        <td className="px-4 py-3 text-right font-bold text-rose-700">{formatNumber(detailMonthlyTotals.filter(c => c.isDeduction).reduce((sum, c) => sum + c.total, 0))}</td>
                        {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
@@ -1667,8 +1667,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                          </td>
                        ))}
                      </tr>
+                     {detailMonthlyTotals.filter(c => c.isDeduction).map((item, idx) => (
+                       <tr key={`deduct-${idx}`} className="bg-white hover:bg-slate-50 text-xs">
+                         <td className="px-4 py-2 text-slate-600 pl-8">↳ [{item.category}] {item.detail}</td>
+                         <td className="px-4 py-2 text-right text-slate-600 font-medium">{formatNumber(item.total)}</td>
+                         {item.months.map((mVal, mIdx) => (
+                           <td key={mIdx} className="px-2 py-2 text-right text-slate-500">{formatNumber(mVal)}</td>
+                         ))}
+                       </tr>
+                     ))}
+
                      {/* 2. 원가성 비용 */}
-                     <tr className="bg-amber-50">
+                     <tr className="bg-amber-50 border-t-2 border-amber-200">
                        <td className="px-4 py-3 font-bold text-amber-900">2. 원가성 비용 (COGS)</td>
                        <td className="px-4 py-3 text-right font-bold text-amber-800">{formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.total, 0))}</td>
                        {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
@@ -1677,8 +1687,18 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                          </td>
                        ))}
                      </tr>
+                     {detailMonthlyTotals.filter(c => c.isCOGS).map((item, idx) => (
+                       <tr key={`cogs-${idx}`} className="bg-white hover:bg-slate-50 text-xs">
+                         <td className="px-4 py-2 text-slate-600 pl-8">↳ [{item.category}] {item.detail}</td>
+                         <td className="px-4 py-2 text-right text-slate-600 font-medium">{formatNumber(item.total)}</td>
+                         {item.months.map((mVal, mIdx) => (
+                           <td key={mIdx} className="px-2 py-2 text-right text-slate-500">{formatNumber(mVal)}</td>
+                         ))}
+                       </tr>
+                     ))}
+
                      {/* 3. 판관비 */}
-                     <tr className="bg-slate-50">
+                     <tr className="bg-slate-50 border-t-2 border-slate-200">
                        <td className="px-4 py-3 font-bold text-slate-800">3. 판관비 (SG&amp;A)</td>
                        <td className="px-4 py-3 text-right font-bold text-indigo-700">{formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.total, 0))}</td>
                        {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
@@ -1687,6 +1707,15 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                          </td>
                        ))}
                      </tr>
+                     {detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).map((item, idx) => (
+                       <tr key={`sga-${idx}`} className="bg-white hover:bg-slate-50 text-xs">
+                         <td className="px-4 py-2 text-slate-600 pl-8">↳ [{item.category}] {item.detail}</td>
+                         <td className="px-4 py-2 text-right text-slate-600 font-medium">{formatNumber(item.total)}</td>
+                         {item.months.map((mVal, mIdx) => (
+                           <td key={mIdx} className="px-2 py-2 text-right text-slate-500">{formatNumber(mVal)}</td>
+                         ))}
+                       </tr>
+                     ))}
                    </tbody>
                  </table>
                </div>
