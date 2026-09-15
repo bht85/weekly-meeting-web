@@ -37,6 +37,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
+  const [isPLPreviewOpen, setIsPLPreviewOpen] = useState(false);
   const [loadedFormId, setLoadedFormId] = useState(null);
 
   // 실적 업로드 관련 상태
@@ -554,6 +555,51 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
     link.setAttribute('download', `${selectedYear}년도_계정과목_월별합산현황.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportTeamSummaryExcel = () => {
+    const headers = ['팀명', '합계', ...categoryTotals.map(c => c.name)];
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    
+    if (currentYearData.length === 0) {
+      alert("해당 연도에 등록된 예산 데이터가 없습니다.");
+      return;
+    }
+
+    // 총계 행 추가
+    const grandTotal = currentYearData.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0);
+    const catSums = categoryTotals.map(c => {
+      return currentYearData.reduce((sum, doc) => {
+        const catTotal = (doc.items || []).filter(i => i.category === c.name).reduce((s, i) => s + (i.rowTotal || 0), 0);
+        return sum + catTotal;
+      }, 0);
+    });
+    const totalRow = ['전사 합계', grandTotal, ...catSums];
+    csvContent += totalRow.join(',') + '\n';
+
+    // 데이터 행 추가
+    currentYearData.forEach(doc => {
+      const docCatTotals = {};
+      (doc.items || []).forEach(item => {
+        docCatTotals[item.category] = (docCatTotals[item.category] || 0) + (item.rowTotal || 0);
+      });
+      const row = [
+        doc.team,
+        doc.totalAmount || 0,
+        ...categoryTotals.map(c => docCatTotals[c.name] || 0)
+      ];
+      csvContent += row.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedYear}년도_팀별세부현황.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -1079,57 +1125,26 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           </div>
           */}
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-             <div className="p-4 border-b border-slate-100 bg-slate-50">
-               <h3 className="font-bold text-slate-800">팀별 세부 현황 (단위: 원)</h3>
-             </div>
-             <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-               <table className="min-w-full divide-y divide-slate-200 relative">
-                 <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                   <tr>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">팀명</th>
-                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase">합계</th>
-                     {categoryTotals.map(c => (
-                       <th key={c.name} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase whitespace-nowrap">{c.name}</th>
-                     ))}
-                   </tr>
-                 </thead>
-                 <tbody className="bg-white divide-y divide-slate-200">
-                   {currentYearData.map(doc => {
-                     // doc.items 에서 카테고리별 합계 계산
-                     const docCatTotals = {};
-                     (doc.items || []).forEach(item => {
-                       docCatTotals[item.category] = (docCatTotals[item.category] || 0) + (item.rowTotal || 0);
-                     });
-                     
-                     return (
-                       <tr key={doc.team} className="hover:bg-slate-50">
-                         <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-900">{doc.team}</td>
-                         <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-indigo-600 text-right">{formatNumber(doc.totalAmount)}</td>
-                         {categoryTotals.map(c => (
-                           <td key={c.name} className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 text-right">
-                             {formatNumber(docCatTotals[c.name] || 0)}
-                           </td>
-                         ))}
-                       </tr>
-                     );
-                   })}
-                 </tbody>
-               </table>
-             </div>
-          </div>
-
-          {/* New Category by Month Summary Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* 1. Category by Month Summary Table (Moved to top) */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                <h3 className="font-bold text-slate-800">계정과목 및 세목별 월별 합산 현황 (단위: 원)</h3>
-               <button
-                 onClick={handleExportSummaryExcel}
-                 className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
-               >
-                 <Download className="w-4 h-4" />
-                 엑셀 다운로드
-               </button>
+               <div className="flex gap-2">
+                 <button
+                   onClick={() => setIsPLPreviewOpen(true)}
+                   className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
+                 >
+                   <BarChart3 className="w-4 h-4" />
+                   PL 미리보기
+                 </button>
+                 <button
+                   onClick={handleExportSummaryExcel}
+                   className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
+                 >
+                   <Download className="w-4 h-4" />
+                   엑셀 다운로드
+                 </button>
+               </div>
              </div>
              <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
                 <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed border-collapse relative">
@@ -1192,6 +1207,71 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     })}
                   </tbody>
                 </table>
+             </div>
+          </div>
+
+          {/* 2. Team Detail Table (Moved to bottom) */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+             <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+               <h3 className="font-bold text-slate-800">팀별 세부 현황 (단위: 원)</h3>
+               <button
+                 onClick={handleExportTeamSummaryExcel}
+                 className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors"
+               >
+                 <Download className="w-4 h-4" />
+                 엑셀 다운로드
+               </button>
+             </div>
+             <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+               <table className="min-w-full divide-y divide-slate-200 relative">
+                 <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                   <tr>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">팀명</th>
+                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase">합계</th>
+                     {categoryTotals.map(c => (
+                       <th key={c.name} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase whitespace-nowrap">{c.name}</th>
+                     ))}
+                   </tr>
+                 </thead>
+                 <tbody className="bg-white divide-y divide-slate-200">
+                   <tr className="bg-slate-50/80 border-b-[3px] border-slate-300">
+                     <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-800">전사 합계</td>
+                     <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-indigo-700 text-right bg-slate-100/80">
+                       {formatNumber(currentYearData.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0))}
+                     </td>
+                     {categoryTotals.map(c => {
+                       const catSum = currentYearData.reduce((sum, doc) => {
+                         const catTotal = (doc.items || []).filter(i => i.category === c.name).reduce((s, i) => s + (i.rowTotal || 0), 0);
+                         return sum + catTotal;
+                       }, 0);
+                       return (
+                         <td key={c.name} className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-800 text-right">
+                           {formatNumber(catSum)}
+                         </td>
+                       );
+                     })}
+                   </tr>
+                   {currentYearData.map(doc => {
+                     // doc.items 에서 카테고리별 합계 계산
+                     const docCatTotals = {};
+                     (doc.items || []).forEach(item => {
+                       docCatTotals[item.category] = (docCatTotals[item.category] || 0) + (item.rowTotal || 0);
+                     });
+                     
+                     return (
+                       <tr key={doc.team} className="hover:bg-slate-50">
+                         <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-900">{doc.team}</td>
+                         <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-indigo-600 text-right">{formatNumber(doc.totalAmount)}</td>
+                         {categoryTotals.map(c => (
+                           <td key={c.name} className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 text-right">
+                             {formatNumber(docCatTotals[c.name] || 0)}
+                           </td>
+                         ))}
+                       </tr>
+                     );
+                   })}
+                 </tbody>
+               </table>
              </div>
           </div>
         </div>
@@ -1492,6 +1572,75 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PL Preview Modal */}
+      {isPLPreviewOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+                {selectedYear}년도 손익(PL) 구조 요약 미리보기
+              </h2>
+              <button onClick={() => setIsPLPreviewOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+               <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                 <table className="min-w-full divide-y divide-slate-200 text-sm">
+                   <thead className="bg-slate-100">
+                     <tr>
+                       <th className="px-4 py-3 text-left font-bold text-slate-700">항목</th>
+                       <th className="px-4 py-3 text-right font-bold text-slate-700">합계</th>
+                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                         <th key={m} className="px-2 py-3 text-right font-bold text-slate-700">{m}월</th>
+                       ))}
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-200">
+                     {/* 1. 매출 차감액 */}
+                     <tr className="bg-rose-50">
+                       <td className="px-4 py-3 font-bold text-rose-800">1. 매출 차감 조정액</td>
+                       <td className="px-4 py-3 text-right font-bold text-rose-700">{formatNumber(detailMonthlyTotals.filter(c => c.isDeduction).reduce((sum, c) => sum + c.total, 0))}</td>
+                       {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
+                         <td key={mIndex} className="px-2 py-3 text-right font-medium text-rose-700">
+                           {formatNumber(detailMonthlyTotals.filter(c => c.isDeduction).reduce((sum, c) => sum + c.months[mIndex], 0))}
+                         </td>
+                       ))}
+                     </tr>
+                     {/* 2. 원가성 비용 */}
+                     <tr className="bg-amber-50">
+                       <td className="px-4 py-3 font-bold text-amber-900">2. 원가성 비용 (COGS)</td>
+                       <td className="px-4 py-3 text-right font-bold text-amber-800">{formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.total, 0))}</td>
+                       {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
+                         <td key={mIndex} className="px-2 py-3 text-right font-medium text-amber-800">
+                           {formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.months[mIndex], 0))}
+                         </td>
+                       ))}
+                     </tr>
+                     {/* 3. 판관비 */}
+                     <tr className="bg-slate-50">
+                       <td className="px-4 py-3 font-bold text-slate-800">3. 판관비 (SG&amp;A)</td>
+                       <td className="px-4 py-3 text-right font-bold text-indigo-700">{formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.total, 0))}</td>
+                       {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => (
+                         <td key={mIndex} className="px-2 py-3 text-right font-medium text-slate-700">
+                           {formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.months[mIndex], 0))}
+                         </td>
+                       ))}
+                     </tr>
+                   </tbody>
+                 </table>
+               </div>
+               <p className="text-sm text-slate-500 mt-4 flex items-center gap-2">
+                 <AlertCircle className="w-4 h-4" />
+                 매출 데이터는 포함되어 있지 않으며, 입력된 비용 데이터를 PL(손익계산서)의 주요 항목별로 그룹핑한 요약본입니다.
+               </p>
             </div>
           </div>
         </div>
