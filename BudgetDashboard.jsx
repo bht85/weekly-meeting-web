@@ -133,8 +133,19 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   };
 
   const handleMonthChange = (id, monthIndex, value) => {
-    const numStr = String(value).replace(/[^0-9]/g, '');
-    const numVal = numStr ? parseInt(numStr, 10) : 0;
+    let numStr = String(value).replace(/[^0-9-]/g, '');
+    if (numStr.includes('-')) {
+       const isNegative = numStr.startsWith('-');
+       numStr = numStr.replace(/-/g, '');
+       if (isNegative) numStr = '-' + numStr;
+    }
+
+    let numVal = 0;
+    if (numStr === '-') {
+      numVal = '-'; // temporarily store minus sign for typing
+    } else {
+      numVal = numStr ? parseInt(numStr, 10) : 0;
+    }
     
     setItems(prev => prev.map(item => {
       if (item.id === id) {
@@ -147,13 +158,24 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   };
 
   const handleFillRight = (id, startIndex, value) => {
-    const numStr = String(value).replace(/[^0-9]/g, '');
-    const numVal = numStr ? parseInt(numStr, 10) : 0;
+    let numStr = String(value).replace(/[^0-9-]/g, '');
+    if (numStr.includes('-')) {
+       const isNegative = numStr.startsWith('-');
+       numStr = numStr.replace(/-/g, '');
+       if (isNegative) numStr = '-' + numStr;
+    }
+
+    let numVal = 0;
+    if (numStr === '-') {
+      numVal = '-';
+    } else {
+      numVal = numStr ? parseInt(numStr, 10) : 0;
+    }
     
     setItems(prev => prev.map(item => {
       if (item.id === id) {
         const newMonths = [...item.months];
-        for(let i = startIndex + 1; i < 12; i++) {
+        for (let i = startIndex + 1; i < 12; i++) {
           newMonths[i] = numVal;
         }
         return { ...item, months: newMonths };
@@ -174,14 +196,14 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       
       let totalAmount = 0;
       const cleanItems = items.map(item => {
-        const rowTotal = item.months.reduce((sum, val) => sum + (val || 0), 0);
+        const rowTotal = item.months.reduce((sum, val) => sum + (val === '-' ? 0 : (val || 0)), 0);
         totalAmount += rowTotal;
         return {
           id: item.id || Date.now().toString(),
           category: item.category || '',
           detail: item.detail || '',
           description: item.description || '',
-          months: (item.months || []).map(v => v || 0),
+          months: (item.months || []).map(v => (v === '-' ? 0 : (v || 0))),
           rowTotal,
           ...(item.isActual ? { isActual: true } : {}),
           ...(selectedTeam === 'DEDUCTIONS' ? { targetTeam: item.targetTeam || '' } : {})
@@ -460,7 +482,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           item.detail,
           `"${(item.description || '').replace(/"/g, '""')}"`,
           ...item.months,
-          item.months.reduce((sum, val) => sum + (val || 0), 0)
+          item.months.reduce((sum, val) => sum + (val === '-' ? 0 : (val || 0)), 0)
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -587,14 +609,30 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         }
 
         (item.months || []).forEach((val, idx) => {
-          if (idx < 12) map[key].months[idx] += (val || 0);
+          if (idx < 12) map[key].months[idx] += (val === '-' ? 0 : (val || 0));
         });
         map[key].total += (item.rowTotal || 0);
       });
     });
 
+    deductionData.forEach(item => {
+      const cat = item.category || '미지정';
+      const originalDet = item.detail || '미지정';
+      const det = `${originalDet} (차감)`;
+      const key = `${cat}_${originalDet}_DEDUCT`;
+
+      if (!map[key]) {
+        map[key] = { category: cat, detail: det, originalDetail: originalDet, months: Array(12).fill(0), total: 0, isDeduction: true };
+      }
+
+      (item.months || []).forEach((val, idx) => {
+        if (idx < 12) map[key].months[idx] += (val === '-' ? 0 : (val || 0));
+      });
+      map[key].total += (item.rowTotal || 0);
+    });
+
     return Object.values(map)
-      .filter(c => c.total > 0)
+      .filter(c => c.total !== 0)
       .sort((a, b) => {
         const idxA = CATEGORIES.indexOf(a.category);
         const idxB = CATEGORIES.indexOf(b.category);
@@ -602,13 +640,20 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         if (a.category !== b.category) return a.category.localeCompare(b.category);
         
         const detailsGuide = ACCOUNT_GUIDE[a.category] || [];
-        const detailIdxA = detailsGuide.findIndex(d => d.name === a.detail);
-        const detailIdxB = detailsGuide.findIndex(d => d.name === b.detail);
+        const detailIdxA = detailsGuide.findIndex(d => d.name === (a.originalDetail || a.detail));
+        const detailIdxB = detailsGuide.findIndex(d => d.name === (b.originalDetail || b.detail));
+        
         if (detailIdxA !== -1 && detailIdxB !== -1 && detailIdxA !== detailIdxB) return detailIdxA - detailIdxB;
         
+        // If they belong to the same detail, put deduction after normal
+        if ((a.originalDetail || a.detail) === (b.originalDetail || b.detail)) {
+          if (a.isDeduction && !b.isDeduction) return 1;
+          if (!a.isDeduction && b.isDeduction) return -1;
+        }
+
         return a.detail.localeCompare(b.detail);
       });
-  }, [currentYearData]);
+  }, [currentYearData, deductionData]);
 
   const formatNumber = (num) => {
     if (!num && num !== 0) return '';
@@ -807,7 +852,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     </td>
                   </tr>
                 ) : items.map((item) => {
-                  const rowTotal = item.months.reduce((sum, val) => sum + (val || 0), 0);
+                  const rowTotal = item.months.reduce((sum, val) => sum + (val === '-' ? 0 : (val || 0)), 0);
                   const availableDetails = [...(ACCOUNT_GUIDE[item.category] || [])];
                   if (item.category && !availableDetails.find(d => d.name === item.category)) {
                     availableDetails.unshift({ name: item.category, desc: item.category + ' 기본' });
@@ -925,7 +970,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       );
                     })}
                     <td className="px-4 py-3 text-right font-bold text-indigo-600 text-sm">
-                      {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v || 0), 0), 0))}
+                      {formatNumber(items.reduce((sum, item) => sum + item.months.reduce((s, v) => s + (v === '-' ? 0 : (v || 0)), 0), 0))}
                     </td>
                     <td></td>
                   </tr>
@@ -1034,20 +1079,16 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                    </tr>
                  </thead>
                  <tbody className="bg-white divide-y divide-slate-200">
-                   {detailMonthlyTotals.map((c, index) => (
-                     <tr key={`${c.category}_${c.detail}_${index}`} className="hover:bg-slate-50">
-                       <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-slate-900">{c.category}</td>
-                       <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-600">{c.detail}</td>
-                       {c.months.map((val, idx) => (
-                         <td key={idx} className="px-2 py-3 whitespace-nowrap text-sm text-slate-500 text-right">
-                           {formatNumber(val)}
-                         </td>
-                       ))}
-                       <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-indigo-600 text-right">
-                         {formatNumber(c.total)}
-                       </td>
-                     </tr>
-                   ))}
+                    {detailMonthlyTotals.map(row => (
+                      <tr key={`${row.category}_${row.detail}`} className={`hover:bg-slate-50 ${row.isDeduction ? 'bg-rose-50/20' : ''}`}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{row.category}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${row.isDeduction ? 'text-rose-500 font-medium' : 'text-slate-500'}`}>{row.detail}</td>
+                        {row.months.map((val, idx) => (
+                          <td key={idx} className={`px-2 py-4 whitespace-nowrap text-sm text-right ${row.isDeduction ? 'text-rose-500' : 'text-slate-500'}`}>{formatNumber(val)}</td>
+                        ))}
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${row.isDeduction ? 'text-rose-600' : 'text-indigo-600'}`}>{formatNumber(row.total)}</td>
+                      </tr>
+                    ))}
                  </tbody>
                  <tfoot className="bg-slate-50 border-t border-slate-200">
                    <tr>
