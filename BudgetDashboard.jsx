@@ -1055,7 +1055,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         const isActualColBg = isClosedMonth;
                         const isEstimateColBg = !isClosedMonth;
                         
-                        const isCellLocked = isActualCell && !isFinance;
+                        const isCellLocked = isClosedMonth || (selectedYear === 2026 && mIndex < 8 && item.isActual && !isFinance);
 
                         return (
                           <td key={mIndex} className={`px-1 py-2 align-top ${isActualColBg ? 'bg-blue-50/40' : isEstimateColBg ? 'bg-orange-50/30' : ''}`}>
@@ -1692,7 +1692,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             <div className="p-6">
               <p className="text-sm text-slate-500 mb-6 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                마감된 월은 현업 부서에서 수정할 수 없습니다. (재무팀은 계속 수정 가능)
+                마감된 월은 누구도 데이터를 수정할 수 없습니다. 수정을 원하시면 마감을 먼저 해제해 주세요.
               </p>
               
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
