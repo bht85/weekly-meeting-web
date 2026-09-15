@@ -8,6 +8,8 @@ import * as XLSX from 'xlsx';
 import { ACCOUNT_GUIDE } from './accountGuide';
 
 const CATEGORIES = Object.keys(ACCOUNT_GUIDE);
+const COGS_CATEGORIES = ['원가성 비용']; // 판관비와 구분되는 원가성 비용 계정과목
+const SGA_CATEGORIES = CATEGORIES.filter(c => !COGS_CATEGORIES.includes(c)); // 순수 판관비만
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57', '#FEE500', '#FF9999'];
 
 // 재무팀 및 관리자 이메일 목록
@@ -552,8 +554,30 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     return budgetData.filter(d => d.year === selectedYear && Array.isArray(d.items) && d.team !== '선택' && d.team !== 'DEDUCTIONS');
   }, [budgetData, selectedYear]);
 
+  // 판관비 합계 (원가성 비용 제외)
   const totalSGA = useMemo(() => {
-    return currentYearData.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0);
+    return currentYearData.reduce((sum, doc) => {
+      const sgaOnly = (doc.items || []).reduce((s, item) => {
+        if (!COGS_CATEGORIES.includes(item.category)) {
+          return s + (item.rowTotal || 0);
+        }
+        return s;
+      }, 0);
+      return sum + sgaOnly;
+    }, 0);
+  }, [currentYearData]);
+
+  // 원가성 비용 합계 (COGS)
+  const totalCOGS = useMemo(() => {
+    return currentYearData.reduce((sum, doc) => {
+      const cogsOnly = (doc.items || []).reduce((s, item) => {
+        if (COGS_CATEGORIES.includes(item.category)) {
+          return s + (item.rowTotal || 0);
+        }
+        return s;
+      }, 0);
+      return sum + cogsOnly;
+    }, 0);
   }, [currentYearData]);
 
   const deductionData = useMemo(() => {
@@ -603,9 +627,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         const cat = item.category || '미지정';
         const det = item.detail || '미지정';
         const key = `${cat}_${det}`;
+        const isCOGS = COGS_CATEGORIES.includes(cat);
 
         if (!map[key]) {
-          map[key] = { category: cat, detail: det, months: Array(12).fill(0), total: 0 };
+          map[key] = { category: cat, detail: det, months: Array(12).fill(0), total: 0, isCOGS };
         }
 
         (item.months || []).forEach((val, idx) => {
@@ -989,22 +1014,36 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       {/* DASHBOARD TAB (Finance Only) */}
       {isFinance && activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* 상단 요약 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {/* 판관비 */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
-              <p className="text-xs font-medium text-slate-500 mb-1">{selectedYear}년 취합 총액 (Gross)</p>
-              <p className="text-xl font-bold text-slate-800">{formatNumber(totalSGA)}</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">{selectedYear}년 판관비 (SG&A)</p>
+              <p className="text-lg font-bold text-slate-800">{formatNumber(totalSGA)}</p>
+              <p className="text-[10px] text-slate-400 mt-1">원가성 비용 제외</p>
             </div>
+            {/* 원가성 비용 */}
+            <div className="bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-200 flex flex-col justify-center">
+              <p className="text-xs font-medium text-amber-600 mb-1">원가성 비용 (COGS)</p>
+              <p className="text-lg font-bold text-amber-800">{formatNumber(totalCOGS)}</p>
+              <p className="text-[10px] text-amber-500 mt-1">판관비 미포함 별도 관리</p>
+            </div>
+            {/* 매출 차감 */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
               <p className="text-xs font-medium text-slate-500 mb-1">매출 차감 조정액</p>
-              <p className="text-xl font-bold text-rose-600">{formatNumber(totalDeduction)}</p>
+              <p className="text-lg font-bold text-rose-600">{formatNumber(totalDeduction)}</p>
+              <p className="text-[10px] text-slate-400 mt-1">재무팀 조정</p>
             </div>
+            {/* 최종 판관비 Net */}
             <div className="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col justify-center">
-              <p className="text-xs font-medium text-indigo-600 mb-1">최종 판관비 (Net)</p>
-              <p className="text-xl font-bold text-indigo-900">{formatNumber(totalSGA + totalDeduction)}</p>
+              <p className="text-xs font-medium text-indigo-600 mb-1">최종 판관비 Net</p>
+              <p className="text-lg font-bold text-indigo-900">{formatNumber(totalSGA + totalDeduction)}</p>
+              <p className="text-[10px] text-indigo-400 mt-1">판관비 + 매출차감 조정</p>
             </div>
+            {/* 제출 현황 */}
             <div className="bg-emerald-50 p-4 rounded-xl shadow-sm border border-emerald-100 flex flex-col justify-center">
               <p className="text-xs font-medium text-emerald-600 mb-1">제출 완료 팀</p>
-              <p className="text-xl font-bold text-emerald-900">{currentYearData.length} <span className="text-sm font-normal text-emerald-700">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
+              <p className="text-lg font-bold text-emerald-900">{currentYearData.length} <span className="text-sm font-normal text-emerald-700">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
             </div>
           </div>
 
@@ -1079,30 +1118,52 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
-                    {detailMonthlyTotals.map(row => (
-                      <tr key={`${row.category}_${row.detail}`} className={`hover:bg-slate-50 ${row.isDeduction ? 'bg-rose-50/20' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-900">{row.category}</td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-xs ${row.isDeduction ? 'text-rose-500 font-medium' : 'text-slate-500'}`}>{row.detail}</td>
-                        {row.months.map((val, idx) => (
-                          <td key={idx} className={`px-2 py-4 whitespace-nowrap text-xs text-right ${row.isDeduction ? 'text-rose-500' : 'text-slate-500'}`}>{formatNumber(val)}</td>
-                        ))}
-                        <td className={`px-6 py-4 whitespace-nowrap text-xs font-bold text-right ${row.isDeduction ? 'text-rose-600' : 'text-indigo-600'}`}>{formatNumber(row.total)}</td>
-                      </tr>
-                    ))}
+                    {detailMonthlyTotals.map(row => {
+                      const rowBg = row.isDeduction ? 'bg-rose-50/20' : row.isCOGS ? 'bg-amber-50/30' : '';
+                      const textColor = row.isDeduction ? 'text-rose-500' : row.isCOGS ? 'text-amber-700' : 'text-slate-500';
+                      const totalColor = row.isDeduction ? 'text-rose-600' : row.isCOGS ? 'text-amber-700 font-bold' : 'text-indigo-600';
+                      return (
+                        <tr key={`${row.category}_${row.detail}`} className={`hover:bg-slate-50 ${rowBg}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-xs font-medium ${row.isCOGS ? 'text-amber-800' : 'text-slate-900'}`}>
+                            {row.category}
+                            {row.isCOGS && <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-600 border border-amber-200 px-1 py-0.5 rounded font-normal">원가</span>}
+                          </td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-xs ${textColor}`}>{row.detail}</td>
+                          {row.months.map((val, idx) => (
+                            <td key={idx} className={`px-2 py-4 whitespace-nowrap text-xs text-right ${textColor}`}>{formatNumber(val)}</td>
+                          ))}
+                          <td className={`px-6 py-4 whitespace-nowrap text-xs font-bold text-right ${totalColor}`}>{formatNumber(row.total)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot className="bg-slate-50 border-t border-slate-200">
                     <tr>
-                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-700 text-sm">총계</td>
+                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-700 text-sm">판관비 (SG&amp;A) 소계</td>
                       {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
-                        const monthGrandTotal = detailMonthlyTotals.reduce((sum, c) => sum + c.months[mIndex], 0);
+                        const sgaMonthTotal = detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.months[mIndex], 0);
                         return (
                           <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-xs">
-                            {formatNumber(monthGrandTotal)}
+                            {formatNumber(sgaMonthTotal)}
                           </td>
                         );
                       })}
                       <td className="px-6 py-3 text-right font-bold text-indigo-700 text-sm">
-                        {formatNumber(detailMonthlyTotals.reduce((sum, c) => sum + c.total, 0))}
+                        {formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.total, 0))}
+                      </td>
+                    </tr>
+                    <tr className="bg-amber-50/40">
+                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-amber-700 text-sm">원가성 비용 (COGS) 소계</td>
+                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                        const cogsMonthTotal = detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.months[mIndex], 0);
+                        return (
+                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-amber-700 text-xs">
+                            {formatNumber(cogsMonthTotal)}
+                          </td>
+                        );
+                      })}
+                      <td className="px-6 py-3 text-right font-bold text-amber-800 text-sm">
+                        {formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.total, 0))}
                       </td>
                     </tr>
                   </tfoot>
