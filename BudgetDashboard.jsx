@@ -531,7 +531,12 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     return Object.entries(totals)
       .map(([name, value]) => ({ name, value }))
       .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => {
+        const idxA = CATEGORIES.indexOf(a.name);
+        const idxB = CATEGORIES.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        return a.name.localeCompare(b.name);
+      });
   }, [currentYearData]);
 
   const teamTotals = useMemo(() => {
@@ -568,6 +573,12 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         const idxB = CATEGORIES.indexOf(b.category);
         if (idxA !== -1 && idxB !== -1 && idxA !== idxB) return idxA - idxB;
         if (a.category !== b.category) return a.category.localeCompare(b.category);
+        
+        const detailsGuide = ACCOUNT_GUIDE[a.category] || [];
+        const detailIdxA = detailsGuide.findIndex(d => d.name === a.detail);
+        const detailIdxB = detailsGuide.findIndex(d => d.name === b.detail);
+        if (detailIdxA !== -1 && detailIdxB !== -1 && detailIdxA !== detailIdxB) return detailIdxA - detailIdxB;
+        
         return a.detail.localeCompare(b.detail);
       });
   }, [currentYearData]);
