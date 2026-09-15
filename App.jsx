@@ -24,6 +24,7 @@ import LandingPage from './LandingPage';
 import WeeklyReportPDF from './WeeklyReportPDF';
 import BudgetDashboard from './BudgetDashboard';
 import FranchiseDashboard from './FranchiseDashboard';
+import PermissionAdmin from './PermissionAdmin';
 
 
 // --- Firebase 라이브러리 ---
@@ -97,6 +98,7 @@ const NAV_ITEMS = [
     { id: 'org', label: '조직도', icon: Users },
     { id: 'hr', label: 'HR 현황판', icon: PieChart },
     { id: 'kpi', label: 'KPI', icon: BarChart3 },
+    { id: 'permissions', label: '권한 관리', icon: Shield },
 ];
 
 const SECTIONS = [
@@ -833,6 +835,17 @@ function App() {
         user?.email === "wedding_life@naver.com",
     [user]);
     const [appMode, setAppMode] = useState('news');
+    const [userPermissions, setUserPermissions] = useState({});
+    useEffect(() => {
+        if (!user) return;
+        const unsub = onSnapshot(doc(db, 'system_config', 'tab_permissions'), (docSnap) => {
+            if (docSnap.exists()) {
+                setUserPermissions(docSnap.data());
+            }
+        });
+        return () => unsub();
+    }, [user]);
+
     // 랜딩 페이지 표시 여부 (로그인 후 회사별 랜딩 표시 → 버튼 클릭 시 false)
     const [showLanding, setShowLanding] = useState(false);
 
@@ -1598,9 +1611,22 @@ function App() {
     const ALLOWED_HR_EMAILS = ['choihy@composrcoffee.co.kr', 'choihy@composecoffee.co.kr'];
     const canViewAdminScreens = user && ALLOWED_HR_EMAILS.includes(user.email);
     const visibleNavItems = NAV_ITEMS.filter(item => {
+        const isSuperAdmin = user?.email === 'choihy@composecoffee.co.kr' || user?.email === 'choihy@composrcoffee.co.kr';
+        
+        // 권한 관리 탭은 최고 관리자에게만 노출
+        if (item.id === 'permissions') return isSuperAdmin;
+        
+        // 최고 관리자는 모든 탭 접근 가능
+        if (isSuperAdmin) return true;
+
+        // 개별 유저 권한이 설정되어 있으면 최우선 적용
+        if (user && userPermissions[user.email] && userPermissions[user.email][item.id] !== undefined) {
+            return userPermissions[user.email][item.id];
+        }
+
         // 기본으로 노출할 메뉴들
         const defaultVisible = ['news', 'calendar', 'budget', 'lunch', 'franchise'];
-        // 관리자면 모든 메뉴 노출, 아니면 기본 메뉴만 노출
+        
         return canViewAdminScreens || defaultVisible.includes(item.id);
     });
 
@@ -1704,6 +1730,10 @@ function App() {
                 {/* [MODE 10] 사업계획 (판관비) */}
                 {appMode === 'budget' && <BudgetDashboard db={db} user={user} departments={DEPARTMENTS} />}
 
+                
+                {/* [MODE 12] 권한 관리 */}
+                {appMode === 'permissions' && <PermissionAdmin db={db} user={user} navItems={NAV_ITEMS} />}
+                
                 {/* [MODE 11] 오픈가맹 */}
                 {appMode === 'franchise' && <FranchiseDashboard db={db} user={user} />}
 
