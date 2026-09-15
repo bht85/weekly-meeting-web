@@ -1039,10 +1039,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                      
                      return (
                        <tr key={doc.team} className="hover:bg-slate-50">
-                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{doc.team}</td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 text-right">{formatNumber(doc.totalAmount)}</td>
+                         <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-900">{doc.team}</td>
+                         <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-indigo-600 text-right">{formatNumber(doc.totalAmount)}</td>
                          {categoryTotals.map(c => (
-                           <td key={c.name} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                           <td key={c.name} className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 text-right">
                              {formatNumber(docCatTotals[c.name] || 0)}
                            </td>
                          ))}
@@ -1067,46 +1067,46 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                </button>
              </div>
              <div className="overflow-x-auto">
-               <table className="w-[1700px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
-                 <thead className="bg-slate-50">
-                   <tr>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[140px]">계정과목</th>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[160px]">세목 (세부항목)</th>
-                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                       <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[100px]">{m}월</th>
-                     ))}
-                     <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase w-[150px]">합계</th>
-                   </tr>
-                 </thead>
-                 <tbody className="bg-white divide-y divide-slate-200">
+                <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed border-collapse">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[140px]">계정과목</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[160px]">세목 (세부항목)</th>
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                        <th key={m} className="px-2 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[120px]">{m}월</th>
+                      ))}
+                      <th className="px-6 py-3 text-right text-xs font-bold text-indigo-600 uppercase w-[150px]">합계</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
                     {detailMonthlyTotals.map(row => (
                       <tr key={`${row.category}_${row.detail}`} className={`hover:bg-slate-50 ${row.isDeduction ? 'bg-rose-50/20' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{row.category}</td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${row.isDeduction ? 'text-rose-500 font-medium' : 'text-slate-500'}`}>{row.detail}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-900">{row.category}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-xs ${row.isDeduction ? 'text-rose-500 font-medium' : 'text-slate-500'}`}>{row.detail}</td>
                         {row.months.map((val, idx) => (
-                          <td key={idx} className={`px-2 py-4 whitespace-nowrap text-sm text-right ${row.isDeduction ? 'text-rose-500' : 'text-slate-500'}`}>{formatNumber(val)}</td>
+                          <td key={idx} className={`px-2 py-4 whitespace-nowrap text-xs text-right ${row.isDeduction ? 'text-rose-500' : 'text-slate-500'}`}>{formatNumber(val)}</td>
                         ))}
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${row.isDeduction ? 'text-rose-600' : 'text-indigo-600'}`}>{formatNumber(row.total)}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-xs font-bold text-right ${row.isDeduction ? 'text-rose-600' : 'text-indigo-600'}`}>{formatNumber(row.total)}</td>
                       </tr>
                     ))}
-                 </tbody>
-                 <tfoot className="bg-slate-50 border-t border-slate-200">
-                   <tr>
-                     <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-700">총계</td>
-                     {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
-                       const monthGrandTotal = detailMonthlyTotals.reduce((sum, c) => sum + c.months[mIndex], 0);
-                       return (
-                         <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-sm">
-                           {formatNumber(monthGrandTotal)}
-                         </td>
-                       );
-                     })}
-                     <td className="px-6 py-3 text-right font-bold text-indigo-600 text-base">
-                       {formatNumber(totalSGA)}
-                     </td>
-                   </tr>
-                 </tfoot>
-               </table>
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t border-slate-200">
+                    <tr>
+                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-700 text-sm">총계</td>
+                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                        const monthGrandTotal = detailMonthlyTotals.reduce((sum, c) => sum + c.months[mIndex], 0);
+                        return (
+                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-xs">
+                            {formatNumber(monthGrandTotal)}
+                          </td>
+                        );
+                      })}
+                      <td className="px-6 py-3 text-right font-bold text-indigo-700 text-sm">
+                        {formatNumber(detailMonthlyTotals.reduce((sum, c) => sum + c.total, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
              </div>
           </div>
         </div>
