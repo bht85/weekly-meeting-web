@@ -727,60 +727,60 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       </div>
 
       {/* Tabs & Guide Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-lg w-full xl:w-fit">
           {isFinance && (
             <button
               onClick={() => handleTabChange('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4" />
-              전사 대시보드 (재무팀 전용)
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              전사 대시보드
             </button>
           )}
           <button
             onClick={() => handleTabChange('input')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap ${
               activeTab === 'input' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-4 h-4 shrink-0" />
             부서별 예산 입력
           </button>
           {isFinance && (
             <button
               onClick={() => handleTabChange('deduction')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'deduction' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <Scissors className="w-4 h-4" />
-              매출 차감 조정 (재무팀)
+              <Scissors className="w-4 h-4 shrink-0" />
+              매출 차감 조정
             </button>
           )}
           <button
             onClick={() => handleTabChange('upload')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap ${
               activeTab === 'upload' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4 shrink-0" />
             엑셀 업로드
           </button>
           <button
             onClick={() => handleTabChange('status')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap ${
               activeTab === 'status' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <CheckCircle className="w-4 h-4" />
+            <CheckCircle className="w-4 h-4 shrink-0" />
             업로드 현황
           </button>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleExportExcel}
             className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
