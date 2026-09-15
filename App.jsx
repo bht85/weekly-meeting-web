@@ -1038,18 +1038,18 @@ function App() {
         }
     };
 
-    // --- 10분 자동 로그아웃 (비활동 시) ---
+    // --- 2시간 자동 로그아웃 (비활동 시) ---
     useEffect(() => {
         let timeoutId;
 
         const resetTimer = () => {
             if (timeoutId) clearTimeout(timeoutId);
             if (user) {
-                // 10분(1000 * 60 * 10 밀리초) 후 자동 로그아웃
+                // 2시간(1000 * 60 * 60 * 2 밀리초) 후 자동 로그아웃
                 timeoutId = setTimeout(() => {
                     handleLogout();
-                    alert("10분 동안 활동이 없어 자동 로그아웃 되었습니다.");
-                }, 10 * 60 * 1000);
+                    alert("2시간 동안 활동이 없어 자동 로그아웃 되었습니다.");
+                }, 2 * 60 * 60 * 1000);
             }
         };
 
