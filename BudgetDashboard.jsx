@@ -1051,7 +1051,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             {/* 제출 현황 */}
             <div className="bg-emerald-50 p-4 rounded-xl shadow-sm border border-emerald-100 flex flex-col justify-center">
               <p className="text-xs font-medium text-emerald-600 mb-1">제출 완료 팀</p>
-              <p className="text-lg font-bold text-emerald-900">{currentYearData.length} <span className="text-sm font-normal text-emerald-700">/ {departments.filter(d => d !== '선택').length} 팀</span></p>
+              <p className="text-lg font-bold text-emerald-900">
+                {currentYearData.filter(d => selectedYear === 2026 ? d.hasEstimateData : d.items && d.items.length > 0).length} 
+                <span className="text-sm font-normal text-emerald-700"> / {departments.filter(d => d !== '선택').length} 팀</span>
+              </p>
             </div>
           </div>
 
