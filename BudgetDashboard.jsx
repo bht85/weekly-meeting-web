@@ -906,9 +906,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed">
-              <thead className="bg-slate-50">
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+            <table className="w-[2000px] min-w-full divide-y divide-slate-200 table-fixed relative">
+              <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   {activeTab === 'deduction' && (
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[140px]">대상 부서</th>
@@ -1052,7 +1052,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 })}
               </tbody>
               {selectedTeam && items.length > 0 && (
-                <tfoot className="bg-slate-50 border-t border-slate-200">
+                <tfoot className="bg-slate-50 border-t border-slate-200 sticky bottom-0 z-10 shadow-[0_-1px_2px_rgba(0,0,0,0.05)]">
                   <tr>
                     <td colSpan={activeTab === 'deduction' ? 4 : 3} className="px-4 py-3 text-right font-bold text-slate-700">총계</td>
                     <td className="px-4 py-3 text-right font-bold text-indigo-600 text-sm bg-slate-100/50">
