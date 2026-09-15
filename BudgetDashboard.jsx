@@ -1144,6 +1144,34 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
+                    <tr className="bg-slate-50/80 border-b-[3px] border-slate-300">
+                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-800 text-sm">판관비 (SG&amp;A) 전체 합계</td>
+                      <td className="px-6 py-3 text-right font-bold text-indigo-700 text-sm bg-slate-100/80">
+                        {formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.total, 0))}
+                      </td>
+                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                        const sgaMonthTotal = detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.months[mIndex], 0);
+                        return (
+                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-800 text-xs">
+                            {formatNumber(sgaMonthTotal)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr className="bg-amber-50/60 border-b-[3px] border-amber-200">
+                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-amber-900 text-sm">원가성 비용 (COGS) 전체 합계</td>
+                      <td className="px-6 py-3 text-right font-bold text-amber-800 text-sm bg-amber-100/50">
+                        {formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.total, 0))}
+                      </td>
+                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
+                        const cogsMonthTotal = detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.months[mIndex], 0);
+                        return (
+                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-amber-900 text-xs">
+                            {formatNumber(cogsMonthTotal)}
+                          </td>
+                        );
+                      })}
+                    </tr>
                     {detailMonthlyTotals.map(row => {
                       const rowBg = row.isDeduction ? 'bg-rose-50/20' : row.isCOGS ? 'bg-amber-50/30' : '';
                       const textColor = row.isDeduction ? 'text-rose-500' : row.isCOGS ? 'text-amber-700' : 'text-slate-500';
@@ -1163,36 +1191,6 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       );
                     })}
                   </tbody>
-                  <tfoot className="bg-slate-50 border-t border-slate-200">
-                    <tr>
-                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-slate-700 text-sm">판관비 (SG&amp;A) 소계</td>
-                      <td className="px-6 py-3 text-right font-bold text-indigo-700 text-sm bg-slate-100/50">
-                        {formatNumber(detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.total, 0))}
-                      </td>
-                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
-                        const sgaMonthTotal = detailMonthlyTotals.filter(c => !c.isCOGS && !c.isDeduction).reduce((sum, c) => sum + c.months[mIndex], 0);
-                        return (
-                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-slate-700 text-xs">
-                            {formatNumber(sgaMonthTotal)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    <tr className="bg-amber-50/40">
-                      <td colSpan={2} className="px-6 py-3 text-left font-bold text-amber-700 text-sm">원가성 비용 (COGS) 소계</td>
-                      <td className="px-6 py-3 text-right font-bold text-amber-800 text-sm bg-amber-100/30">
-                        {formatNumber(detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.total, 0))}
-                      </td>
-                      {[0,1,2,3,4,5,6,7,8,9,10,11].map(mIndex => {
-                        const cogsMonthTotal = detailMonthlyTotals.filter(c => c.isCOGS).reduce((sum, c) => sum + c.months[mIndex], 0);
-                        return (
-                          <td key={mIndex} className="px-2 py-3 text-right font-bold text-amber-700 text-xs">
-                            {formatNumber(cogsMonthTotal)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  </tfoot>
                 </table>
              </div>
           </div>
