@@ -894,6 +894,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                     availableDetails.push({ name: item.detail, desc: '직접입력' });
                   }
                   const selectedDetailInfo = availableDetails.find(d => d.name === item.detail);
+                  const isLockedByFinance = item.isActual && !isFinance;
                   
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50">
@@ -915,7 +916,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <select 
                           value={item.category}
                           onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
-                          className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                          disabled={isLockedByFinance}
+                          className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 ${isLockedByFinance ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'focus:ring-indigo-500 focus:border-indigo-500'}`}
                         >
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -924,7 +926,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <select 
                           value={item.detail}
                           onChange={(e) => handleItemChange(item.id, 'detail', e.target.value)}
-                          className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                          disabled={isLockedByFinance}
+                          className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 ${isLockedByFinance ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'focus:ring-indigo-500 focus:border-indigo-500'}`}
                         >
                           {availableDetails.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
                         </select>
@@ -939,8 +942,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           type="text" 
                           value={item.description || ''}
                           onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          readOnly={isLockedByFinance}
                           placeholder="비고, 상세명칭 입력"
-                          className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                          className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 ${isLockedByFinance ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'focus:ring-indigo-500 focus:border-indigo-500'}`}
                         />
                       </td>
                       <td className="px-2 py-2 align-top text-right font-bold text-indigo-600 text-sm pt-3 bg-slate-50/50">
@@ -981,7 +985,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                       <td className="px-2 py-2 align-top text-center pt-3">
                         <button 
                           onClick={() => handleRemoveRow(item.id)}
-                          className="text-red-400 hover:text-red-600 transition-colors p-1"
+                          disabled={isLockedByFinance}
+                          className={`${isLockedByFinance ? 'text-slate-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 transition-colors'} p-1`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
