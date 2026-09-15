@@ -1436,8 +1436,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={() => handleDeleteDepartmentData(dept)}
-                            disabled={!isActualUploaded && !isEstimateUploaded && !targetItems.length}
-                            className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-xs rounded hover:bg-red-50 disabled:opacity-30 transition-colors"
+                            disabled={!isFinance || (!isActualUploaded && !isEstimateUploaded && !targetItems.length)}
+                            title={!isFinance ? "재무팀만 전체 삭제가 가능합니다." : ""}
+                            className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-xs rounded hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           >
                             <Trash2 className="w-3 h-3" />
                             전체 삭제
