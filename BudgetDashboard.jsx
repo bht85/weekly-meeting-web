@@ -523,10 +523,33 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     XLSX.writeFile(wb, filename);
   };
   const handleDeleteDepartmentData = async (dept) => {
+    const docId = `${selectedYear}_${dept}`;
+    const docData = budgetData.find(d => d.id === docId);
+
+    if (!isFinance && docData?.hasActualData) {
+      if (!window.confirm(`${dept}의 ${selectedYear}년도 추정(9~12월) 데이터를 모두 초기화하시겠습니까?\n(재무팀이 업로드한 1~8월 실적 데이터는 안전하게 유지됩니다.)`)) return;
+      
+      const existingItemsToKeep = (docData.items || []).filter(i => i.isActual);
+      const totalAmount = existingItemsToKeep.reduce((s, i) => s + (i.rowTotal || 0), 0);
+      
+      try {
+        await setDoc(doc(db, 'budget_plans', docId), {
+          items: existingItemsToKeep,
+          totalAmount,
+          hasEstimateData: false,
+          updatedBy: user?.email || 'Unknown',
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        alert('추정 데이터가 초기화되었습니다.');
+      } catch(e) {
+        alert('초기화 중 오류가 발생했습니다.');
+      }
+      return;
+    }
+
     if (!window.confirm(`${dept}의 ${selectedYear}년도 데이터를 모두 삭제하시겠습니까?\n삭제 후에는 복구할 수 없으며, 초기(미업로드) 상태로 돌아갑니다.`)) return;
     
     try {
-      const docId = `${selectedYear}_${dept}`;
       await deleteDoc(doc(db, 'budget_plans', docId));
       alert('삭제되었습니다.');
     } catch (error) {
@@ -1436,12 +1459,11 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={() => handleDeleteDepartmentData(dept)}
-                            disabled={!isFinance || (!isActualUploaded && !isEstimateUploaded && !targetItems.length)}
-                            title={!isFinance ? "재무팀만 전체 삭제가 가능합니다." : ""}
+                            disabled={!isActualUploaded && !isEstimateUploaded && !targetItems.length}
                             className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-xs rounded hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           >
                             <Trash2 className="w-3 h-3" />
-                            전체 삭제
+                            {(!isFinance && isActualUploaded) ? "초기화(9~12월)" : "전체 삭제"}
                           </button>
                         </td>
                       </tr>
