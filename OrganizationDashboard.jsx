@@ -856,6 +856,21 @@ const DeptManagerModal = ({ db, user, onClose }) => {
         }
     };
 
+    const handleEdit = async (id, currentName) => {
+        const newName = window.prompt("수정할 부서명을 입력하세요:", currentName);
+        if (!newName || newName.trim() === '' || newName === currentName) return;
+        
+        try {
+            await setDoc(doc(db, getCollectionName('departments', user), id), {
+                name: newName.trim(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error(error);
+            alert("부서명 수정 실패");
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in-95">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
@@ -891,9 +906,14 @@ const DeptManagerModal = ({ db, user, onClose }) => {
                                 {customDepts.map(d => (
                                     <div key={d.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-lg hover:border-slate-300 bg-white transition-colors group">
                                         <span className="text-sm font-bold text-slate-700">{d.name}</span>
-                                        <button onClick={() => handleDelete(d.id)} className="p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button onClick={() => handleEdit(d.id, d.name)} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-all">
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleDelete(d.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
