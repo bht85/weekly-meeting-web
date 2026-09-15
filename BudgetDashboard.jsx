@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet, Scissors } from 'lucide-react';
+import { Save, AlertCircle, BarChart3, PieChart as PieChartIcon, Plus, Trash2, LayoutDashboard, Edit3, BookOpen, X, ChevronsRight, Download, Upload, CheckCircle, FileSpreadsheet, Scissors, HelpCircle } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -36,6 +36,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
   const [loadedFormId, setLoadedFormId] = useState(null);
 
   // 실적 업로드 관련 상태
@@ -792,7 +793,14 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
           >
             <BookOpen className="w-4 h-4" />
-            계정과목 기준표 (가이드)
+            계정과목 기준표
+          </button>
+          <button 
+            onClick={() => setIsUsageGuideOpen(true)}
+            className="flex items-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+          >
+            <HelpCircle className="w-4 h-4" />
+            시스템 이용 가이드
           </button>
         </div>
       </div>
@@ -1467,6 +1475,110 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                 className="bg-slate-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-900 transition-colors"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 시스템 이용 가이드 모달 */}
+      {isUsageGuideOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-blue-500" />
+                시스템 이용 가이드 (사용자 매뉴얼)
+              </h2>
+              <button onClick={() => setIsUsageGuideOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm">1</span>
+                  기본 작성 규칙 (2026년 기준)
+                </h3>
+                <ul className="space-y-3 text-slate-600">
+                  <li className="flex gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <div>
+                      <strong className="text-slate-700">1월 ~ 8월 (실적):</strong> 재무팀에서 ERP 결산 데이터를 바탕으로 일괄 반영합니다. 
+                      <span className="text-rose-500 font-medium ml-1">각 사업부서에서는 1~8월을 비워두시거나 아무 숫자나 넣으셔도 무시됩니다.</span>
+                    </div>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <div>
+                      <strong className="text-slate-700">9월 ~ 12월 (추정):</strong> 각 사업부서에서 예상되는 발생 비용을 입력합니다. 시스템에 엑셀을 업로드하면 <strong>스마트하게 9~12월 데이터만 발췌</strong>하여 저장됩니다.
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm">2</span>
+                  특수 비용 처리 안내
+                </h3>
+                <div className="space-y-4">
+                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                    <h4 className="font-bold text-amber-800 mb-2">💰 원가성 비용 (COGS) 입력</h4>
+                    <p className="text-sm text-amber-700">
+                      교육팀의 '교육 상품'이나 가맹점 프로모션용 '원두 지원' 등은 판관비가 아닌 원가성 비용입니다. 
+                      계정과목 선택 시 목록 맨 하단의 <strong>[원가성 비용]</strong> 대분류를 선택하신 후 세부 항목을 지정해 주세요.
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <h4 className="font-bold text-slate-800 mb-2">✂️ 매출 차감 거래 귀속분</h4>
+                    <p className="text-sm text-slate-600">
+                      광고선전비/판매촉진비/지급수수료 중 향후 매출 차감으로 귀속되어야 하는 거래건이라도, 
+                      <strong>각 부서에서는 마이너스(-) 입력 없이 일반 비용(Gross)으로 기입</strong>해 주십시오. 차감 조정은 재무팀에서 일괄 진행합니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm">3</span>
+                  입력 방법 안내 (선택)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border border-slate-200 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                      엑셀 일괄 업로드 (권장)
+                    </h4>
+                    <ol className="list-decimal list-inside text-sm text-slate-600 space-y-1">
+                      <li>상단 <strong>[엑셀 업로드]</strong> 탭 클릭</li>
+                      <li>템플릿 다운로드 및 작성</li>
+                      <li>파일 선택하여 업로드 (자동 저장)</li>
+                    </ol>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                      <Edit3 className="w-4 h-4 text-indigo-600" />
+                      화면 내 직접 입력
+                    </h4>
+                    <ol className="list-decimal list-inside text-sm text-slate-600 space-y-1">
+                      <li>상단 <strong>[부서별 예산 입력]</strong> 탭 클릭</li>
+                      <li>'행 추가' 버튼으로 항목 생성</li>
+                      <li>우측 <strong>'저장하기'</strong> 버튼 클릭 (필수)</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-200 bg-white flex justify-end">
+              <button 
+                onClick={() => setIsUsageGuideOpen(false)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                가이드 닫기
               </button>
             </div>
           </div>
