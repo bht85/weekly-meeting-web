@@ -3107,8 +3107,15 @@ const FranchiseDashboard = ({ db, user }) => {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-emerald-50 shrink-0">
                             <div>
-                                <h3 className="text-lg font-bold text-emerald-900">{selectedOperatingFranchise.name} 추가 거래 내역</h3>
-                                <p className="text-sm text-emerald-700 mt-1">오픈 이후에 발생한 매출, 비용, 무상교체 내역을 관리합니다.</p>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-emerald-600 uppercase tracking-wide">운영점 추가 거래 내역</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-emerald-900 flex items-center gap-2">
+                                    <span className="text-2xl">🏪</span>
+                                    {selectedOperatingFranchise.name}
+                                    <span className="text-sm font-normal text-emerald-600">({selectedOperatingFranchise.owner})</span>
+                                </h3>
+                                <p className="text-xs text-emerald-600 mt-0.5">오픈 이후에 발생한 매출, 비용, 무상교체 내역을 관리합니다.</p>
                             </div>
                             <button onClick={() => setIsOperatingHistoryModalOpen(false)} className="text-emerald-500 hover:text-emerald-700">
                                 <X className="w-5 h-5" />
@@ -3280,13 +3287,23 @@ const FranchiseDashboard = ({ db, user }) => {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
-                            <h3 className="text-lg font-bold text-red-900">운영점 추가 매입/비용 등록</h3>
+                            <div>
+                                <h3 className="text-lg font-bold text-red-900">운영점 추가 매입/비용 등록</h3>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-xs text-red-500">등록 대상 가맹점:</span>
+                                    <span className="text-sm font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">📍 {selectedOperatingFranchise?.name}</span>
+                                </div>
+                            </div>
                             <button onClick={() => setIsOperatingExpenseModalOpen(false)} className="text-red-400 hover:text-red-600">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
-                            <div className="mb-6">
+                            <div className="mb-2 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2">
+                                <span className="text-red-500">⚠️</span>
+                                <span className="text-sm text-red-700"><span className="font-bold">{selectedOperatingFranchise?.name}</span>에 매입/비용이 등록됩니다. 가맹점을 반드시 확인하세요.</span>
+                            </div>
+                            <div className="mb-6 mt-4">
                                 <label className="block text-sm font-bold text-slate-700 mb-2">거래 귀속월 (필수)</label>
                                 <input 
                                     type="month" 
@@ -3442,13 +3459,23 @@ const FranchiseDashboard = ({ db, user }) => {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 shrink-0">
-                            <h3 className="text-lg font-bold text-indigo-900">운영점 추가 무상교체/대여 등록</h3>
+                            <div>
+                                <h3 className="text-lg font-bold text-indigo-900">운영점 추가 무상교체/대여 등록</h3>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-xs text-indigo-500">등록 대상 가맹점:</span>
+                                    <span className="text-sm font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full border border-indigo-200">📍 {selectedOperatingFranchise?.name}</span>
+                                </div>
+                            </div>
                             <button onClick={() => setIsOperatingFreeRentalModalOpen(false)} className="text-indigo-400 hover:text-indigo-600">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
-                            <div className="mb-6">
+                            <div className="mb-2 p-3 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center gap-2">
+                                <span className="text-indigo-500">⚠️</span>
+                                <span className="text-sm text-indigo-700"><span className="font-bold">{selectedOperatingFranchise?.name}</span>에 무상교체/대여 내역이 등록됩니다. 가맹점을 반드시 확인하세요.</span>
+                            </div>
+                            <div className="mb-6 mt-4">
                                 <label className="block text-sm font-bold text-slate-700 mb-2">거래 귀속월 (필수)</label>
                                 <input 
                                     type="month" 
