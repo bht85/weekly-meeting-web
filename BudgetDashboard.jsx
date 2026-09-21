@@ -33,6 +33,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
   const [selectedTeam, setSelectedTeam] = useState(isFinance ? '' : (user?.department || ''));
   
   const [budgetData, setBudgetData] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [items, setItems] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -66,6 +67,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     const unsub = onSnapshot(collection(db, 'budget_plans'), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBudgetData(data);
+      setIsDataLoaded(true);
     });
     const unsubSettings = onSnapshot(doc(db, 'settings', 'budget_closing'), (docSnap) => {
       if (docSnap.exists()) {
@@ -82,6 +84,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
   // 2. Load Form Data when Team or Year changes
   useEffect(() => {
+    if (!isDataLoaded) return; // 데이터가 완전히 불러와질 때까지 대기
+
     if (!selectedTeam) {
       setItems([]);
       setLoadedFormId(null);
@@ -101,7 +105,7 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
     if (existing && existing.items && existing.items.length > 0) {
       setItems(existing.items);
       setLoadedFormId(docId);
-    } else if (budgetData.length > 0 || !existing) {
+    } else {
       // 빈 항목 1개 기본 제공 (새로운 폼)
       const firstCategory = CATEGORIES[0];
       const firstDetail = ACCOUNT_GUIDE[firstCategory][0].name;
@@ -112,12 +116,10 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
         description: '',
         months: Array(12).fill(0)
       }]);
-      // 아직 서버에서 budgetData 전체가 덜 불러와졌을 수 있으므로 budgetData가 비어있지 않을때만 완료처리하거나 일단 로컬 폼 할당
-      // 더 안전한 방법은 위 로직대로 폼 ID를 마킹해두는 것.
       setLoadedFormId(docId);
     }
     setSaveMessage('');
-  }, [selectedYear, selectedTeam, budgetData, loadedFormId]);
+  }, [selectedYear, selectedTeam, budgetData, loadedFormId, isDataLoaded]);
 
   // 3. Grid Handlers
   const handleAddRow = () => {
@@ -1022,7 +1024,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
                           <select 
                             value={item.targetTeam || ''}
                             onChange={(e) => handleItemChange(item.id, 'targetTeam', e.target.value)}
-                            className="w-full border-slate-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs py-1.5"
+                            disabled={isLockedByFinance}
+                            className={`w-full border-slate-200 rounded-md shadow-sm text-xs py-1.5 ${isLockedByFinance ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'focus:ring-indigo-500 focus:border-indigo-500'}`}
                           >
                             <option value="">부서 선택</option>
                             {departments.filter(d => d !== '선택').map(d => (

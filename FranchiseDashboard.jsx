@@ -228,7 +228,7 @@ const FranchiseDashboard = ({ db, user }) => {
     
     // 모달 상태
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
+    const [newFranchise, setNewFranchise] = useState({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', openType: 'new', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
 
     // 단가표 관리 모달 (기기장비 전용)
     const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
@@ -303,6 +303,7 @@ const FranchiseDashboard = ({ db, user }) => {
             bizType: newFranchise.bizType,
             contractDate: newFranchise.contractDate,
             openDate: newFranchise.openDate,
+            openType: newFranchise.openType || 'new',
             isFranchiseFeeCharged: newFranchise.isFranchiseFeeCharged,
             isEducationFeeCharged: newFranchise.isEducationFeeCharged,
             expectedFranchiseFee: expectedFranchiseFee,
@@ -314,7 +315,7 @@ const FranchiseDashboard = ({ db, user }) => {
         };
         setFranchises([...franchises, newEntry]);
         setIsAddModalOpen(false);
-        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
+        setNewFranchise({ name: '', owner: '', bizNumber: '', bizType: '', contractDate: '', openDate: '', openType: 'new', isFranchiseFeeCharged: true, isEducationFeeCharged: true, expectedOpenCost: 0 });
         setActiveTab('basic');
     };
 
@@ -943,7 +944,10 @@ const FranchiseDashboard = ({ db, user }) => {
             return franchises.map(f => (
                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-2 py-1.5 border-r border-slate-200">
-                        <div className="font-medium text-slate-800">{f.name}</div>
+                        <div className="font-medium text-slate-800 flex items-center gap-1.5">
+                            {f.name}
+                            {f.openType === 'transfer' && <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700">양도양수</span>}
+                        </div>
                         <div className="text-xs text-slate-500">{f.id} | {f.owner}</div>
                         {f.bizNumber && (
                             <div className="text-[10px] text-slate-400 mt-0.5">
@@ -1056,6 +1060,7 @@ const FranchiseDashboard = ({ db, user }) => {
                             <tr>
                                 <th className="px-2 py-1.5">가맹점 코드</th>
                                 <th className="px-2 py-1.5">가맹점명</th>
+                                <th className="px-2 py-1.5 text-center">유형</th>
                                 <th className="px-2 py-1.5">대표자</th>
                                 <th className="px-2 py-1.5">사업자등록번호</th>
                                 <th className="px-2 py-1.5">오픈(예정)일자</th>
@@ -1067,6 +1072,12 @@ const FranchiseDashboard = ({ db, user }) => {
                                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-2 py-1.5 font-medium text-slate-500">{f.id}</td>
                                     <td className="px-2 py-1.5 font-bold text-slate-800">{f.name}</td>
+                                    <td className="px-2 py-1.5 text-center">
+                                        {f.openType === 'transfer' 
+                                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">양도양수</span>
+                                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600">신규</span>
+                                        }
+                                    </td>
                                     <td className="px-2 py-1.5">{f.owner}</td>
                                     <td className="px-2 py-1.5 text-slate-500">{f.bizNumber || '-'}</td>
                                     <td className="px-2 py-1.5 text-indigo-600 font-medium">
@@ -1312,7 +1323,10 @@ const FranchiseDashboard = ({ db, user }) => {
                                             title="클릭하여 매칭된 입금 내역 확인"
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="font-bold text-slate-800">{f.name}</span>
+                                                <span className="font-bold text-slate-800 flex items-center gap-1">
+                                                    {f.name}
+                                                    {f.openType === 'transfer' && <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700">양도</span>}
+                                                </span>
                                                 <span className="text-[10px] text-slate-500 ml-2">{f.owner}</span>
                                             </div>
                                         </td>
@@ -2965,13 +2979,31 @@ const FranchiseDashboard = ({ db, user }) => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-                            <h3 className="text-lg font-bold text-slate-800">신규 가맹점 등록</h3>
+                            <h3 className="text-lg font-bold text-slate-800">
+                                {newFranchise.openType === 'transfer' ? '양도양수 가맹점 등록' : '신규 가맹점 등록'}
+                            </h3>
                             <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1">
                         <form id="addForm" onSubmit={handleAddSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">오픈 유형</label>
+                                <div className="flex gap-3">
+                                    <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${newFranchise.openType === 'new' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                                        <input type="radio" name="openType" value="new" checked={newFranchise.openType === 'new'} onChange={e => setNewFranchise({...newFranchise, openType: e.target.value})} className="sr-only" />
+                                        🆕 신규 오픈
+                                    </label>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${newFranchise.openType === 'transfer' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                                        <input type="radio" name="openType" value="transfer" checked={newFranchise.openType === 'transfer'} onChange={e => setNewFranchise({...newFranchise, openType: e.target.value})} className="sr-only" />
+                                        🔄 양도양수
+                                    </label>
+                                </div>
+                                {newFranchise.openType === 'transfer' && (
+                                    <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 rounded px-2 py-1">기존 운영 가맹점의 대표자가 변경되는 경우입니다. 가맹/교육비가 해당 오픈월 매출로 인식됩니다.</p>
+                                )}
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">가맹점명 (지점명)</label>
                                 <input 
@@ -3578,6 +3610,22 @@ const FranchiseDashboard = ({ db, user }) => {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1">
                         <form id="editForm" onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">오픈 유형</label>
+                                <div className="flex gap-3">
+                                    <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${(editFranchise.openType || 'new') === 'new' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                                        <input type="radio" name="editOpenType" value="new" checked={(editFranchise.openType || 'new') === 'new'} onChange={e => setEditFranchise({...editFranchise, openType: e.target.value})} className="sr-only" />
+                                        🆕 신규 오픈
+                                    </label>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${editFranchise.openType === 'transfer' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                                        <input type="radio" name="editOpenType" value="transfer" checked={editFranchise.openType === 'transfer'} onChange={e => setEditFranchise({...editFranchise, openType: e.target.value})} className="sr-only" />
+                                        🔄 양도양수
+                                    </label>
+                                </div>
+                                {editFranchise.openType === 'transfer' && (
+                                    <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 rounded px-2 py-1">기존 운영 가맹점의 대표자가 변경되는 경우입니다.</p>
+                                )}
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">가맹점명 (지점명)</label>
                                 <input 
