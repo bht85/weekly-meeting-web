@@ -341,6 +341,35 @@ const FranchiseDashboard = ({ db, user }) => {
         setEditFranchise(null);
     };
 
+    const handleDeleteFranchise = () => {
+        if (!editFranchise) return;
+        const hasData = (
+            (editFranchise.sales?.franchiseFee > 0) ||
+            (editFranchise.sales?.educationFee > 0) ||
+            (editFranchise.sales?.open?.deposit > 0) ||
+            (editFranchise.sales?.open?.middle > 0) ||
+            (editFranchise.sales?.open?.balance > 0) ||
+            (editFranchise.expenses?.equipmentItems?.length > 0) ||
+            (editFranchise.expenses?.interiorItems?.length > 0) ||
+            (editFranchise.operating?.sales?.length > 0) ||
+            (editFranchise.operating?.expenses?.length > 0)
+        );
+        const confirmMsg = hasData
+            ? `⚠️ "${editFranchise.name}"에는 수납/비용 데이터가 있습니다.\n\n정말 삭제하시겠습니까?\n(연결된 입금 매칭도 함께 해제됩니다)`
+            : `"${editFranchise.name}"을(를) 삭제하시겠습니까?\n(연결된 입금 매칭도 함께 해제됩니다)`;
+        if (!window.confirm(confirmMsg)) return;
+
+        // 해당 가맹점에 매칭된 bankTransactions 매칭 해제
+        setBankTransactions(bankTransactions.map(t =>
+            t.matchedFranchiseId === editFranchise.id
+                ? { ...t, matchedFranchiseId: null, matchedCategory: null }
+                : t
+        ));
+        setFranchises(franchises.filter(f => f.id !== editFranchise.id));
+        setIsEditModalOpen(false);
+        setEditFranchise(null);
+    };
+
     const handleUpdateOpenDate = (id, newDate) => {
         setFranchises(franchises.map(f => f.id === id ? { ...f, openDate: newDate } : f));
     };
@@ -3735,6 +3764,13 @@ const FranchiseDashboard = ({ db, user }) => {
                         </form>
                         </div>
                         <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                            <button
+                                type="button"
+                                onClick={handleDeleteFranchise}
+                                className="px-4 py-2.5 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 font-medium flex items-center gap-1.5 text-sm"
+                            >
+                                <Trash2 className="w-4 h-4" /> 삭제
+                            </button>
                             <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">
                                 취소
                             </button>
