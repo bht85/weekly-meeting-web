@@ -251,6 +251,13 @@ const FranchiseDashboard = ({ db, user }) => {
     const [isOperatingSearchModalOpen, setIsOperatingSearchModalOpen] = useState(false);
     const [operatingSearchKeyword, setOperatingSearchKeyword] = useState('');
     const [selectedOperatingFranchise, setSelectedOperatingFranchise] = useState(null);
+    const selectedOperatingFranchiseRef = useRef(null);
+
+    // selectedOperatingFranchise가 변경될 때마다 ref도 동기화
+    const setSelectedOperatingFranchiseSafe = (f) => {
+        selectedOperatingFranchiseRef.current = f;
+        setSelectedOperatingFranchise(f);
+    };
 
     const [isOperatingExpenseModalOpen, setIsOperatingExpenseModalOpen] = useState(false);
     const [isOperatingFreeRentalModalOpen, setIsOperatingFreeRentalModalOpen] = useState(false);
@@ -1479,7 +1486,7 @@ const FranchiseDashboard = ({ db, user }) => {
     );
 
     const openOperatingHistoryModal = (f) => {
-        setSelectedOperatingFranchise(f);
+        setSelectedOperatingFranchiseSafe(f);
         setIsOperatingHistoryModalOpen(true);
     };
 
@@ -3457,8 +3464,14 @@ const FranchiseDashboard = ({ db, user }) => {
                                         alert("거래 귀속월을 선택해주세요.");
                                         return;
                                     }
+                                    // ref를 사용하여 최신 가맹점을 항상 정확히 참조
+                                    const targetFranchise = selectedOperatingFranchiseRef.current;
+                                    if (!targetFranchise) {
+                                        alert("가맹점을 다시 선택해주세요.");
+                                        return;
+                                    }
                                     const updated = [...franchises];
-                                    const idx = updated.findIndex(f => f.id === selectedOperatingFranchise.id);
+                                    const idx = updated.findIndex(f => f.id === targetFranchise.id);
                                     if(idx > -1) {
                                         if(!updated[idx].operating) updated[idx].operating = { sales: [], expenses: [], freeRentals: [] };
                                         if(!updated[idx].operating.expenses) updated[idx].operating.expenses = [];
@@ -3470,7 +3483,7 @@ const FranchiseDashboard = ({ db, user }) => {
                                             interiorItems: editingInteriorItems.filter(i => i.vendorId && i.price > 0)
                                         });
                                         setFranchises(updated);
-                                        setSelectedOperatingFranchise(updated[idx]);
+                                        setSelectedOperatingFranchiseSafe(updated[idx]);
                                     }
                                     setIsOperatingExpenseModalOpen(false);
                                 }}
@@ -3629,8 +3642,13 @@ const FranchiseDashboard = ({ db, user }) => {
                                         alert("거래 귀속월을 선택해주세요.");
                                         return;
                                     }
+                                    const targetFranchise = selectedOperatingFranchiseRef.current;
+                                    if (!targetFranchise) {
+                                        alert("가맹점을 다시 선택해주세요.");
+                                        return;
+                                    }
                                     const updated = [...franchises];
-                                    const idx = updated.findIndex(f => f.id === selectedOperatingFranchise.id);
+                                    const idx = updated.findIndex(f => f.id === targetFranchise.id);
                                     if(idx > -1) {
                                         if(!updated[idx].operating) updated[idx].operating = { sales: [], expenses: [], freeRentals: [] };
                                         if(!updated[idx].operating.freeRentals) updated[idx].operating.freeRentals = [];
@@ -3642,7 +3660,7 @@ const FranchiseDashboard = ({ db, user }) => {
                                             interiorItems: editingFreeInteriorItems.filter(i => i.vendorId && i.price > 0)
                                         });
                                         setFranchises(updated);
-                                        setSelectedOperatingFranchise(updated[idx]);
+                                        setSelectedOperatingFranchiseSafe(updated[idx]);
                                     }
                                     setIsOperatingFreeRentalModalOpen(false);
                                 }}
