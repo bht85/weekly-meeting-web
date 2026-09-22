@@ -397,65 +397,81 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
       for (const [team, rows] of Object.entries(byTeam)) {
         const docId = `${selectedYear}_${team}`;
         const existing = budgetData.find(d => d.id === docId);
-        
-        const newItems = rows.map(r => {
-          let finalMonths = [...r.months];
-          let isActual = false;
 
-          if (selectedYear === 2026) {
-            if (isFinance) {
-              // 재무팀: 파일에 입력된 값을 그대로 실적으로 반영 (월 제한 없음)
-              // 0인 달은 데이터 없는 것으로 처리 (업로드하지 않은 달)
-              finalMonths = [...r.months]; // 모든 달 그대로 사용
-              isActual = true;
-            } else {
-              // 일반팀: 파일에서 0이 아닌 달만 추정으로 반영
-              // 단, 기존 실적(isActual) 데이터가 있는 달은 나중에 병합 시 보존됨
-              finalMonths = [...r.months];
-              isActual = false;
-            }
-          } else {
-            // 2027/2028: 전 기간 추정치로 반영
-            finalMonths = [...r.months];
-            isActual = false;
-          }
+        const newItems = rows.map(r => ({
+          id: `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          category: r.category,
+          detail: r.detail,
+          description: r.description,
+          months: [...r.months],
+          rowTotal: r.months.reduce((s, v) => s + v, 0),
+          isActual: selectedYear === 2026 && isFinance,
+        }));
 
-          return {
-            id: `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-            category: r.category,
-            detail: r.detail,
-            description: r.description,
-            months: finalMonths,
-            rowTotal: finalMonths.reduce((s, v) => s + v, 0),
-            isActual,
-          };
-        });
-
-        let existingItemsToKeep = [];
+        let mergedItems = [];
         let hasActualData = existing?.hasActualData || false;
 
         if (existing?.items) {
-          if (selectedYear === 2026) {
-            if (isFinance) {
-              // 재무팀 업로드 시, 기존 추정 데이터(일반팀 입력분) 보존
-              existingItemsToKeep = existing.items.filter(i => !i.isActual);
-              hasActualData = true;
-            } else {
-              // 일반팀 업로드 시, 기존 실적 데이터(재무팀 입력분) 보존
-              existingItemsToKeep = existing.items.filter(i => i.isActual);
-            }
+          if (selectedYear === 2026 && isFinance) {
+            // ── 재무팀 2026년 업로드: category+detail 기준으로 월별 병합 ──
+            // 기존 실적 아이템과 새 아이템을 category+detail로 매칭,
+            // 새 업로드의 0인 달은 기존 실적값으로 유지 (1~8월 올린 후 9~12월 올려도 보존)
+            const existingActuals = existing.items.filter(i => i.isActual);
+            const existingEstimates = existing.items.filter(i => !i.isActual);
+            const processedKeys = new Set();
+
+            const mergedActuals = newItems.map(newItem => {
+              const key = `${newItem.category}||${newItem.detail}`;
+              processedKeys.add(key);
+              const match = existingActuals.find(
+                e => e.category === newItem.category && e.detail === newItem.detail
+              );
+              if (match) {
+                // 월별 병합: 새 값이 0이면 기존 실적값 유지
+                const mergedMonths = newItem.months.map((m, i) =>
+                  m !== 0 ? m : (match.months[i] || 0)
+                );
+                return {
+                  ...match,
+                  months: mergedMonths,
+                  rowTotal: mergedMonths.reduce((s, v) => s + v, 0),
+                  description: newItem.description || match.description,
+                  isActual: true,
+                };
+              }
+              return newItem; // 새 항목
+            });
+
+            // 새 업로드에 없는 기존 실적 아이템도 보존
+            existingActuals.forEach(e => {
+              const key = `${e.category}||${e.detail}`;
+              if (!processedKeys.has(key)) {
+                mergedActuals.push(e);
+              }
+            });
+
+            mergedItems = [...existingEstimates, ...mergedActuals];
+            hasActualData = true;
+
+          } else if (selectedYear === 2026 && !isFinance) {
+            // 일반팀: 기존 실적(재무팀) 보존 + 추정 덮어쓰기
+            const existingActuals = existing.items.filter(i => i.isActual);
+            mergedItems = [...existingActuals, ...newItems.map(i => ({ ...i, isActual: false }))];
+
           } else {
-            // 2027년 이상은 통째로 덮어쓰기
+            // 2027년 이상: 통째로 덮어쓰기
+            mergedItems = newItems;
             hasActualData = false;
           }
-        } else if (selectedYear === 2026 && isFinance) {
-           hasActualData = true;
+        } else {
+          // 기존 데이터 없음: 그대로 저장
+          mergedItems = newItems;
+          if (selectedYear === 2026 && isFinance) hasActualData = true;
         }
 
-        const mergedItems = [...existingItemsToKeep, ...newItems];
         const totalAmount = mergedItems.reduce((s, i) => s + (i.rowTotal || 0), 0);
 
-        let updatePayload = {
+        const updatePayload = {
           year: selectedYear,
           team,
           items: mergedItems,
@@ -463,14 +479,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           hasActualData,
           updatedBy: user?.email || 'Unknown',
           updatedAt: serverTimestamp(),
+          ...(selectedYear !== 2026 || !isFinance ? { hasEstimateData: true } : { hasActualData: true }),
         };
-
-        if (selectedYear !== 2026 || !isFinance) {
-          updatePayload.hasEstimateData = true;
-        } else {
-          // 재무팀 2026년 업로드는 hasEstimateData를 건드리지 않음 (기존 일반팀 추정 유지)
-          updatePayload.hasActualData = true;
-        }
 
         await setDoc(doc(db, 'budget_plans', docId), updatePayload, { merge: true });
       }
