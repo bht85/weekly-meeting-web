@@ -479,8 +479,20 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
           hasActualData,
           updatedBy: user?.email || 'Unknown',
           updatedAt: serverTimestamp(),
-          ...(selectedYear !== 2026 || !isFinance ? { hasEstimateData: true } : { hasActualData: true }),
         };
+
+        if (selectedYear !== 2026 || !isFinance) {
+          // 일반팀 또는 2027년 이상: 추정 데이터로 처리
+          updatePayload.hasEstimateData = true;
+        } else {
+          // 재무팀 2026년: 실적 데이터
+          updatePayload.hasActualData = true;
+          // 업로드한 아이템 중 9~12월(인덱스 8~11)에 0이 아닌 값이 있으면 추정 상태도 완료로 표시
+          const has9to12 = newItems.some(item =>
+            item.months.slice(8, 12).some(v => v !== 0)
+          );
+          if (has9to12) updatePayload.hasEstimateData = true;
+        }
 
         await setDoc(doc(db, 'budget_plans', docId), updatePayload, { merge: true });
       }
