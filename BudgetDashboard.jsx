@@ -404,16 +404,19 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
           if (selectedYear === 2026) {
             if (isFinance) {
-              // 재무팀: 1~8월만 실적으로 반영
-              finalMonths = [...r.months.slice(0, 8), 0, 0, 0, 0];
+              // 재무팀: 파일에 입력된 값을 그대로 실적으로 반영 (월 제한 없음)
+              // 0인 달은 데이터 없는 것으로 처리 (업로드하지 않은 달)
+              finalMonths = [...r.months]; // 모든 달 그대로 사용
               isActual = true;
             } else {
-              // 일반팀: 9~12월만 추정으로 반영
-              finalMonths = [0, 0, 0, 0, 0, 0, 0, 0, ...r.months.slice(8, 12)];
+              // 일반팀: 파일에서 0이 아닌 달만 추정으로 반영
+              // 단, 기존 실적(isActual) 데이터가 있는 달은 나중에 병합 시 보존됨
+              finalMonths = [...r.months];
               isActual = false;
             }
           } else {
             // 2027/2028: 전 기간 추정치로 반영
+            finalMonths = [...r.months];
             isActual = false;
           }
 
@@ -436,13 +439,13 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
             if (isFinance) {
               // 재무팀 업로드 시, 기존 추정 데이터(일반팀 입력분) 보존
               existingItemsToKeep = existing.items.filter(i => !i.isActual);
-              hasActualData = true; // 재무팀이 올렸으니 실제 데이터 존재함
+              hasActualData = true;
             } else {
               // 일반팀 업로드 시, 기존 실적 데이터(재무팀 입력분) 보존
               existingItemsToKeep = existing.items.filter(i => i.isActual);
             }
           } else {
-            // 2027년 이상은 통째로 덮어쓰기이므로 보존 안 함
+            // 2027년 이상은 통째로 덮어쓰기
             hasActualData = false;
           }
         } else if (selectedYear === 2026 && isFinance) {
@@ -464,6 +467,9 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
 
         if (selectedYear !== 2026 || !isFinance) {
           updatePayload.hasEstimateData = true;
+        } else {
+          // 재무팀 2026년 업로드는 hasEstimateData를 건드리지 않음 (기존 일반팀 추정 유지)
+          updatePayload.hasActualData = true;
         }
 
         await setDoc(doc(db, 'budget_plans', docId), updatePayload, { merge: true });
@@ -1344,8 +1350,8 @@ const BudgetDashboard = ({ db, user, departments = [] }) => {
               <p className="text-orange-700 text-xs mt-1">
                 엑셀 템플릿을 다운로드 → 데이터 입력 → 파일 업로드 순서로 진행합니다. (일반 부서는 본인 부서 데이터만 업로드 가능)<br/>
                 <span className="font-semibold text-orange-800 bg-orange-200 px-1 rounded inline-block mt-1">
-                  {selectedYear === 2026 && !isFinance && '일반 부서가 업로드 시 1~8월 칸은 무시되고 9~12월(추정) 데이터만 반영됩니다. (재무팀 실적 데이터 보호)'}
-                  {selectedYear === 2026 && isFinance && '재무팀이 업로드 시 1~8월(실적) 데이터로 덮어쓰기 됩니다.'}
+                  {selectedYear === 2026 && !isFinance && '일반 부서가 업로드 시 재무팀이 입력한 실적 데이터는 보호되며, 나머지 추정 데이터만 반영됩니다.'}
+                  {selectedYear === 2026 && isFinance && '재무팀이 업로드 시 파일에 입력된 모든 월(1~12월)이 실적 데이터로 반영됩니다. (9~12월 포함)'}
                   {selectedYear !== 2026 && `선택하신 ${selectedYear}년도 1~12월 데이터로 전체 덮어쓰기 됩니다.`}
                 </span>
               </p>
